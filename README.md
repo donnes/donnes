@@ -1,5 +1,3 @@
-### Hi there 👋
-
 <!--
 **donnes/donnes** is a ✨ _special_ ✨ repository because its `README.md` (this file) appears on your GitHub profile.
 
@@ -14,3 +12,15 @@ Here are some ideas to get you started:
 - 😄 Pronouns: ...
 - ⚡ Fun fact: ...
 -->
+
+## Donald Silveira
+
+📱 JavaScript Web & Mobile Engineer
+
+![donnes's github top langs](https://github-readme-stats.vercel.app/api/top-langs/?username=donnes&langs_count=10&layout=compact)
+
+![donnes's github stats](https://github-readme-stats.vercel.app/api?username=donnes&count_private=true&show_icons=true)
+
+📫 Follow me on socials:  
+🐦 https://twitter.com/donaldsilveira  
+💼 https://www.linkedin.com/in/donaldsilveira
