@@ -22,5 +22,5 @@ Here are some ideas to get you started:
 ![donnes's github stats](https://github-readme-stats.vercel.app/api?username=donnes&count_private=true&show_icons=true)
 
 📫 Follow me on socials:  
-📷 https://instagram.com/donaldsilveira
+📷 https://instagram.com/donaldsilveira <br/>
 💼 https://www.linkedin.com/in/donaldsilveira
