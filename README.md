@@ -13,18 +13,18 @@ Here are some ideas to get you started:
 - ⚡ Fun fact: ...
 -->
 
-## <img alt="handwavegif" src="https://user-images.githubusercontent.com/39513876/112366216-8cfe7400-8cfe-11eb-8116-7d3dbae20e97.gif" width='40' align="left"/> Hi there! I'm Donald
+## <img alt="handwavegif" src="https://user-images.githubusercontent.com/39513876/112366216-8cfe7400-8cfe-11eb-8116-7d3dbae20e97.gif" width='40' align="left"/> Hi there!
 
-### 👨🏻‍💻 About me
+I'm **Donald Silveira**
 
-I'm a Software Engineer with more than 10 years of experience with mobile and web development, also as technical team lead.
+Currently I work as Tech Lead/Senior Frontend Engineer for [Casa do Saber](https://github.com/casa-do-saber).
 
 I have much love and familiarity with Javascript and your major frameworks and libraries. I also love to research and learn about UI/UX, software architecture, best practices, team leadership and other subjects.
 
 📄 Check my [resume](https://www.linkedin.com/in/donaldsilveira/) on LinkedIn for more details about work experience.
 
 
-### 🛠 Tech Stack
+### 🛠 Current Dev Stack
 
 ![Javascript](https://img.shields.io/badge/-JavaScript-05122A?style=flat&logo=javascript)&nbsp;
 ![Typescript](https://img.shields.io/badge/-TypeScript-05122A?style=flat&logo=typescript)&nbsp;
