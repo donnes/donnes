@@ -17,7 +17,7 @@ Here are some ideas to get you started:
 
 ### 👨🏻‍💻 About me
 
-I'm a Software Engineer with more than 8 years of experience with mobile and web development, also as technical team lead.
+I'm a Software Engineer with more than 10 years of experience with mobile and web development, also as technical team lead.
 
 I have much love and familiarity with Javascript and your major frameworks and libraries. I also love to research and learn about UI/UX, software architecture, best practices, team leadership and other subjects.
 
