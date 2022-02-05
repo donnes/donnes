@@ -13,18 +13,20 @@ Here are some ideas to get you started:
 - ⚡ Fun fact: ...
 -->
 
+[![Twitter](https://img.shields.io/twitter/follow/donaldsilveira?style=social)](https://twitter.com/intent/follow?screen_name=donaldsilveira)
+
 ## <img alt="handwavegif" src="https://user-images.githubusercontent.com/39513876/112366216-8cfe7400-8cfe-11eb-8116-7d3dbae20e97.gif" width='40' align="left"/> Hi there!
 
 I'm **Donald Silveira**
 
-Currently I work as Tech Lead/Senior Frontend Engineer for [Casa do Saber](https://github.com/casa-do-saber).
+Currently I work as Tech Lead and Senior Frontend Engineer at [Casa do Saber](https://github.com/casa-do-saber).
 
 I have much love and familiarity with Javascript and your major frameworks and libraries. I also love to research and learn about UI/UX, software architecture, best practices, team leadership and other subjects.
 
-📄 Check my [resume](https://www.linkedin.com/in/donaldsilveira/) on LinkedIn for more details about work experience.
+📄 Check my [resume](/docs/Donald-Resume.png) for more details about work experience.
 
 
-### 🛠 Current Dev Stack
+### 🛠 Dev Stack
 
 ![Javascript](https://img.shields.io/badge/-JavaScript-05122A?style=flat&logo=javascript)&nbsp;
 ![Typescript](https://img.shields.io/badge/-TypeScript-05122A?style=flat&logo=typescript)&nbsp;
@@ -36,9 +38,9 @@ I have much love and familiarity with Javascript and your major frameworks and l
 ![Visual Studio Code](https://img.shields.io/badge/-Visual%20Studio%20Code-05122A?style=flat&logo=visual-studio-code&logoColor=007ACC)&nbsp;
 
 
-![donnes's github top langs](https://github-readme-stats.vercel.app/api/top-langs/?username=donnes&langs_count=10&layout=compact&theme=dark)
+![donnes's github top langs](https://github-readme-stats.vercel.app/api/top-langs/?username=donnes&langs_count=10&layout=compact&theme=tokyonight)
 
-![donnes's github stats](https://github-readme-stats.vercel.app/api?username=donnes&count_private=true&show_icons=true&theme=dark)
+![donnes's github stats](https://github-readme-stats.vercel.app/api?username=donnes&count_private=true&show_icons=true&theme=tokyonight&hide=contribs,stars)
 
 ### 📫 How to reach me:
 
