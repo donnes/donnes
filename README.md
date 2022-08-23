@@ -19,8 +19,6 @@ Here are some ideas to get you started:
 
 I'm **Donald Silveira**
 
-Currently I work as Tech Lead and Senior Frontend Engineer at [Casa do Saber](https://github.com/casa-do-saber).
-
 I have much love and familiarity with Javascript and your major frameworks and libraries. I also love to research and learn about UI/UX, software architecture, best practices, team leadership and other subjects.
 
 📄 Check my [resume](/docs/Donald-Resume.png) for more details about work experience.
