@@ -21,7 +21,7 @@ I'm **Donald Silveira**
 
 I have much love and familiarity with Javascript and your major frameworks and libraries. I also love to research and learn about UI/UX, software architecture, best practices, team leadership and other subjects.
 
-📄 Check my [resume](/docs/Donald-Resume.png) for more details about work experience.
+📄 Check my [resume](/docs/Donald-Resume.pdf) for more details about work experience.
 
 
 ### 🛠 Dev Stack
