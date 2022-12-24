@@ -42,8 +42,9 @@ I have much love and familiarity with Javascript and your major frameworks and l
 
 ### 📫 How to reach me:
 
-<a href="https://www.linkedin.com/in/donaldsilveira/"><img alt="LinkedIn" src="https://img.shields.io/badge/LinkedIn%20-%230077B5.svg?&style=flat&logo=linkedin&logoColor=white"/></a> &nbsp;
-<a href="mailto:donaldsilveira@gmail.com"><img alt="Gmail" src="https://img.shields.io/badge/Gmail-D14836?style=flat&logo=gmail&logoColor=white" /></a> &nbsp;
-<a href="https://instagram.com/donaldsilveira"><img src="https://img.shields.io/badge/-@donaldsilveira-E4405F?style=flat&logo=Instagram&logoColor=white"/></a> &nbsp;
+<a href="https://www.linkedin.com/in/donaldsilveira/"><img alt="LinkedIn" src="https://img.shields.io/badge/linkedin-%230077B5.svg?style=for-the-badge&logo=linkedin&logoColor=white"/></a> &nbsp;
+<a href="https://twitter.com/donaldsilveira"><img src="https://img.shields.io/badge/Twitter-%231DA1F2.svg?style=for-the-badge&logo=Twitter&logoColor=white"/></a> &nbsp;
+<a href="https://instagram.com/donaldsilveira"><img src="https://img.shields.io/badge/Instagram-%23E4405F.svg?style=for-the-badge&logo=Instagram&logoColor=white"/></a> &nbsp;
+<a href="mailto:donaldsilveira@gmail.com"><img alt="Gmail" src="https://img.shields.io/badge/Gmail-D14836?style=for-the-badge&logo=gmail&logoColor=white" /></a> &nbsp;
 
 Thanks to visite my profile! You're welcome to send me a DM as well. <3
