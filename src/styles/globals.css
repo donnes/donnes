@@ -22,3 +22,9 @@ a {
   color: inherit;
   text-decoration: none;
 }
+
+@layer components {
+  .mask-hero-video {
+    mask-image: linear-gradient(180deg, #ffffff 70%, transparent);
+  }
+}

@@ -12,13 +12,10 @@ import { useRef } from 'react'
 
 interface ParallaxTextProps {
   children: string
-  baseVelocity: number
+  velocity: number
 }
 
-export function ParallaxText({
-  children,
-  baseVelocity = 100,
-}: ParallaxTextProps) {
+export function ParallaxText({ children, velocity = 100 }: ParallaxTextProps) {
   const baseX = useMotionValue(0)
   const { scrollY } = useScroll()
   const scrollVelocity = useVelocity(scrollY)
@@ -39,7 +36,7 @@ export function ParallaxText({
 
   const directionFactor = useRef<number>(1)
   useAnimationFrame((t, delta) => {
-    let moveBy = directionFactor.current * baseVelocity * (delta / 1000)
+    let moveBy = directionFactor.current * velocity * (delta / 1000)
 
     /**
      * This is what changes the direction of the scroll once we

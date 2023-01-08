@@ -1,5 +1,5 @@
 import Link from 'next/link'
-import { Author } from '../services/graphql/types'
+import { Author as TAuthor } from '../services/graphql/types'
 import { ParallaxText } from './ParallaxText'
 
 function Mesh() {
@@ -43,12 +43,12 @@ function Mesh() {
 }
 
 type HeroProps = {
-  author?: Author
+  author?: TAuthor
 }
 
 export function Hero({ author }: HeroProps) {
   return (
-    <>
+    <section>
       <div className="relative px-4 sm:px-8 lg:px-12">
         <Mesh />
 
@@ -56,7 +56,7 @@ export function Hero({ author }: HeroProps) {
           <div className="grid grid-cols-1 gap-x-20 md:grid-cols-2">
             <div className="flex flex-col gap-4">
               <div>
-                <h1 className="text-5xl font-extrabold text-zinc-900 dark:text-white sm:text-6xl">
+                <h1 className="bg-gradient-to-br bg-clip-text text-5xl font-extrabold text-transparent dark:from-white dark:to-zinc-300 sm:text-6xl">
                   {author?.name}
                 </h1>
                 <h2 className="font-normal text-zinc-800 dark:text-zinc-200 sm:text-xl">
@@ -140,7 +140,7 @@ export function Hero({ author }: HeroProps) {
             </div>
             <div className="relative hidden md:flex">
               <div className="absolute -right-20 hidden md:-top-10 md:flex md:w-[500px] lg:-top-14 lg:w-[600px] xl:-top-24 xl:w-[650px]">
-                <div className="relative">
+                <div className="mask-hero-video relative">
                   <video autoPlay muted>
                     <source src="/hero.webm" type="video/webm" />
                     Your browser does not support the video tag.
@@ -152,14 +152,15 @@ export function Hero({ author }: HeroProps) {
         </div>
       </div>
 
-      <div className="mb-18 relative mt-8 border-t border-zinc-400 pt-8 dark:border-zinc-800 md:mt-[8.8rem] md:pt-12">
-        <ParallaxText baseVelocity={-2}>
+      <div className="mb-18 relative mt-8 border-t border-zinc-400 pt-8 dark:border-zinc-50 dark:border-opacity-5 md:mt-[8.8rem] md:pt-12">
+        <div className="absolute left-0 right-0 top-0 bottom-0 bg-gradient-radial from-indigo-700 via-indigo-900 to-transparent pt-8 opacity-40 blur-3xl" />
+        <ParallaxText velocity={-2}>
           JavaScript React.JS React Native Next.JS
         </ParallaxText>
-        <ParallaxText baseVelocity={2}>
+        <ParallaxText velocity={1.5}>
           TypeScript Node.JS PostgreSQL Primsa
         </ParallaxText>
       </div>
-    </>
+    </section>
   )
 }

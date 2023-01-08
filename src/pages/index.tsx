@@ -1,36 +1,35 @@
-import { Author } from '../services/graphql/types'
+import { Author as TAuthor, Navbar as TNavbar } from '../services/graphql/types'
 import { Api } from '../services/api'
 import { Navbar } from '../components/Navbar'
 import { Hero } from '../components/Hero'
-import { ParallaxText } from '../components/ParallaxText'
 
 type HomeProps = {
-  author?: Author
+  author?: TAuthor
+  navbarLinks?: TNavbar[]
 }
 
 export async function getStaticProps() {
   const author = await Api.getAuthor()
+  const navbarLinks = await Api.getNavbarLinks()
 
   return {
     props: {
       author,
+      navbarLinks,
     },
-    // Next.js will attempt to re-generate the page:
-    // - When a request comes in
-    // - At most once every 10 seconds
     revalidate: 10, // In seconds
   }
 }
 
-function Home({ author }: HomeProps) {
+function Home({ author, navbarLinks }: HomeProps) {
   return (
-    <>
-      <Navbar />
+    <div className="bg-indigo-900 bg-opacity-20">
+      <Navbar links={navbarLinks} />
 
-      <main className="h-[2000px] pt-6 lg:pt-28">
+      <main className="h-[calc(100vh_-_4.1rem)] pt-6 lg:pt-28">
         <Hero author={author} />
       </main>
-    </>
+    </div>
   )
 }
 
