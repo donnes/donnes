@@ -3,7 +3,8 @@ import { env } from '../config/env'
 import {
   GetAuthorDocument,
   type GetAuthorQuery,
-  type GetAuthorQueryVariables,
+  GetNavbarDocument,
+  type GetNavbarQuery,
 } from './graphql/types'
 
 export const client = new GraphQLClient(env.HYGRAPH_URL, {
@@ -15,11 +16,13 @@ export const client = new GraphQLClient(env.HYGRAPH_URL, {
 
 export const Api = {
   getAuthor: async () => {
-    const { author } = await client.request<
-      GetAuthorQuery,
-      GetAuthorQueryVariables
-    >(GetAuthorDocument)
+    const { author } = await client.request<GetAuthorQuery>(GetAuthorDocument)
 
     return author
+  },
+  getNavbarLinks: async () => {
+    const { navbars } = await client.request<GetNavbarQuery>(GetNavbarDocument)
+
+    return navbars
   },
 }

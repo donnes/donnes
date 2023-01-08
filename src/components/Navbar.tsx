@@ -1,54 +1,66 @@
 import Image from 'next/image'
 import Link from 'next/link'
 import cn from 'classnames'
+import { Navbar as TNavbar } from '../services/graphql/types'
 import useScrollPosition from '../hooks/useScrollPosition'
 
-const navItems = [
-  {
-    key: 'home',
-    title: 'Home',
-    href: '/',
-  },
-  {
-    key: 'blog',
-    title: 'Blog',
-    href: '/blog',
-  },
-]
+const CV_LINK =
+  'https://drive.google.com/file/d/1tG3Wp1BhMmyu7EVFNrEWbM4JPjuqoU3f/view?usp=share_link'
 
-export const Navbar = () => {
+type NavbarProps = {
+  links?: TNavbar[]
+}
+
+export const Navbar = ({ links }: NavbarProps) => {
   const position = useScrollPosition()
 
   const navClassName = cn({
-    'bg-zinc-900': position > 10,
-    'bg-opacity-70': position > 10,
-    'border-zinc-800': position > 10,
+    'bg-indigo-900 bg-opacity-10 dark:border-zinc-50': position >= 5,
   })
 
   return (
     <nav
-      className={`supports-backdrop-blur:bg-white/95 sticky top-0 z-20 border-b border-transparent backdrop-blur transition-colors duration-300 ${navClassName}`}
+      className={`supports-backdrop-blur:bg-white/95 sticky top-0 z-20 border-b border-transparent backdrop-blur transition-colors duration-300 dark:border-opacity-10 ${navClassName}`}
     >
       <div className="px-4 sm:px-8 lg:px-12">
-        <div className="mx-auto  max-w-2xl lg:max-w-5xl">
-          <div
-            className="flex h-16 items-center justify-between"
-            aria-label="Global"
-          >
-            <div className="flex lg:min-w-0" aria-label="Global">
-              <Link href="/">
-                <span className="sr-only">Donald</span>
-                <Image
-                  src="/logo-letter.svg"
-                  width={40}
-                  height={40}
-                  alt="Donald Silveira"
-                />
+        <div className="mx-auto max-w-2xl lg:max-w-5xl">
+          <div className="flex h-16 items-center justify-between">
+            <ul className="flex flex-1 flex-row gap-6">
+              <li className="flex items-center">
+                <Link href="/">
+                  <span className="sr-only">Donald</span>
+                  <Image
+                    src="/logo-letter.svg"
+                    width={30}
+                    height={30}
+                    alt="Donald Silveira"
+                  />
+                </Link>
+              </li>
+              {links?.map((item) => (
+                <li key={item.slug} className="hidden items-center md:flex">
+                  <Link
+                    href={item.href}
+                    className="font-light text-zinc-900 transition dark:text-white dark:hover:text-indigo-700"
+                  >
+                    {item.title}
+                  </Link>
+                </li>
+              ))}
+            </ul>
+            <div className="hidden md:flex md:justify-end">
+              <Link
+                href={CV_LINK}
+                target="_blank"
+                className="inline-block rounded-full bg-indigo-600 px-4 py-1.5 text-base font-normal leading-7 text-white ring-1 ring-indigo-700 transition hover:bg-indigo-700 hover:ring-indigo-800"
+              >
+                Download CV
               </Link>
             </div>
-            <div className="flex h-10 flex-row gap-x-6 lg:hidden">
-              <a
-                href="#"
+            <div className="flex h-10 flex-row gap-x-6 md:hidden">
+              <Link
+                href={CV_LINK}
+                target="_blank"
                 className="inline-flex items-center gap-x-1 rounded-full bg-indigo-600 px-4 py-1.5 text-base font-semibold leading-7 text-white ring-1 ring-indigo-700 transition hover:bg-indigo-700 hover:ring-indigo-800"
               >
                 <svg
@@ -66,7 +78,7 @@ export const Navbar = () => {
                   ></path>
                 </svg>
                 <span>CV</span>
-              </a>
+              </Link>
               <button
                 type="button"
                 className="-m-2.5 inline-flex items-center justify-center rounded-md p-2.5 text-zinc-900 dark:text-zinc-50"
@@ -89,25 +101,6 @@ export const Navbar = () => {
                   />
                 </svg>
               </button>
-            </div>
-            <div className="hidden lg:ml-12 lg:flex lg:min-w-0 lg:flex-1 lg:gap-x-12">
-              {navItems.map((item) => (
-                <Link
-                  key={item.key}
-                  href={item.href}
-                  className="font-light text-zinc-900 transition dark:text-zinc-50 dark:hover:text-indigo-500"
-                >
-                  {item.title}
-                </Link>
-              ))}
-            </div>
-            <div className="hidden lg:flex lg:min-w-0 lg:justify-end">
-              <a
-                href="#"
-                className="inline-block rounded-full bg-indigo-600 px-4 py-1.5 text-base font-normal leading-7 text-white ring-1 ring-indigo-700 transition hover:bg-indigo-700 hover:ring-indigo-800"
-              >
-                Download CV
-              </a>
             </div>
           </div>
         </div>

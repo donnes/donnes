@@ -7,7 +7,7 @@ query GetAuthor {
     picture {
       url
     }
-    socials {
+    socials(orderBy: createdAt_ASC) {
       title
       slug
       url

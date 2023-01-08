@@ -1,0 +1,7 @@
+query GetNavbar {
+  navbars(orderBy: createdAt_ASC, where: { elabled: true }) {
+    title
+    slug
+    href
+  }
+}
