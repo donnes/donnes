@@ -1,0 +1,16 @@
+query GetAuthor {
+  author(where: { slug: "donald-silveira" }) {
+    name
+    slug
+    jobTitle
+    intro
+    picture {
+      url
+    }
+    socials {
+      title
+      slug
+      url
+    }
+  }
+}

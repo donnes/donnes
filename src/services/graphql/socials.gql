@@ -1,0 +1,7 @@
+query GetSocials {
+  socials {
+    title
+    slug
+    url
+  }
+}
