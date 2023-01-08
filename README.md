@@ -1,40 +1,22 @@
-<!--
-**donnes/donnes** is a ✨ _special_ ✨ repository because its `README.md` (this file) appears on your GitHub profile.
+# <img alt="handwavegif" src="https://user-images.githubusercontent.com/39513876/112366216-8cfe7400-8cfe-11eb-8116-7d3dbae20e97.gif" width='40' align="left"/> Hi! I'm [**Donald Silveira**](https://donnes.vercel.app/)
 
-Here are some ideas to get you started:
+I have been helping companies and startups build and maintain large-scale web and mobile applications for over a decade.
 
-- 🔭 I’m currently working on ...
-- 🌱 I’m currently learning ...
-- 👯 I’m looking to collaborate on ...
-- 🤔 I’m looking for help with ...
-- 💬 Ask me about ...
-- 📫 How to reach me: ...
-- 😄 Pronouns: ...
-- ⚡ Fun fact: ...
--->
-
-[![Twitter](https://img.shields.io/twitter/follow/donaldsilveira?style=social)](https://twitter.com/intent/follow?screen_name=donaldsilveira)
-
-## <img alt="handwavegif" src="https://user-images.githubusercontent.com/39513876/112366216-8cfe7400-8cfe-11eb-8116-7d3dbae20e97.gif" width='40' align="left"/> Hi there!
-
-I'm **Donald Silveira**
-
-I have much love and familiarity with Javascript and your major frameworks and libraries. I also love to research and learn about UI/UX, software architecture, best practices, team leadership and other subjects.
-
-📄 Check my [resume](https://cutt.ly/H2hO2du) for more details about work experience.
-
-
-### 🛠 Dev Stack
+### 🛠 Development Stack
 
 ![Javascript](https://img.shields.io/badge/-JavaScript-05122A?style=flat&logo=javascript)&nbsp;
 ![Typescript](https://img.shields.io/badge/-TypeScript-05122A?style=flat&logo=typescript)&nbsp;
-![React.JS](https://img.shields.io/badge/-React.JS-05122A?style=flat&logo=react)&nbsp;
+![React.JS](https://img.shields.io/badge/-React.js-05122A?style=flat&logo=react)&nbsp;
+![Next.JS](https://img.shields.io/badge/-Next.js-05122A?style=flat&logo=nextdotjs)&nbsp;
 ![React Native](https://img.shields.io/badge/-React%20Native-05122A?style=flat&logo=react)&nbsp;
+![Tailwind CSS](https://img.shields.io/badge/-Tailwind_CSS-05122A?style=flat&logo=tailwind-css)&nbsp;
+![tRPC](https://img.shields.io/badge/-tRPC-05122A?style=flat&logo=tRPC)&nbsp;
 ![Node.JS](https://img.shields.io/badge/-Node.JS-05122A?style=flat&logo=node.js)&nbsp;
+![PostgresSQL](https://img.shields.io/badge/-PostgreSQL-05122A?style=flat&logo=postgresql)&nbsp;
+![Prisma](https://img.shields.io/badge/-Prisma-05122A?style=flat&logo=prisma)&nbsp;
 ![Git](https://img.shields.io/badge/-Git-05122A?style=flat&logo=git)&nbsp;
 ![GitHub](https://img.shields.io/badge/-GitHub-05122A?style=flat&logo=github)&nbsp;
 ![Visual Studio Code](https://img.shields.io/badge/-Visual%20Studio%20Code-05122A?style=flat&logo=visual-studio-code&logoColor=007ACC)&nbsp;
-
 
 ![donnes's github top langs](https://github-readme-stats.vercel.app/api/top-langs/?username=donnes&langs_count=10&layout=compact&theme=tokyonight)
 
