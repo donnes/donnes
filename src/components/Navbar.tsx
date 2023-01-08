@@ -19,21 +19,20 @@ const navItems = [
 export const Navbar = () => {
   const position = useScrollPosition()
 
-  const navClassName = cn(
-    'supports-backdrop-blur:bg-white/95 sticky top-0 z-20 border-b border-transparent backdrop-blur transition-colors duration-500',
-    {
-      'bg-zinc-900': position > 30,
-      'bg-opacity-70': position > 30,
-      'border-zinc-800': position > 300,
-    },
-  )
+  const navClassName = cn({
+    'bg-zinc-900': position > 10,
+    'bg-opacity-70': position > 10,
+    'border-zinc-800': position > 10,
+  })
 
   return (
-    <nav className={navClassName}>
-      <div className="px-4 py-6 sm:px-8 lg:px-12">
-        <div className="mx-auto max-w-2xl lg:max-w-5xl">
+    <nav
+      className={`supports-backdrop-blur:bg-white/95 sticky top-0 z-20 border-b border-transparent backdrop-blur transition-colors duration-300 ${navClassName}`}
+    >
+      <div className="px-4 sm:px-8 lg:px-12">
+        <div className="mx-auto  max-w-2xl lg:max-w-5xl">
           <div
-            className="flex h-9 items-center justify-between"
+            className="flex h-16 items-center justify-between"
             aria-label="Global"
           >
             <div className="flex lg:min-w-0" aria-label="Global">
@@ -47,7 +46,7 @@ export const Navbar = () => {
                 />
               </Link>
             </div>
-            <div className="flex flex-row gap-x-6 lg:hidden">
+            <div className="flex h-10 flex-row gap-x-6 lg:hidden">
               <a
                 href="#"
                 className="inline-flex items-center gap-x-1 rounded-full bg-indigo-600 px-4 py-1.5 text-base font-semibold leading-7 text-white ring-1 ring-indigo-700 transition hover:bg-indigo-700 hover:ring-indigo-800"
@@ -96,7 +95,7 @@ export const Navbar = () => {
                 <Link
                   key={item.key}
                   href={item.href}
-                  className="font-semibold text-zinc-900 transition dark:text-zinc-50 dark:hover:text-indigo-500"
+                  className="font-light text-zinc-900 transition dark:text-zinc-50 dark:hover:text-indigo-500"
                 >
                   {item.title}
                 </Link>
@@ -105,7 +104,7 @@ export const Navbar = () => {
             <div className="hidden lg:flex lg:min-w-0 lg:justify-end">
               <a
                 href="#"
-                className="inline-block rounded-full bg-indigo-600 px-4 py-1.5 text-base font-semibold leading-7 text-white ring-1 ring-indigo-700 transition hover:bg-indigo-700 hover:ring-indigo-800"
+                className="inline-block rounded-full bg-indigo-600 px-4 py-1.5 text-base font-normal leading-7 text-white ring-1 ring-indigo-700 transition hover:bg-indigo-700 hover:ring-indigo-800"
               >
                 Download CV
               </a>
