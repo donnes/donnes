@@ -66,10 +66,10 @@ export function ParallaxText({ children, velocity = 100 }: ParallaxTextProps) {
         className="flex flex-nowrap whitespace-nowrap text-5xl font-extrabold uppercase text-white md:text-7xl"
         style={{ x }}
       >
-        <span className="mr-4 block">{children} </span>
-        <span className="mr-4 block">{children} </span>
-        <span className="mr-4 block">{children} </span>
-        <span className="mr-4 block">{children} </span>
+        <span className="mr-4 block">{children}</span>
+        <span className="mr-4 block">{children}</span>
+        <span className="mr-4 block">{children}</span>
+        <span className="mr-4 block">{children}</span>
       </motion.div>
     </div>
   )
