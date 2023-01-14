@@ -1,29 +1,22 @@
 import Image from 'next/image'
 import Link from 'next/link'
-import cn from 'classnames'
-import { Navbar as TNavbar } from '../services/graphql/types'
-import useScrollPosition from '../hooks/useScrollPosition'
+import { Menu as TMenu } from '../services/graphql/types'
+import { useNavbarOnScroll } from '../hooks/useNavbarOnScroll'
 
 const CV_LINK =
   'https://drive.google.com/file/d/1tG3Wp1BhMmyu7EVFNrEWbM4JPjuqoU3f/view?usp=share_link'
 
 type NavbarProps = {
-  links?: TNavbar[]
+  menus?: TMenu[]
 }
 
-export const Navbar = ({ links }: NavbarProps) => {
-  const position = useScrollPosition()
-
-  const navClassName = cn({
-    'bg-indigo-900 bg-opacity-10 dark:border-zinc-50': position >= 5,
-  })
+export const Navbar = ({ menus }: NavbarProps) => {
+  useNavbarOnScroll()
 
   return (
-    <nav
-      className={`supports-backdrop-blur:bg-white/95 sticky top-0 z-20 border-b border-transparent backdrop-blur transition-colors duration-300 dark:border-opacity-10 ${navClassName}`}
-    >
+    <nav className="sticky top-0 z-40 border-b border-transparent transition-all duration-150 ease-in-out">
       <div className="px-4 sm:px-8 lg:px-12">
-        <div className="mx-auto max-w-2xl lg:max-w-5xl">
+        <div className="mx-auto lg:max-w-5xl">
           <div className="flex h-16 items-center justify-between">
             <ul className="flex flex-1 flex-row gap-6">
               <li className="flex items-center">
@@ -37,13 +30,13 @@ export const Navbar = ({ links }: NavbarProps) => {
                   />
                 </Link>
               </li>
-              {links?.map((item) => (
-                <li key={item.slug} className="hidden items-center md:flex">
+              {menus?.map((menuItem) => (
+                <li key={menuItem.slug} className="hidden items-center md:flex">
                   <Link
-                    href={item.href}
-                    className="font-light text-zinc-900 transition dark:text-white dark:hover:text-indigo-700"
+                    href={menuItem.href}
+                    className="font-light transition dark:text-white dark:hover:text-indigo-500"
                   >
-                    {item.title}
+                    {menuItem.title}
                   </Link>
                 </li>
               ))}
@@ -52,7 +45,7 @@ export const Navbar = ({ links }: NavbarProps) => {
               <Link
                 href={CV_LINK}
                 target="_blank"
-                className="inline-block rounded-full bg-indigo-600 px-4 py-1.5 text-base font-normal leading-7 text-white ring-1 ring-indigo-700 transition hover:bg-indigo-700 hover:ring-indigo-800"
+                className="inline-block rounded-full bg-indigo-600 px-4 py-1.5 text-base font-normal leading-7 text-white transition hover:bg-indigo-700"
               >
                 Download CV
               </Link>
@@ -61,7 +54,7 @@ export const Navbar = ({ links }: NavbarProps) => {
               <Link
                 href={CV_LINK}
                 target="_blank"
-                className="inline-flex items-center gap-x-1 rounded-full bg-indigo-600 px-4 py-1.5 text-base font-semibold leading-7 text-white ring-1 ring-indigo-700 transition hover:bg-indigo-700 hover:ring-indigo-800"
+                className="inline-flex items-center gap-x-1 rounded-full bg-indigo-600 px-4 py-1.5 text-base font-semibold leading-7 text-white transition hover:bg-indigo-700"
               >
                 <svg
                   className="h-6 w-6"
