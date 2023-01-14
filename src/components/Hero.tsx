@@ -103,7 +103,7 @@ export function Hero({ author }: HeroProps) {
             </div>
 
             <div className="relative hidden md:flex">
-              <div className="absolute -right-20 hidden md:-top-10 md:flex md:w-[500px] lg:-top-14 lg:w-[600px] xl:-top-24 xl:w-[650px]">
+              <div className="absolute -right-20 hidden md:-top-10 md:flex md:w-[500px] lg:-right-24 lg:-top-32 lg:w-[700px]">
                 <div className="mask-hero-video relative">
                   <video autoPlay muted>
                     <source src="/hero.webm" type="video/webm" />
