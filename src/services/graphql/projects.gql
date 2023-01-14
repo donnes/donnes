@@ -1,0 +1,13 @@
+query GetProjects($limit: Int) {
+  projects(orderBy: publishedAt_DESC, first: $limit) {
+    slug
+    title
+    subtitle
+    description
+    tags
+    publishedAt
+    image {
+      url(transformation: { image: { resize: { fit: scale, width: 600 } } })
+    }
+  }
+}

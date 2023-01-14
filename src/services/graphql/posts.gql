@@ -1,0 +1,12 @@
+query GetPosts($limit: Int) {
+  posts(orderBy: publishedAt_DESC, first: $limit) {
+    slug
+    title
+    copy
+    date
+    coverImage {
+      url(transformation: { image: { resize: { fit: scale, width: 550 } } })
+    }
+    publishedAt
+  }
+}

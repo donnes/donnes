@@ -1,10 +1,16 @@
 import { GraphQLClient } from 'graphql-request'
 import { env } from '../config/env'
 import {
+  GetMenuDocument,
+  type GetMenuQuery,
   GetAuthorDocument,
   type GetAuthorQuery,
-  GetNavbarDocument,
-  type GetNavbarQuery,
+  GetPostsDocument,
+  type GetPostsQuery,
+  type GetPostsQueryVariables,
+  GetProjectsDocument,
+  type GetProjectsQuery,
+  type GetProjectsQueryVariables,
 } from './graphql/types'
 
 export const client = new GraphQLClient(env.HYGRAPH_URL, {
@@ -15,14 +21,30 @@ export const client = new GraphQLClient(env.HYGRAPH_URL, {
 })
 
 export const Api = {
+  getMenu: async () => {
+    const { menus } = await client.request<GetMenuQuery>(GetMenuDocument)
+
+    return menus
+  },
   getAuthor: async () => {
     const { author } = await client.request<GetAuthorQuery>(GetAuthorDocument)
 
     return author
   },
-  getNavbarLinks: async () => {
-    const { navbars } = await client.request<GetNavbarQuery>(GetNavbarDocument)
+  getPosts: async (variables: GetPostsQueryVariables) => {
+    const { posts } = await client.request<
+      GetPostsQuery,
+      GetPostsQueryVariables
+    >(GetPostsDocument, variables)
 
-    return navbars
+    return posts
+  },
+  getProjects: async (variables: GetProjectsQueryVariables) => {
+    const { projects } = await client.request<
+      GetProjectsQuery,
+      GetProjectsQueryVariables
+    >(GetProjectsDocument, variables)
+
+    return projects
   },
 }
