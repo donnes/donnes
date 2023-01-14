@@ -1,46 +1,6 @@
 import Link from 'next/link'
 import { Author as TAuthor } from '../services/graphql/types'
-import { ParallaxText } from './ParallaxText'
-
-function Mesh() {
-  return (
-    <div className="pointer-events-none absolute inset-x-0 -top-28 -z-10 transform-gpu overflow-hidden opacity-20 blur-3xl">
-      <div className="flex w-[108rem] flex-none">
-        <svg
-          width="1157"
-          height="524"
-          viewBox="0 0 1157 524"
-          fill="none"
-          xmlns="http://www.w3.org/2000/svg"
-        >
-          <path
-            d="M188.816 338.545C192.396 210.115 86.2253 94.6055 32.6921 52.9047L1.09875 0.521973H1036.31L1156.1 84.9507C975.578 267.469 653.238 576.055 808.045 350.254C962.853 124.453 918.885 79.3015 877.551 84.9507C854.382 93.9893 809.52 134.375 815.417 223.611C822.789 335.155 607.428 228.849 523.705 269.215C439.983 309.58 408.126 71.7009 345.993 84.9507C296.286 95.5505 325.282 122.029 345.993 133.944C362.843 163.319 404.335 247.707 435.507 350.254C474.472 478.438 395.226 468.577 367.845 509.251C340.464 549.925 184.34 499.083 188.816 338.545Z"
-            fill="url(#paint0_radial_9_23)"
-            stroke="black"
-          />
-          <defs>
-            <radialGradient
-              id="paint0_radial_9_23"
-              cx="0"
-              cy="0"
-              r="1"
-              gradientUnits="userSpaceOnUse"
-              gradientTransform="translate(1045 15.9287) rotate(156.24) scale(981.207 2843.04)"
-            >
-              <stop stopColor="#0EA5E9" />
-              <stop
-                offset="0.510417"
-                stopColor="#F5D0FE"
-                stopOpacity="0.552083"
-              />
-              <stop offset="1" stopColor="#A855F7" stopOpacity="0" />
-            </radialGradient>
-          </defs>
-        </svg>
-      </div>
-    </div>
-  )
-}
+import { HeroMesh } from './Svgs'
 
 type HeroProps = {
   author?: TAuthor
@@ -48,29 +8,32 @@ type HeroProps = {
 
 export function Hero({ author }: HeroProps) {
   return (
-    <section>
-      <div className="relative px-4 sm:px-8 lg:px-12">
-        <Mesh />
+    <section className="relative">
+      <div className="mask-hero-grid pointer-events-none absolute inset-x-0 -top-48 bottom-0 -z-10 overflow-hidden dark:bg-grid-slate-400/[0.03]" />
+      <div className="pointer-events-none absolute inset-x-0 -top-32 -z-20 flex transform-gpu justify-center overflow-hidden opacity-20 blur-3xl">
+        <HeroMesh />
+      </div>
 
-        <div className="mx-auto max-w-2xl lg:max-w-5xl">
+      <div className="py-14 px-4 sm:px-8 lg:py-32 lg:px-12">
+        <div className="mx-auto lg:max-w-5xl">
           <div className="grid grid-cols-1 gap-x-20 md:grid-cols-2">
             <div className="flex flex-col gap-4">
               <div>
-                <h1 className="bg-gradient-to-br bg-clip-text text-5xl font-extrabold text-transparent dark:from-white dark:to-zinc-300 sm:text-6xl">
+                <h1 className="text-5xl font-extrabold dark:text-zinc-50 sm:text-6xl">
                   {author?.name}
                 </h1>
-                <h2 className="font-normal text-zinc-800 dark:text-zinc-200 sm:text-xl">
+                <h2 className="font-normal dark:text-zinc-200 sm:text-xl">
                   {author?.jobTitle}
                 </h2>
               </div>
-              <p className="text-lg font-light text-zinc-900 dark:text-zinc-400">
+              <p className="text-lg font-light dark:text-zinc-300">
                 {author?.intro}
               </p>
               <ul className="flex list-none gap-4">
                 <li>
                   <Link
                     href="https://github.com/donnes"
-                    className="fill-zinc-900 dark:fill-indigo-400 hover:dark:fill-indigo-500"
+                    className="dark:fill-indigo-300 hover:dark:fill-indigo-500"
                     aria-label="Follow on GitHub"
                     target="_blank"
                   >
@@ -90,7 +53,7 @@ export function Hero({ author }: HeroProps) {
                 <li>
                   <Link
                     href="https://linkedin.com/in/donaldsilveira"
-                    className="fill-zinc-900 dark:fill-indigo-400 hover:dark:fill-indigo-500"
+                    className="dark:fill-indigo-300 hover:dark:fill-indigo-500"
                     aria-label="Follow on LinkedIn"
                     target="_blank"
                   >
@@ -106,7 +69,7 @@ export function Hero({ author }: HeroProps) {
                 <li>
                   <Link
                     href="https://instagram.com/donaldsilveira"
-                    className="fill-zinc-900 dark:fill-indigo-400 hover:dark:fill-indigo-500"
+                    className="dark:fill-indigo-300 hover:dark:fill-indigo-500"
                     aria-label="Follow on Instagram"
                     target="_blank"
                   >
@@ -123,7 +86,7 @@ export function Hero({ author }: HeroProps) {
                 <li>
                   <Link
                     href="https://twitter.com/donaldsilveira"
-                    className="fill-zinc-900 dark:fill-indigo-400 hover:dark:fill-indigo-500"
+                    className="dark:fill-indigo-300 hover:dark:fill-indigo-500"
                     aria-label="Follow on Twitter"
                     target="_blank"
                   >
@@ -138,6 +101,7 @@ export function Hero({ author }: HeroProps) {
                 </li>
               </ul>
             </div>
+
             <div className="relative hidden md:flex">
               <div className="absolute -right-20 hidden md:-top-10 md:flex md:w-[500px] lg:-top-14 lg:w-[600px] xl:-top-24 xl:w-[650px]">
                 <div className="mask-hero-video relative">
@@ -150,16 +114,6 @@ export function Hero({ author }: HeroProps) {
             </div>
           </div>
         </div>
-      </div>
-
-      <div className="mb-18 relative mt-8 border-t border-zinc-400 pt-8 dark:border-zinc-50 dark:border-opacity-5 md:mt-[8.8rem] md:pt-12">
-        <div className="absolute left-0 right-0 top-0 bottom-0 bg-gradient-radial from-indigo-700 via-indigo-900 to-transparent pt-8 opacity-40 blur-3xl" />
-        <ParallaxText velocity={-2}>
-          JavaScript React.JS React Native Next.JS
-        </ParallaxText>
-        <ParallaxText velocity={1.5}>
-          TypeScript Node.JS PostgreSQL Primsa
-        </ParallaxText>
       </div>
     </section>
   )
