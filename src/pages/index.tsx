@@ -1,35 +1,55 @@
-import { Author as TAuthor, Navbar as TNavbar } from '../services/graphql/types'
+import {
+  Author as TAuthor,
+  Menu as TMenu,
+  Post as TPost,
+  Project as TProject,
+} from '../services/graphql/types'
 import { Api } from '../services/api'
 import { Navbar } from '../components/Navbar'
 import { Hero } from '../components/Hero'
+import { Posts } from '../components/Posts'
+import { Projects } from '../components/Projects'
+import { Footer } from '../components/Footer'
 
 type HomeProps = {
+  menus?: TMenu[]
   author?: TAuthor
-  navbarLinks?: TNavbar[]
+  posts?: TPost[]
+  projects?: TProject[]
 }
 
 export async function getStaticProps() {
+  const menus = await Api.getMenu()
   const author = await Api.getAuthor()
-  const navbarLinks = await Api.getNavbarLinks()
+  const posts = await Api.getPosts({ limit: 6 })
+  const projects = await Api.getProjects({ limit: 4 })
 
   return {
     props: {
+      menus,
       author,
-      navbarLinks,
+      posts,
+      projects,
     },
     revalidate: 10, // In seconds
   }
 }
 
-function Home({ author, navbarLinks }: HomeProps) {
+function Home({ menus, author, posts, projects }: HomeProps) {
   return (
-    <div className="bg-indigo-900 bg-opacity-20">
-      <Navbar links={navbarLinks} />
+    <>
+      <Navbar menus={menus} />
 
-      <main className="h-[calc(100vh_-_4.1rem)] pt-6 lg:pt-28">
+      <main>
         <Hero author={author} />
+
+        <Posts posts={posts} />
+
+        <Projects projects={projects} />
       </main>
-    </div>
+
+      <Footer menus={menus} />
+    </>
   )
 }
 
