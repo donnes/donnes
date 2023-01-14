@@ -15,7 +15,7 @@ export function Posts({ posts = [] }: PostProps) {
           <h2 className="section-title">Recent Posts</h2>
 
           <h3 className="section-subtitle">
-            Dive into the latest Frontend innovations
+            Journey through Frontend: My experiences and learnings
           </h3>
 
           <div className="mt-10 grid grid-cols-1 gap-6 md:grid-cols-2 xl:grid-cols-3">
