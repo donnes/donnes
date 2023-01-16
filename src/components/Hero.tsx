@@ -1,3 +1,4 @@
+import Image from 'next/image'
 import Link from 'next/link'
 import { Author as TAuthor } from '../services/graphql/types'
 import { HeroMesh } from './Svgs'
@@ -103,13 +104,8 @@ export function Hero({ author }: HeroProps) {
             </div>
 
             <div className="relative hidden md:flex">
-              <div className="absolute -right-20 hidden md:-top-10 md:flex md:w-[500px] lg:-right-24 lg:-top-32 lg:w-[700px]">
-                <div className="mask-hero-video relative">
-                  <video autoPlay muted>
-                    <source src="/hero.webm" type="video/webm" />
-                    Your browser does not support the video tag.
-                  </video>
-                </div>
+              <div className="absolute right-0 hidden md:-top-10 md:flex md:w-[400px] lg:-top-32 lg:w-[450px]">
+                <Image src="/hero.png" alt="Hero" width={786} height={763} />
               </div>
             </div>
           </div>
