@@ -1,6 +1,5 @@
 import Link from 'next/link'
 import Image from 'next/image'
-import { format } from 'date-fns'
 import { Post } from '../services/graphql/types'
 
 type PostCardProps = {
@@ -31,9 +30,7 @@ export function PostCard({ post }: PostCardProps) {
             </p>
 
             <div className="flex items-center justify-between">
-              <time className="text-sm text-indigo-300">
-                {format(new Date(post.date), 'MMMM dd yyyy')}
-              </time>
+              <time className="text-sm text-indigo-300">{post.createdAt}</time>
 
               <span className="relative flex items-center text-base text-indigo-300">
                 Read more

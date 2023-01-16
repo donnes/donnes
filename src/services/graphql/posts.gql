@@ -3,10 +3,10 @@ query GetPosts($limit: Int) {
     slug
     title
     copy
-    date
     coverImage {
       url(transformation: { image: { resize: { fit: scale, width: 550 } } })
     }
     publishedAt
+    createdAt
   }
 }

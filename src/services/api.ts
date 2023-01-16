@@ -1,4 +1,5 @@
 import { GraphQLClient } from 'graphql-request'
+import format from 'date-fns/format'
 import { env } from '../config/env'
 import {
   GetMenuDocument,
@@ -37,7 +38,10 @@ export const Api = {
       GetPostsQueryVariables
     >(GetPostsDocument, variables)
 
-    return posts
+    return posts.map((post) => ({
+      ...post,
+      createdAt: format(new Date(post.createdAt), 'MMMM dd yyyy'),
+    }))
   },
   getProjects: async (variables: GetProjectsQueryVariables) => {
     const { projects } = await client.request<
