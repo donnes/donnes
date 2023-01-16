@@ -1,5 +1,7 @@
+import Image from 'next/image'
 import { AnimatePresence, motion } from 'framer-motion'
 import cn from 'classnames'
+import Markdown from 'markdown-to-jsx'
 import { Project } from '../services/graphql/types'
 import { useMemo, useState } from 'react'
 
@@ -29,7 +31,7 @@ export function Projects({ projects = [] }: ProjectProps) {
           <div className="mt-10 grid gap-6 md:grid-cols-[2fr_1fr_2fr]">
             {projects.map((project, index) => {
               const className = cn(
-                'cursor-pointer overflow-hidden rounded-lg font-sans dark:bg-brand-800',
+                'relative cursor-pointer overflow-hidden rounded-lg font-sans dark:bg-brand-800',
                 {
                   'md:col-span-2': index === 0 || index === 3,
                   'md:col-span-1': index === 1 || index === 2,
@@ -43,18 +45,27 @@ export function Projects({ projects = [] }: ProjectProps) {
                   className={className}
                   onClick={() => setSelectedProject(project.slug!)}
                 >
-                  <motion.div className="flex h-64 flex-col justify-end gap-y-1 p-8">
+                  <motion.div className="absolute inset-0 z-0 opacity-40">
+                    <Image
+                      src={project.image[0].url}
+                      className="object-cover"
+                      alt={project.title}
+                      loading="lazy"
+                      fill
+                    />
+                  </motion.div>
+                  <motion.div className="relative z-10 flex h-64 flex-col justify-end gap-y-1 p-8">
                     <motion.h2 className="text-3xl font-semibold text-zinc-50">
                       {project.title}
                     </motion.h2>
                     <motion.h5 className="text-base font-semibold text-indigo-400">
                       {project.subtitle}
                     </motion.h5>
-                    <motion.ul className="list-none">
+                    <motion.ul className="mt-2 flex list-none flex-row flex-wrap gap-3">
                       {project.tags.map((tag) => (
                         <motion.li
                           key={tag}
-                          className="mr-2 inline-block rounded-full bg-indigo-900 px-2 py-1 text-xs text-indigo-300"
+                          className="rounded-full bg-indigo-900 px-2 py-1 text-xs text-indigo-300"
                         >
                           {tag}
                         </motion.li>
@@ -70,10 +81,10 @@ export function Projects({ projects = [] }: ProjectProps) {
                 <>
                   <motion.div
                     key="modal"
-                    className="fixed inset-x-0 inset-y-0 z-20 m-auto h-72 w-3/4 rounded-lg font-sans dark:bg-brand-800"
+                    className="fixed inset-x-0 top-24 z-20 m-auto h-[calc(100%_-_8rem)] w-[90%] max-w-3xl pr-4"
                     layoutId={selectedProjectSlug}
                   >
-                    <motion.div className="relative flex flex-col gap-4 p-8">
+                    <motion.div className="relative flex h-full flex-col gap-4 rounded-lg p-8 font-sans dark:bg-brand-800">
                       <motion.div className="flex flex-row items-center justify-between">
                         <motion.h2 className="text-3xl font-semibold dark:text-zinc-50">
                           {selectedProject.title}
@@ -105,25 +116,25 @@ export function Projects({ projects = [] }: ProjectProps) {
                         </motion.h5>
                       )}
 
-                      <motion.ul className="list-none">
+                      <motion.ul className="mt-2 flex list-none flex-row flex-wrap gap-3">
                         {selectedProject.tags.map((tag) => (
                           <motion.li
                             key={tag}
-                            className="mr-2 inline-block rounded-full bg-indigo-900 px-2 py-1 text-xs text-indigo-300"
+                            className="rounded-full bg-indigo-900 px-2 py-1 text-xs text-indigo-300"
                           >
                             {tag}
                           </motion.li>
                         ))}
                       </motion.ul>
 
-                      <motion.p className="text-base dark:text-indigo-300">
-                        {selectedProject.description}
-                      </motion.p>
+                      <motion.div className="text-base dark:text-indigo-300">
+                        <Markdown>{selectedProject.description}</Markdown>
+                      </motion.div>
                     </motion.div>
                   </motion.div>
 
                   <motion.div
-                    className="absolute inset-0 dark:bg-brand-900"
+                    className="-z-5 absolute inset-0 dark:bg-brand-900"
                     key="backdrop"
                     onClick={() => setSelectedProject(undefined)}
                     variants={{

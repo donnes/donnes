@@ -1,5 +1,5 @@
 query GetProjects($limit: Int) {
-  projects(orderBy: publishedAt_DESC, first: $limit) {
+  projects(orderBy: order_ASC, first: $limit) {
     slug
     title
     subtitle
