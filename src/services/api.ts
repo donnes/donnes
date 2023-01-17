@@ -12,6 +12,9 @@ import {
   GetProjectsDocument,
   type GetProjectsQuery,
   type GetProjectsQueryVariables,
+  GetJobsDocument,
+  type GetJobsQuery,
+  type GetJobsQueryVariables,
 } from './graphql/types'
 
 export const client = new GraphQLClient(env.HYGRAPH_URL, {
@@ -50,5 +53,19 @@ export const Api = {
     >(GetProjectsDocument, variables)
 
     return projects
+  },
+  getJobs: async (variables?: GetJobsQueryVariables) => {
+    const { jobs } = await client.request<GetJobsQuery, GetJobsQueryVariables>(
+      GetJobsDocument,
+      variables,
+    )
+
+    return jobs.map((job) => ({
+      ...job,
+      startDate: format(new Date(`${job.startDate} 23:00:00`), 'MMM yyyy'),
+      endDate: !job?.endDate
+        ? 'Present'
+        : format(new Date(`${job.endDate} 23:00:00`).setHours(23), 'MMM yyyy'),
+    }))
   },
 }

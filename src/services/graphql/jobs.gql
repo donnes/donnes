@@ -1,0 +1,12 @@
+query GetJobs {
+  jobs(orderBy: startDate_DESC) {
+    slug
+    title
+    role
+    description {
+      html
+    }
+    startDate
+    endDate
+  }
+}
