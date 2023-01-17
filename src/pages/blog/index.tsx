@@ -1,3 +1,4 @@
+import { NextSeo } from 'next-seo'
 import { Menu as TMenu, Post as TPost } from '../../services/graphql/types'
 import { Api } from '../../services/api'
 import { Navbar } from '../../components/Navbar'
@@ -26,6 +27,12 @@ export async function getStaticProps() {
 function Blog({ menus, posts }: BlogProps) {
   return (
     <>
+      <NextSeo
+        title="Donald's Blog | Never. Stop. Learning."
+        description="A blog dedicated for Software Engineers, as well for share personal experiences."
+        canonical="https://donnes.vercel.app/blog"
+      />
+
       <Navbar menus={menus} />
 
       <PageHeader>

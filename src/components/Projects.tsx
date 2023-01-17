@@ -58,9 +58,9 @@ export function Projects({ projects = [] }: ProjectProps) {
                     <motion.h2 className="text-3xl font-semibold text-zinc-50">
                       {project.title}
                     </motion.h2>
-                    <motion.h5 className="text-base font-semibold text-indigo-400">
+                    <motion.h3 className="text-base font-semibold text-indigo-400">
                       {project.subtitle}
-                    </motion.h5>
+                    </motion.h3>
                     <motion.ul className="mt-2 flex list-none flex-row flex-wrap gap-3">
                       {project.tags.map((tag) => (
                         <motion.li

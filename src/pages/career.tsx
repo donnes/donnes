@@ -1,4 +1,5 @@
 import { Fragment, PropsWithChildren } from 'react'
+import { NextSeo } from 'next-seo'
 import { Menu as TMenu, Job as TJob } from '../services/graphql/types'
 import { Api } from '../services/api'
 import { Navbar } from '../components/Navbar'
@@ -42,6 +43,12 @@ function Badge({ children }: PropsWithChildren) {
 function Career({ menus, jobs }: CareerProps) {
   return (
     <>
+      <NextSeo
+        title="Career | Donald Silveira"
+        description="A timeline of my career, experiences, and accomplishments"
+        canonical="https://donnes.vercel.app/career"
+      />
+
       <Navbar menus={menus} />
 
       <PageHeader>
