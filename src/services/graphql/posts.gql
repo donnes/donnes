@@ -10,3 +10,30 @@ query GetPosts($limit: Int) {
     createdAt
   }
 }
+
+query GetPostsSlug {
+  posts(orderBy: publishedAt_DESC, first: 10) {
+    slug
+  }
+}
+
+query GetPost($slug: String!) {
+  post(where: { slug: $slug }) {
+    slug
+    title
+    copy
+    content
+    tags
+    coverImage {
+      url(transformation: { image: { resize: { fit: scale, width: 550 } } })
+    }
+    authors(first: 1) {
+      name
+      picture {
+        url(transformation: { image: { resize: { height: 50, width: 50 } } })
+      }
+    }
+    createdAt
+    updatedAt
+  }
+}

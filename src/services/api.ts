@@ -9,6 +9,11 @@ import {
   GetPostsDocument,
   type GetPostsQuery,
   type GetPostsQueryVariables,
+  GetPostsSlugDocument,
+  type GetPostsSlugQuery,
+  GetPostDocument,
+  type GetPostQuery,
+  type GetPostQueryVariables,
   GetProjectsDocument,
   type GetProjectsQuery,
   type GetProjectsQueryVariables,
@@ -45,6 +50,24 @@ export const Api = {
       ...post,
       createdAt: format(new Date(post.createdAt), 'MMMM dd yyyy'),
     }))
+  },
+  getPostsSlug: async () => {
+    const { posts } = await client.request<GetPostsSlugQuery>(
+      GetPostsSlugDocument,
+    )
+
+    return posts.map((post) => post.slug)
+  },
+  getPost: async (variables: GetPostQueryVariables) => {
+    const { post } = await client.request<GetPostQuery, GetPostQueryVariables>(
+      GetPostDocument,
+      variables,
+    )
+
+    return {
+      ...post,
+      formattedCreatedAt: format(new Date(post?.createdAt), 'MMMM dd yyyy'),
+    }
   },
   getProjects: async (variables: GetProjectsQueryVariables) => {
     const { projects } = await client.request<
