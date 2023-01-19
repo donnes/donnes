@@ -18,9 +18,9 @@ I have been helping companies and startups build and maintain large-scale web an
 ![GitHub](https://img.shields.io/badge/-GitHub-05122A?style=flat&logo=github)&nbsp;
 ![Visual Studio Code](https://img.shields.io/badge/-Visual%20Studio%20Code-05122A?style=flat&logo=visual-studio-code&logoColor=007ACC)&nbsp;
 
-![donnes's github top langs](https://github-readme-stats.vercel.app/api/top-langs/?username=donnes&langs_count=10&layout=compact&theme=tokyonight)
+![donnes's github top langs](https://donnes-stats.vercel.app/api/top-langs/?username=donnes&langs_count=10&layout=compact&theme=tokyonight)
 
-![donnes's github stats](https://github-readme-stats.vercel.app/api?username=donnes&count_private=true&show_icons=true&theme=tokyonight&hide=contribs,stars)
+![donnes's github stats](https://donnes-stats.vercel.app/api?username=donnes&count_private=true&show_icons=true&theme=tokyonight&hide=contribs,stars)
 
 ### 📫 How to reach me:
 
