@@ -3,8 +3,8 @@ import Link from 'next/link'
 import { Menu as TMenu } from '../services/graphql/types'
 import { useNavbarOnScroll } from '../hooks/useNavbarOnScroll'
 
-const CV_LINK =
-  'https://drive.google.com/file/d/1tG3Wp1BhMmyu7EVFNrEWbM4JPjuqoU3f/view?usp=share_link'
+const CTA_LINK = 'https://calendly.com/donaldsilveira/book'
+const CTA_TEXT = "Let's Talk"
 
 type NavbarProps = {
   menus?: TMenu[]
@@ -43,34 +43,20 @@ export const Navbar = ({ menus }: NavbarProps) => {
             </ul>
             <div className="hidden md:flex md:justify-end">
               <Link
-                href={CV_LINK}
+                href={CTA_LINK}
                 target="_blank"
                 className="inline-block rounded-full bg-indigo-600 px-4 py-1.5 text-base font-normal leading-7 text-white transition hover:bg-indigo-700"
               >
-                Download CV
+                {CTA_TEXT}
               </Link>
             </div>
             <div className="flex h-10 flex-row gap-x-6 md:hidden">
               <Link
-                href={CV_LINK}
+                href={CTA_LINK}
                 target="_blank"
                 className="inline-flex items-center gap-x-1 rounded-full bg-indigo-600 px-4 py-1.5 text-base font-semibold leading-7 text-white transition hover:bg-indigo-700"
               >
-                <svg
-                  className="h-6 w-6"
-                  fill="none"
-                  stroke="currentColor"
-                  viewBox="0 0 24 24"
-                  xmlns="http://www.w3.org/2000/svg"
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth="2"
-                    d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
-                  ></path>
-                </svg>
-                <span>CV</span>
+                {CTA_TEXT}
               </Link>
               <button
                 type="button"

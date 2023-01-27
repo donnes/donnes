@@ -36,10 +36,18 @@ export function Footer({ menus = [] }: FooterProps) {
               </ul>
             </div>
 
-            <p className="mt-4 text-base font-light dark:text-indigo-300 md:mt-0">
-              &copy; {format(new Date(), 'yyyy')} Donald Silveira. All rights
-              reserved.
-            </p>
+            <div className="mt-4 flex flex-col gap-4 md:mt-0 md:items-end md:gap-1">
+              <Link
+                className="text-base dark:text-white"
+                href="mailto:donaldsilveira@gmail.com"
+              >
+                donaldsilveira@gmail.com
+              </Link>
+              <p className="text-base font-light dark:text-indigo-300 md:mt-0">
+                &copy; {format(new Date(), 'yyyy')} Donald Silveira. All rights
+                reserved.
+              </p>
+            </div>
           </div>
         </div>
       </div>

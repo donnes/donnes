@@ -40,7 +40,7 @@ function Home({ menus, author, posts, projects }: HomeProps) {
     <>
       <Navbar menus={menus} />
 
-      <main>
+      <main className="relative">
         <Hero author={author} />
 
         <Posts posts={posts} />
