@@ -1,9 +1,9 @@
+import React, { Fragment, useMemo, useState } from 'react'
 import Image from 'next/image'
 import { AnimatePresence, motion } from 'framer-motion'
 import cn from 'classnames'
 import Markdown from 'markdown-to-jsx'
 import { Project } from '../services/graphql/types'
-import { useMemo, useState } from 'react'
 
 type ProjectProps = {
   projects?: Project[]
@@ -128,7 +128,9 @@ export function Projects({ projects = [] }: ProjectProps) {
                       </motion.ul>
 
                       <motion.div className="project-markdown">
-                        <Markdown>{selectedProject.description}</Markdown>
+                        <Markdown options={{ wrapper: Fragment }}>
+                          {selectedProject.description}
+                        </Markdown>
                       </motion.div>
                     </motion.div>
                   </motion.div>
