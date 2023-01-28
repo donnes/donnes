@@ -1,5 +1,5 @@
 query GetPosts($limit: Int) {
-  posts(orderBy: publishedAt_DESC, first: $limit) {
+  posts(orderBy: createdAt_DESC, first: $limit) {
     slug
     title
     copy
@@ -25,7 +25,11 @@ query GetPost($slug: String!) {
     content
     tags
     coverImage {
-      url(transformation: { image: { resize: { fit: scale, width: 550 } } })
+      url(
+        transformation: {
+          image: { resize: { fit: scale, width: 1200, height: 600 } }
+        }
+      )
     }
     authors(first: 1) {
       name

@@ -43,9 +43,13 @@ function Home({ menus, author, posts, projects }: HomeProps) {
       <main className="relative">
         <Hero author={author} />
 
-        <Posts posts={posts} />
+        <div className="relative min-h-[400px] overflow-hidden border-t pt-8 dark:border-zinc-50 dark:border-opacity-5 md:pt-12">
+          <div className="absolute inset-x-0 top-0 -z-10 h-16 bg-gradient-radial to-transparent pt-8 opacity-40 blur-3xl dark:from-indigo-700 dark:via-indigo-900" />
 
-        <Projects projects={projects} />
+          {posts?.length && <Posts posts={posts} />}
+
+          <Projects projects={projects} />
+        </div>
       </main>
 
       <Footer menus={menus} />

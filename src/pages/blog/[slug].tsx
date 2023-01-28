@@ -1,5 +1,8 @@
 import { GetStaticProps } from 'next'
+import Image from 'next/image'
+import Link from 'next/link'
 import { NextSeo } from 'next-seo'
+import Markdown from 'markdown-to-jsx'
 import {
   GetPostQueryVariables,
   Menu as TMenu,
@@ -9,7 +12,6 @@ import { Api } from '../../services/api'
 import { Navbar } from '../../components/Navbar'
 import { Footer } from '../../components/Footer'
 import { PageHeader } from '../../components/PageHeader'
-import Markdown from 'markdown-to-jsx'
 
 type PostProps = {
   menus?: TMenu[]
@@ -56,6 +58,14 @@ function Post({ post, menus }: PostProps) {
         canonical={`https://donnes.vercel.app/blog/${post?.slug}`}
         openGraph={{
           type: 'article',
+          images: [
+            {
+              url: post?.coverImage.url ?? '',
+              width: 1200,
+              height: 600,
+              alt: post?.title,
+            },
+          ],
           article: {
             publishedTime: post?.createdAt,
             modifiedTime: post?.updatedAt,
@@ -72,6 +82,12 @@ function Post({ post, menus }: PostProps) {
 
       <PageHeader>
         <h1 className="text-6xl font-semibold text-zinc-50">{post?.title}</h1>
+        <p className="text-md self-start dark:text-zinc-50">
+          {`By ${post?.authors[0].name} `}
+          <time dateTime={post?.createdAt} className="dark:text-indigo-300">
+            {post?.formattedCreatedAt}
+          </time>
+        </p>
       </PageHeader>
 
       <main className="relative min-h-[400px] overflow-hidden border-t pt-8 dark:border-zinc-50 dark:border-opacity-5 md:pt-12">
@@ -79,7 +95,25 @@ function Post({ post, menus }: PostProps) {
 
         <div className="px-4 sm:px-8 lg:px-12">
           <div className="mx-auto lg:max-w-5xl">
-            <Markdown>{post?.content ?? ''}</Markdown>
+            <Image
+              src={post?.coverImage.url ?? ''}
+              className="w-full scale-100 blur-0 grayscale-0 duration-700 ease-in-out"
+              alt={post?.title ?? ''}
+              loading="lazy"
+              width={1200}
+              height={600}
+            />
+
+            <div className="post-markdown mt-6">
+              <Markdown>{post?.content ?? ''}</Markdown>
+            </div>
+
+            <Link
+              href="/blog"
+              className="mt-6 inline-block rounded-full bg-indigo-600 px-4 py-1.5 text-base font-normal leading-7 text-white transition hover:bg-indigo-700"
+            >
+              Back to Blog Home
+            </Link>
           </div>
         </div>
       </main>

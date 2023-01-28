@@ -30,7 +30,12 @@ export function PostCard({ post }: PostCardProps) {
             </p>
 
             <div className="flex items-center justify-between">
-              <time className="text-sm text-indigo-300">{post.createdAt}</time>
+              <time
+                dateTime={post.createdAt}
+                className="text-sm text-indigo-300"
+              >
+                {post.createdAt}
+              </time>
 
               <span className="relative flex items-center text-base text-indigo-300">
                 Read more
