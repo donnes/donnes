@@ -39,6 +39,23 @@ a {
     @apply bg-zinc-50 bg-opacity-10 backdrop-blur dark:border-zinc-50 dark:border-opacity-10 dark:bg-indigo-900 dark:bg-opacity-10;
   }
 
+  .project-markdown h2 {
+    @apply mt-4 mb-2 text-xl font-semibold dark:text-white;
+  }
+
+  .project-markdown ul {
+    @apply list-inside list-disc;
+  }
+
+  .project-markdown ul > li {
+    @apply mb-2;
+  }
+
+  .project-markdown p,
+  .project-markdown ul > li {
+    @apply text-base dark:text-indigo-300;
+  }
+
   .post-markdown h2 {
     @apply text-2xl font-bold dark:text-white;
   }

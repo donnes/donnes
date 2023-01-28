@@ -84,7 +84,7 @@ export function Projects({ projects = [] }: ProjectProps) {
                     className="fixed inset-x-0 top-24 z-20 m-auto h-[calc(100%_-_8rem)] w-[90%] max-w-3xl pr-4"
                     layoutId={selectedProjectSlug}
                   >
-                    <motion.div className="relative flex h-full flex-col gap-4 rounded-lg p-8 font-sans dark:bg-brand-800">
+                    <motion.div className="relative flex h-full flex-col gap-4 overflow-y-auto rounded-lg p-8 font-sans scrollbar-hide dark:bg-brand-800">
                       <motion.div className="flex flex-row items-center justify-between">
                         <motion.h2 className="text-3xl font-semibold dark:text-zinc-50">
                           {selectedProject.title}
@@ -116,7 +116,7 @@ export function Projects({ projects = [] }: ProjectProps) {
                         </motion.h5>
                       )}
 
-                      <motion.ul className="mt-2 flex list-none flex-row flex-wrap gap-3">
+                      <motion.ul className="flex list-none flex-row flex-wrap gap-3">
                         {selectedProject.tags.map((tag) => (
                           <motion.li
                             key={tag}
@@ -127,7 +127,7 @@ export function Projects({ projects = [] }: ProjectProps) {
                         ))}
                       </motion.ul>
 
-                      <motion.div className="text-base dark:text-indigo-300">
+                      <motion.div className="project-markdown">
                         <Markdown>{selectedProject.description}</Markdown>
                       </motion.div>
                     </motion.div>
