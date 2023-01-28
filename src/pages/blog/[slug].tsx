@@ -2,7 +2,8 @@ import { GetStaticProps } from 'next'
 import Image from 'next/image'
 import Link from 'next/link'
 import { NextSeo } from 'next-seo'
-import Markdown from 'markdown-to-jsx'
+import { serialize } from 'next-mdx-remote/serialize'
+import { MDXRemote } from 'next-mdx-remote'
 import {
   GetPostQueryVariables,
   Menu as TMenu,
@@ -40,13 +41,22 @@ export const getStaticProps: GetStaticProps<
   const post = await Api.getPost({ slug: params?.slug as string })
   const menus = await Api.getMenu()
 
+  const postContent = await serialize(post.content ?? '')
+
   return {
     props: {
-      post,
+      post: {
+        ...post,
+        content: postContent,
+      },
       menus,
     },
     revalidate: 10,
   }
+}
+
+const markdownComponents = {
+  Image,
 }
 
 function Post({ post, menus }: PostProps) {
@@ -95,22 +105,16 @@ function Post({ post, menus }: PostProps) {
 
         <div className="px-4 sm:px-8 lg:px-12">
           <div className="mx-auto lg:max-w-5xl">
-            <Image
-              src={post?.coverImage.url ?? ''}
-              className="w-full scale-100 blur-0 grayscale-0 duration-700 ease-in-out"
-              alt={post?.title ?? ''}
-              loading="lazy"
-              width={1200}
-              height={600}
-            />
-
-            <div className="post-markdown mt-6">
-              <Markdown>{post?.content ?? ''}</Markdown>
-            </div>
+            <article className="prose max-w-none prose-a:text-indigo-300 hover:prose-a:text-indigo-500 prose-img:my-0 dark:prose-invert lg:prose-xl">
+              <MDXRemote
+                {...(post?.content as any)}
+                components={markdownComponents}
+              />
+            </article>
 
             <Link
               href="/blog"
-              className="mt-6 inline-block rounded-full bg-indigo-600 px-4 py-1.5 text-base font-normal leading-7 text-white transition hover:bg-indigo-700"
+              className="mt-4 inline-block rounded-full bg-indigo-600 px-4 py-1.5 text-base font-normal leading-7 text-white transition hover:bg-indigo-700"
             >
               Back to Blog Home
             </Link>

@@ -127,7 +127,7 @@ export function Projects({ projects = [] }: ProjectProps) {
                         ))}
                       </motion.ul>
 
-                      <motion.div className="project-markdown">
+                      <motion.div className="prose mt-4 max-w-none prose-a:text-indigo-300 hover:prose-a:text-indigo-500 dark:prose-invert">
                         <Markdown options={{ wrapper: Fragment }}>
                           {selectedProject.description}
                         </Markdown>
