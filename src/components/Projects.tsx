@@ -81,7 +81,7 @@ export function Projects({ projects = [] }: ProjectProps) {
                 <>
                   <motion.div
                     key="modal"
-                    className="fixed inset-x-0 top-24 z-20 m-auto h-[calc(100%_-_8rem)] w-[90%] max-w-3xl pr-4"
+                    className="fixed inset-x-0 top-24 z-20 m-auto h-[calc(100%_-_8rem)] w-[90%] max-w-3xl"
                     layoutId={selectedProjectSlug}
                   >
                     <motion.div className="relative flex h-full flex-col gap-4 overflow-y-auto rounded-lg p-8 font-sans scrollbar-hide dark:bg-brand-800">
