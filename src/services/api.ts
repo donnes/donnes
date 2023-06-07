@@ -2,6 +2,8 @@ import { GraphQLClient } from 'graphql-request'
 import format from 'date-fns/format'
 import { env } from '../config/env'
 import {
+  GetFeatureFlagsDocument,
+  type GetFeatureFlagsQuery,
   GetMenuDocument,
   type GetMenuQuery,
   GetAuthorDocument,
@@ -30,6 +32,13 @@ export const client = new GraphQLClient(env.HYGRAPH_URL, {
 })
 
 export const Api = {
+  getFeatureFlags: async () => {
+    const { featureFlags } = await client.request<GetFeatureFlagsQuery>(
+      GetFeatureFlagsDocument,
+    )
+
+    return featureFlags
+  },
   getMenu: async () => {
     const { menus } = await client.request<GetMenuQuery>(GetMenuDocument)
 
