@@ -1,4 +1,4 @@
-# <img alt="handwavegif" src="https://user-images.githubusercontent.com/39513876/112366216-8cfe7400-8cfe-11eb-8116-7d3dbae20e97.gif" width='40' align="left"/> Hi! I'm [**Donald Silveira**](https://donnes.vercel.app/)
+# Hi! I'm [**Donald Silveira**](https://donnes.vercel.app/)
 
 I have been helping companies and startups build and maintain large-scale web and mobile applications for over a decade.
 
