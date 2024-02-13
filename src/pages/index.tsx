@@ -50,7 +50,7 @@ function Home({ disabledFeatures, menus, author, posts, projects }: HomeProps) {
     <>
       <Navbar menus={menus} />
 
-      <main className="relative">
+      <main className="relative pb-8 md:pb-8">
         <Hero author={author} />
 
         <div className="relative min-h-[400px] overflow-hidden border-t pt-8 dark:border-zinc-50 dark:border-opacity-5 md:pt-12">
