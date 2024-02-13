@@ -121,8 +121,6 @@ function Post({ post, menus }: PostProps) {
           </div>
         </div>
       </main>
-
-      <Footer menus={menus} />
     </>
   )
 }

@@ -139,8 +139,6 @@ function Career({ menus, jobs }: CareerProps) {
           </div>
         </div>
       </main>
-
-      <Footer menus={menus} />
     </>
   )
 }

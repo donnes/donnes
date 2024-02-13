@@ -61,8 +61,6 @@ function Home({ disabledFeatures, menus, author, posts, projects }: HomeProps) {
           <Projects projects={projects} />
         </div>
       </main>
-
-      <Footer menus={menus} />
     </>
   )
 }

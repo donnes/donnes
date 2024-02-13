@@ -55,8 +55,6 @@ function Blog({ menus, posts }: BlogProps) {
           </div>
         </div>
       </main>
-
-      <Footer menus={menus} />
     </>
   )
 }
