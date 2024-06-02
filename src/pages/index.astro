@@ -29,11 +29,9 @@ const experiences: CollectionEntry<"experiences">[] =
         <div>
           <p class="font-mono">
             I'm a Senior Full-Stack & Mobile Engineer based in
-            <Link href={BASED_CITY_LINK} showArrow={false}
-              >Porto Alegre, Brazil.</Link
-            >
+            <Link href={BASED_CITY_LINK} showArrow={false}>Porto Alegre, Brazil.</Link>
           </p>
-          <p class="font-mono pt-1.5">
+          <p class="font-mono pt-4">
             What satisfies me most is building amazing products that make people and businesses prosper.
           </p>
           <Socials />
@@ -47,31 +45,28 @@ const experiences: CollectionEntry<"experiences">[] =
             Work Experience
           </h3>
         </div>
-        <div></div>
       </SectionColumns>
-      {
-        experiences.map((exp) => (
-          <SectionColumns class="pt-4">
-            <div>
-              {exp.data.endYear === "Present" ? (
-                <span class="font-medium">{exp.data.startYear}</span>
-                <Badge>Present</Badge>
-              ) : (
-                <span class="font-medium">{exp.data.startYear} - {exp.data.endYear}</span>
-              )}
-            </div>
-            <div>
-              <h3 class="font-medium text-zinc-950 dark:text-zinc-50">
-                {exp.data.role}
-              </h3>
-              <Link href={exp.data.link}>{exp.data.company}</Link>
-              {exp.data.description.map((desc: string) => (
-                <p class="pt-1">{desc}</p>
-              ))}
-            </div>
-          </SectionColumns>
-        ))
-      }
+      {experiences.map((exp) => (
+        <SectionColumns class="pt-8">
+          <div>
+            {exp.data.endYear === "Present" ? (
+              <span class="font-medium">{exp.data.startYear}</span>
+              <Badge>Present</Badge>
+            ) : (
+              <span class="font-medium">{exp.data.startYear} - {exp.data.endYear}</span>
+            )}
+          </div>
+          <div>
+            <h3 class="font-medium text-zinc-950 dark:text-zinc-50">
+              {exp.data.role}
+            </h3>
+            <Link href={exp.data.link}>{exp.data.company}</Link>
+            {exp.data.description.map((desc) => (
+              <p class="pt-4">{desc}</p>
+            ))}
+          </div>
+        </SectionColumns>
+      ))}
     </Section>
   </Container>
 </BaseLayout>
