@@ -1,0 +1,30 @@
+---
+interface Props {
+  title?: string;
+  description?: string;
+  image?: string;
+}
+
+import Head from "../components/head.astro";
+import ThemeButton from "../components/theme-button.astro";
+
+const {
+  title = "Donald Silveira",
+  description = "I'm a Full-Stack & Mobile Engineer based in Porto Alegre, Brazil.",
+  image,
+} = Astro.props;
+---
+
+<!doctype html>
+<html lang="en">
+  <head>
+    <Head title={title} description={description} image={image} />
+  </head>
+  <body>
+    <div class="blur" aria-hidden="true"></div>
+    <ThemeButton />
+    <main>
+      <slot />
+    </main>
+  </body>
+</html>
