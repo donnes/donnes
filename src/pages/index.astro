@@ -3,12 +3,12 @@ import { type CollectionEntry, getCollection } from "astro:content";
 
 import BaseLayout from "../layouts/base-layout.astro";
 
-import Badge from "../components/badge.astro";
 import Container from "../components/container.astro";
-import Link from "../components/link.astro";
 import SectionColumns from "../components/section-columns.astro";
 import Section from "../components/section.astro";
 import Socials from "../components/socials.astro";
+import Badge from "../components/ui/badge.astro";
+import Link from "../components/ui/link.astro";
 
 import { BASED_CITY_LINK } from "../constants";
 
@@ -18,7 +18,7 @@ const experiences: CollectionEntry<"experiences">[] =
 
 <BaseLayout>
   <Container>
-    <Section class="border-t-0 mt-0 pt-0">
+    <Section class="border-t-0 mt-0 pt-0" data-animate data-animate-speed="slow">
       <SectionColumns>
         <div>
           <h1 class="text-2xl font-bold text-zinc-950 dark:text-zinc-50">
@@ -38,7 +38,7 @@ const experiences: CollectionEntry<"experiences">[] =
         </div>
       </SectionColumns>
     </Section>
-    <Section>
+    <Section data-animate data-animate-speed="slow">
       <SectionColumns>
         <div>
           <h3 class="text-lg font-bold text-zinc-950 dark:text-zinc-50">
@@ -67,6 +67,18 @@ const experiences: CollectionEntry<"experiences">[] =
           </div>
         </SectionColumns>
       ))}
+    </Section>
+    <Section data-animate data-animate-speed="slow">
+      <SectionColumns>
+        <div>
+          <h3 class="text-lg font-bold text-zinc-950 dark:text-zinc-50">
+            Tech Stack
+          </h3>
+        </div>
+      </SectionColumns>
+      <SectionColumns>
+        
+      </SectionColumns>
     </Section>
   </Container>
 </BaseLayout>
