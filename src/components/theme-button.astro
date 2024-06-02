@@ -1,0 +1,134 @@
+---
+import { cn } from "../lib/utils";
+---
+
+<button
+  id="theme-button"
+  type="button"
+  class={cn(
+    "fixed top-8 right-8 z-50",
+    "w-10 h-10 inline-flex items-center justify-center border",
+    "border-zinc-200 bg-zinc-100 dark:border-zinc-800 dark:bg-zinc-900 hover:dark:bg-zinc-800",
+    "hover:text-zinc-950 hover:dark:text-zinc-50",
+    "hover:scale-105 transition rounded-full",
+    "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2",
+    "disabled:pointer-events-none disabled:opacity-50"
+  )}
+>
+  <svg
+    id="theme-button__dark"
+    xmlns="http://www.w3.org/2000/svg"
+    viewBox="0 0 24 24"
+    fill="none"
+    stroke="currentColor"
+    stroke-width="2"
+    stroke-linecap="round"
+    stroke-linejoin="round"
+    class="w-5 h-5 hidden"
+  >
+    <path d="M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9Z"></path>
+  </svg>
+  <svg
+    id="theme-button__light"
+    xmlns="http://www.w3.org/2000/svg"
+    viewBox="0 0 24 24"
+    fill="none"
+    stroke="currentColor"
+    stroke-width="2"
+    stroke-linecap="round"
+    stroke-linejoin="round"
+    class="w-5 h-5"
+  >
+    <circle cx="12" cy="12" r="4"></circle>
+    <path d="M12 2v2"></path>
+    <path d="M12 20v2"></path>
+    <path d="m4.93 4.93 1.41 1.41"></path>
+    <path d="m17.66 17.66 1.41 1.41"></path>
+    <path d="M2 12h2"></path>
+    <path d="M20 12h2"></path>
+    <path d="m6.34 17.66-1.41 1.41"></path>
+    <path d="m19.07 4.93-1.41 1.41"></path>
+  </svg>
+</button>
+
+<script is:inline>
+  function init() {
+    preloadTheme();
+
+    window
+      .matchMedia("(prefers-color-scheme: dark)")
+      .addEventListener("change", (event) => {
+        if (localStorage.theme === "system") {
+          toggleTheme(event.matches);
+        }
+      });
+
+    const themeButton = document.getElementById("theme-button");
+
+    themeButton?.addEventListener("click", () => {
+      const isDark = !document.documentElement.classList.contains("dark");
+      toggleTheme(isDark);
+    });
+  }
+
+  function updateIcons(dark) {
+    const lightIcon = document.getElementById("theme-button__light");
+    const darkIcon = document.getElementById("theme-button__dark");
+
+    if (dark) {
+      lightIcon?.classList.add("hidden");
+      darkIcon?.classList.remove("hidden");
+    } else {
+      lightIcon?.classList.remove("hidden");
+      darkIcon?.classList.add("hidden");
+    }
+  }
+
+  function toggleTheme(dark) {
+    const css = document.createElement("style");
+
+    css.appendChild(
+      document.createTextNode(
+        `* {
+             -webkit-transition: none !important;
+             -moz-transition: none !important;
+             -o-transition: none !important;
+             -ms-transition: none !important;
+             transition: none !important;
+          }
+        `
+      )
+    );
+
+    document.head.appendChild(css);
+
+    if (dark) {
+      document.documentElement.classList.add("dark");
+      localStorage.setItem("theme", "dark");
+    } else {
+      document.documentElement.classList.remove("dark");
+      localStorage.setItem("theme", "light");
+    }
+
+    window.getComputedStyle(css).opacity;
+    document.head.removeChild(css);
+
+    updateIcons(dark);
+  }
+
+  function preloadTheme() {
+    const theme = localStorage.getItem("theme");
+
+    if (
+      theme === "dark" ||
+      (!theme && window.matchMedia("(prefers-color-scheme: dark)").matches)
+    ) {
+      document.documentElement.classList.add("dark");
+      updateIcons(true);
+    }
+  }
+
+  document.addEventListener("DOMContentLoaded", () => init());
+  document.addEventListener("astro:after-swap", () => init());
+  preloadTheme();
+</script>
