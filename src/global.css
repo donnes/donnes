@@ -1,0 +1,36 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+html {
+  overflow-y: auto;
+  color-scheme: light;
+}
+
+html.dark {
+  color-scheme: dark;
+}
+
+html,
+body {
+  @apply size-full;
+}
+
+body {
+  @apply font-sans antialiased;
+  @apply flex flex-col;
+  @apply bg-zinc-50 dark:bg-zinc-950;
+  @apply text-zinc-950/75 dark:text-zinc-50/75;
+  @apply selection:bg-blue-500/20 selection:text-blue-500 selection:border-blue-500 dark:selection:bg-blue-400/20 dark:selection:text-blue-400 dark:selection:border-blue-400;
+}
+
+main {
+  @apply flex-1 py-32;
+}
+
+.blur {
+  @apply fixed h-24 inset-x-0 top-0 z-40 backdrop-blur-xl select-none pointer-events-none;
+  @apply after:inset-0 after:absolute bg-gradient-to-b from-zinc-50 dark:from-zinc-950 to-transparent;
+  -webkit-mask-image: linear-gradient(to bottom, rgb(0 0 0 / 1) 25%, transparent);
+  mask-image: linear-gradient(to bottom, rgb(0 0 0 / 1) 25%, transparent);
+}
