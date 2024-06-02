@@ -1,0 +1,77 @@
+---
+import { type CollectionEntry, getCollection } from "astro:content";
+
+import BaseLayout from "../layouts/base-layout.astro";
+
+import Badge from "../components/badge.astro";
+import Container from "../components/container.astro";
+import Link from "../components/link.astro";
+import SectionColumns from "../components/section-columns.astro";
+import Section from "../components/section.astro";
+import Socials from "../components/socials.astro";
+
+import { BASED_CITY_LINK } from "../constants";
+
+const experiences: CollectionEntry<"experiences">[] =
+  await getCollection("experiences");
+---
+
+<BaseLayout>
+  <Container>
+    <Section class="border-t-0 mt-0 pt-0">
+      <SectionColumns>
+        <div>
+          <h1 class="text-2xl font-bold text-zinc-950 dark:text-zinc-50">
+            Donald Silveira
+          </h1>
+          <h3>Full-Stack & Mobile Engineer</h3>
+        </div>
+        <div>
+          <p class="font-mono">
+            I'm a Senior Full-Stack & Mobile Engineer based in
+            <Link href={BASED_CITY_LINK} showArrow={false}
+              >Porto Alegre, Brazil.</Link
+            >
+          </p>
+          <p class="font-mono pt-1.5">
+            What satisfies me most is building amazing products that make people and businesses prosper.
+          </p>
+          <Socials />
+        </div>
+      </SectionColumns>
+    </Section>
+    <Section>
+      <SectionColumns>
+        <div>
+          <h3 class="text-lg font-bold text-zinc-950 dark:text-zinc-50">
+            Work Experience
+          </h3>
+        </div>
+        <div></div>
+      </SectionColumns>
+      {
+        experiences.map((exp) => (
+          <SectionColumns class="pt-4">
+            <div>
+              {exp.data.endYear === "Present" ? (
+                <span class="font-medium">{exp.data.startYear}</span>
+                <Badge>Present</Badge>
+              ) : (
+                <span class="font-medium">{exp.data.startYear} - {exp.data.endYear}</span>
+              )}
+            </div>
+            <div>
+              <h3 class="font-medium text-zinc-950 dark:text-zinc-50">
+                {exp.data.role}
+              </h3>
+              <Link href={exp.data.link}>{exp.data.company}</Link>
+              {exp.data.description.map((desc: string) => (
+                <p class="pt-1">{desc}</p>
+              ))}
+            </div>
+          </SectionColumns>
+        ))
+      }
+    </Section>
+  </Container>
+</BaseLayout>
