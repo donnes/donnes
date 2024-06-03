@@ -1,5 +1,5 @@
 ---
-import { type CollectionEntry, getCollection, getEntry } from "astro:content";
+import { type CollectionEntry, getCollection } from "astro:content";
 
 import BaseLayout from "../layouts/base-layout.astro";
 
@@ -8,15 +8,16 @@ import SectionColumns from "../components/composed/section-columns.astro";
 import Section from "../components/composed/section.astro";
 import Socials from "../components/composed/socials.astro";
 import Badge from "../components/ui/badge.astro";
-import Link from "../components/ui/link.astro";
 
 import { getLangFromUrl, useTranslations } from '../lib/i18n';
 
 const lang = getLangFromUrl(Astro.url);
 const t = useTranslations(lang);
 
-const experiences: CollectionEntry<"experiences">[] =
+const experiencesCollection: CollectionEntry<"experiences">[] =
   await getCollection("experiences");
+
+const experiences = experiencesCollection.filter((entry) => entry.slug.includes(lang));
 ---
 
 <BaseLayout>
@@ -31,10 +32,10 @@ const experiences: CollectionEntry<"experiences">[] =
         </div>
         <div>
           <p class="font-mono">
-            <Fragment set:html={t('hero.description.1')} />
+            <Fragment set:html={t('home.hero.description.1')} />
           </p>
           <p class="font-mono pt-4">
-            {t('hero.description.2')}
+            {t('home.hero.description.2')}
           </p>
           <Socials />
         </div>
@@ -44,7 +45,7 @@ const experiences: CollectionEntry<"experiences">[] =
       <SectionColumns>
         <div>
           <h3 class="text-lg font-bold text-zinc-950 dark:text-zinc-50">
-            {t('work.experience.title')}
+            {t('home.experience.title')}
           </h3>
         </div>
       </SectionColumns>
@@ -62,8 +63,23 @@ const experiences: CollectionEntry<"experiences">[] =
             <h3 class="font-medium text-zinc-950 dark:text-zinc-50">
               {exp.data.role}
             </h3>
-            <Link href={exp.data.link}>{exp.data.company}</Link>
-            {exp.data.description[lang].map((desc) => (
+            <a href={exp.data.link}>
+              {exp.data.company}
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="2"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                class="w-4 h-4"
+              >
+                <path d="M7 7h10v10" />
+                <path d="M7 17 17 7" />
+              </svg>
+            </a>
+            {exp.data.description.map((desc) => (
               <p class="pt-4"><Fragment set:html={desc} /></p>
             ))}
           </div>
@@ -106,13 +122,13 @@ const experiences: CollectionEntry<"experiences">[] =
         <div>
           <ul class="list-none list-inside space-y-2">
             <li>
-              <Link href="https://react.dev/" target="_blank">ReactJS</Link>
+              <a href="https://react.dev/" target="_blank">ReactJS</a>
             </li>
             <li>
-              <Link href="https://nextjs.org/" target="_blank">Next.JS</Link>
+              <a href="https://nextjs.org/" target="_blank">Next.JS</a>
             </li>
             <li>
-              <Link href="https://astro.build/" target="_blank">Astro</Link>
+              <a href="https://astro.build/" target="_blank">Astro</a>
             </li>
           </ul>
         </div>
@@ -124,10 +140,10 @@ const experiences: CollectionEntry<"experiences">[] =
         <div>
           <ul class="list-none list-inside space-y-2">
             <li>
-              <Link href="https://nodejs.org/en" target="_blank">Node.js</Link>
+              <a href="https://nodejs.org/en" target="_blank">Node.js</a>
             </li>
             <li>
-              <Link href="https://bun.sh/" target="_blank">Bun</Link>
+              <a href="https://bun.sh/" target="_blank">Bun</a>
             </li>
           </ul>
         </div>
@@ -139,10 +155,10 @@ const experiences: CollectionEntry<"experiences">[] =
         <div>
           <ul class="list-none list-inside space-y-2">
             <li>
-              <Link href="https://tailwindcss.com/" target="_blank">Tailwind CSS</Link>
+              <a href="https://tailwindcss.com/" target="_blank">Tailwind CSS</a>
             </li>
             <li>
-              <Link href="https://www.radix-ui.com/themes" target="_blank">Radix Themes</Link>
+              <a href="https://www.radix-ui.com/themes" target="_blank">Radix Themes</a>
             </li>
           </ul>
         </div>
@@ -154,10 +170,10 @@ const experiences: CollectionEntry<"experiences">[] =
         <div>
           <ul class="list-none list-inside space-y-2">
             <li>
-              <Link href="https://ui.shadcn.com/" target="_blank">Shadcn UI</Link>
+              <a href="https://ui.shadcn.com/" target="_blank">Shadcn UI</a>
             </li>
             <li>
-              <Link href="https://www.radix-ui.com/primitives" target="_blank">Radix UI</Link>
+              <a href="https://www.radix-ui.com/primitives" target="_blank">Radix UI</a>
             </li>
           </ul>
         </div>

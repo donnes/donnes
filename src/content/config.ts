@@ -8,22 +8,10 @@ const experiences = defineCollection({
     role: z.string(),
     company: z.string(),
     link: z.string(),
-    description: z.object({
-      en: z.array(z.string()),
-      "pt-br": z.array(z.string()),
-    }),
-  }),
-});
-
-const sections = defineCollection({
-  type: "content",
-  schema: z.object({
-    title: z.string(),
-    role: z.string(),
+    description: z.array(z.string()),
   }),
 });
 
 export const collections = {
   experiences,
-  sections,
 };
