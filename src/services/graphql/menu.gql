@@ -1,7 +1,0 @@
-query GetMenu {
-  menus(orderBy: order_ASC) {
-    title
-    slug
-    href
-  }
-}

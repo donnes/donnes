@@ -1,0 +1,167 @@
+---
+import { type CollectionEntry, getCollection, getEntry } from "astro:content";
+
+import BaseLayout from "../layouts/base-layout.astro";
+
+import Container from "../components/composed/container.astro";
+import SectionColumns from "../components/composed/section-columns.astro";
+import Section from "../components/composed/section.astro";
+import Socials from "../components/composed/socials.astro";
+import Badge from "../components/ui/badge.astro";
+import Link from "../components/ui/link.astro";
+
+import { getLangFromUrl, useTranslations } from '../lib/i18n';
+
+const lang = getLangFromUrl(Astro.url);
+const t = useTranslations(lang);
+
+const experiences: CollectionEntry<"experiences">[] =
+  await getCollection("experiences");
+---
+
+<BaseLayout>
+  <Container>
+    <Section class="border-t-0 mt-0 pt-0" data-animate data-animate-speed="slow">
+      <SectionColumns>
+        <div>
+          <h1 class="text-2xl font-bold text-zinc-950 dark:text-zinc-50">
+            Donald Silveira
+          </h1>
+          <h3>Full-Stack & Mobile Engineer</h3>
+        </div>
+        <div>
+          <p class="font-mono">
+            <Fragment set:html={t('hero.description.1')} />
+          </p>
+          <p class="font-mono pt-4">
+            {t('hero.description.2')}
+          </p>
+          <Socials />
+        </div>
+      </SectionColumns>
+    </Section>
+    <Section data-animate data-animate-speed="slow">
+      <SectionColumns>
+        <div>
+          <h3 class="text-lg font-bold text-zinc-950 dark:text-zinc-50">
+            {t('work.experience.title')}
+          </h3>
+        </div>
+      </SectionColumns>
+      {experiences.map((exp) => (
+        <SectionColumns class="pt-8">
+          <div>
+            {exp.data.endYear === "Present" ? (
+              <span class="font-medium">{exp.data.startYear}</span>
+              <Badge>Present</Badge>
+            ) : (
+              <span class="font-medium">{exp.data.startYear} - {exp.data.endYear}</span>
+            )}
+          </div>
+          <div>
+            <h3 class="font-medium text-zinc-950 dark:text-zinc-50">
+              {exp.data.role}
+            </h3>
+            <Link href={exp.data.link}>{exp.data.company}</Link>
+            {exp.data.description[lang].map((desc) => (
+              <p class="pt-4">{desc}</p>
+            ))}
+          </div>
+        </SectionColumns>
+      ))}
+    </Section>
+    <Section data-animate data-animate-speed="slow">
+      <SectionColumns>
+        <div>
+          <h3 class="text-lg font-bold text-zinc-950 dark:text-zinc-50">
+            Tech Stack
+          </h3>
+        </div>
+      </SectionColumns>
+      <SectionColumns class="pt-6">
+        <div>
+          Syntax
+        </div>
+        <div>
+          <ul class="list-none list-inside space-y-2">
+            <li>TypeScript</li>
+          </ul>
+        </div>
+      </SectionColumns>
+      <SectionColumns class="pt-6">
+        <div>
+          Languages
+        </div>
+        <div>
+          <ul class="list-none list-inside space-y-2">
+            <li>JavaScript</li>
+            <li>Python</li>
+          </ul>
+        </div>
+      </SectionColumns>
+      <SectionColumns class="pt-6">
+        <div>
+          JS Frameworks
+        </div>
+        <div>
+          <ul class="list-none list-inside space-y-2">
+            <li>
+              <Link href="https://react.dev/" target="_blank">ReactJS</Link>
+            </li>
+            <li>
+              <Link href="https://nextjs.org/" target="_blank">Next.JS</Link>
+            </li>
+            <li>
+              <Link href="https://astro.build/" target="_blank">Astro</Link>
+            </li>
+          </ul>
+        </div>
+      </SectionColumns>
+      <SectionColumns class="pt-6">
+        <div>
+          JS Runtimes
+        </div>
+        <div>
+          <ul class="list-none list-inside space-y-2">
+            <li>
+              <Link href="https://nodejs.org/en" target="_blank">Node.js</Link>
+            </li>
+            <li>
+              <Link href="https://bun.sh/" target="_blank">Bun</Link>
+            </li>
+          </ul>
+        </div>
+      </SectionColumns>
+      <SectionColumns class="pt-6">
+        <div>
+          CSS Frameworks
+        </div>
+        <div>
+          <ul class="list-none list-inside space-y-2">
+            <li>
+              <Link href="https://tailwindcss.com/" target="_blank">Tailwind CSS</Link>
+            </li>
+            <li>
+              <Link href="https://www.radix-ui.com/themes" target="_blank">Radix Themes</Link>
+            </li>
+          </ul>
+        </div>
+      </SectionColumns>
+      <SectionColumns class="pt-6">
+        <div>
+          UI Libraries
+        </div>
+        <div>
+          <ul class="list-none list-inside space-y-2">
+            <li>
+              <Link href="https://ui.shadcn.com/" target="_blank">Shadcn UI</Link>
+            </li>
+            <li>
+              <Link href="https://www.radix-ui.com/primitives" target="_blank">Radix UI</Link>
+            </li>
+          </ul>
+        </div>
+      </SectionColumns>
+    </Section>
+  </Container>
+</BaseLayout>

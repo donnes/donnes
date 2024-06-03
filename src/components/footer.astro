@@ -1,0 +1,26 @@
+---
+import Container from "./composed/container.astro";
+
+import { getLangFromUrl, getLocaleHref } from "../lib/i18n";
+
+const lang = getLangFromUrl(Astro.url);
+
+const year = new Date().getFullYear();
+---
+
+<footer class="py-6">
+  <Container>
+    <div class="flex items-center justify-between">
+      <p class="text-sm text-zinc-400 dark:text-zinc-500">
+        © {year} Donald Silveira
+      </p>
+
+      <a
+        href={getLocaleHref(new URL("/colophon", Astro.url), lang)}
+        class="text-sm text-zinc-400 dark:text-zinc-500"
+      >
+        Colophon
+      </a>
+    </div>
+  </Container>
+</footer>

@@ -1,0 +1,102 @@
+---
+import { cn } from "../../lib/utils";
+import { MoonIcon, SunIcon } from "../ui/icons";
+---
+
+<button
+  id="theme-button"
+  type="button"
+  class={cn(
+    "w-10 h-10 inline-flex items-center justify-center border",
+    "border-zinc-200 bg-zinc-100 dark:border-zinc-800 dark:bg-zinc-900 hover:dark:bg-zinc-800",
+    "hover:text-zinc-950 hover:dark:text-zinc-50",
+    "hover:scale-105 transition rounded-full",
+    "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2",
+    "disabled:pointer-events-none disabled:opacity-50"
+  )}
+>
+  <SunIcon id="theme-button__light" className="w-5 h-5" />
+  <MoonIcon id="theme-button__dark" className="w-5 h-5 hidden" />
+</button>
+
+<script is:inline>
+  function init() {
+    preloadTheme();
+
+    window
+      .matchMedia("(prefers-color-scheme: dark)")
+      .addEventListener("change", (event) => {
+        if (localStorage.theme === "system") {
+          toggleTheme(event.matches);
+        }
+      });
+
+    const themeButton = document.getElementById("theme-button");
+
+    themeButton?.addEventListener("click", () => {
+      const isDark = !document.documentElement.classList.contains("dark");
+      toggleTheme(isDark);
+    });
+  }
+
+  function updateIcons(dark) {
+    const lightIcon = document.getElementById("theme-button__light");
+    const darkIcon = document.getElementById("theme-button__dark");
+
+    if (dark) {
+      lightIcon?.classList.add("hidden");
+      darkIcon?.classList.remove("hidden");
+    } else {
+      lightIcon?.classList.remove("hidden");
+      darkIcon?.classList.add("hidden");
+    }
+  }
+
+  function toggleTheme(dark) {
+    const css = document.createElement("style");
+
+    css.appendChild(
+      document.createTextNode(
+        `* {
+             -webkit-transition: none !important;
+             -moz-transition: none !important;
+             -o-transition: none !important;
+             -ms-transition: none !important;
+             transition: none !important;
+          }
+        `
+      )
+    );
+
+    document.head.appendChild(css);
+
+    if (dark) {
+      document.documentElement.classList.add("dark");
+      localStorage.setItem("theme", "dark");
+    } else {
+      document.documentElement.classList.remove("dark");
+      localStorage.setItem("theme", "light");
+    }
+
+    window.getComputedStyle(css).opacity;
+    document.head.removeChild(css);
+
+    updateIcons(dark);
+  }
+
+  function preloadTheme() {
+    const theme = localStorage.getItem("theme");
+
+    if (
+      theme === "dark" ||
+      (!theme && window.matchMedia("(prefers-color-scheme: dark)").matches)
+    ) {
+      document.documentElement.classList.add("dark");
+      updateIcons(true);
+    }
+  }
+
+  document.addEventListener("DOMContentLoaded", () => init());
+  document.addEventListener("astro:after-swap", () => init());
+  preloadTheme();
+</script>
