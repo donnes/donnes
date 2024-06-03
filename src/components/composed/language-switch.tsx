@@ -20,7 +20,11 @@ export function LanguagesSwitch({ url }: { url: URL }) {
       <DropdownMenuContent>
         {Object.entries(languages).map(([lang, langName]) => (
           <DropdownMenuItem key={lang} className="justify-between" asChild>
-            <a href={getLocaleHref(url, lang)} className="no-underline">
+            <a
+              href={getLocaleHref(url, lang)}
+              className="no-underline"
+              data-astro-history="replace"
+            >
               {langName}
               {lang === currentLang && <DotIcon />}
             </a>

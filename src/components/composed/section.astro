@@ -1,17 +1,17 @@
 ---
+import type { HTMLAttributes } from "astro/types";
+
 import { cn } from "../../lib/utils";
 
-interface Props extends astroHTML.JSX.HTMLAttributes {}
-
-const { class: className, ...rest } = Astro.props;
+interface Props extends HTMLAttributes<"div"> {}
 ---
 
 <section
+  {...Astro.props}
   class={cn(
     "border-t border-t-zinc-200 dark:border-t-zinc-800 mt-16 pt-4",
-    className
+    Astro.props.class
   )}
-  {...rest}
 >
   <slot />
 </section>

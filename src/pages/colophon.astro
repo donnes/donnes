@@ -1,0 +1,101 @@
+---
+import { SITE } from "../constants";
+
+import Back from "../components/composed/back.astro";
+import Container from "../components/composed/container.astro";
+import SectionColumns from "../components/composed/section-columns.astro";
+import Section from "../components/composed/section.astro";
+import BaseLayout from "../layouts/base-layout.astro";
+
+import { getLangFromUrl, getLocaleHref, useTranslations } from "../lib/i18n";
+
+const lang = getLangFromUrl(Astro.url);
+const t = useTranslations(lang);
+---
+
+<BaseLayout title={`Colophon | ${SITE.TITLE}`}>
+  <Container>
+    <Section
+      class="border-t-0 mt-0 pt-0"
+      data-animate
+      data-animate-speed="slow"
+    >
+      <SectionColumns>
+        <div class="space-y-4">
+          <Back href={getLocaleHref(new URL("/", Astro.url), lang)}>
+            {t("common.back")}
+          </Back>
+          <h1 class="text-2xl font-bold text-zinc-950 dark:text-zinc-50">
+            Colophon
+          </h1>
+        </div>
+      </SectionColumns>
+    </Section>
+
+    <Section data-animate data-animate-speed="slow">
+      <SectionColumns>
+        <div>
+          <Fragment set:html={t("colophon.tecnology.title")} />
+        </div>
+        <div>
+          <p>
+            <Fragment set:html={t("colophon.tecnology.description")} />
+          </p>
+        </div>
+      </SectionColumns>
+    </Section>
+
+    <Section data-animate data-animate-speed="slow">
+      <SectionColumns>
+        <div>
+          <Fragment set:html={t("colophon.typography.title")} />
+        </div>
+        <div>
+          <p>
+            <Fragment set:html={t("colophon.typography.description")} />
+          </p>
+        </div>
+      </SectionColumns>
+    </Section>
+
+    <Section data-animate data-animate-speed="slow">
+      <SectionColumns>
+        <div>
+          <Fragment set:html={t("colophon.inspiration.title")} />
+        </div>
+        <div>
+          <p>
+            <Fragment set:html={t("colophon.inspiration.description")} />
+          </p>
+
+          <ul class="list-inside pt-6 space-y-2">
+            <li>
+              <a href="https://amelieschlueter.com/" target="_blank">
+                Amelie Schlüter
+              </a>
+            </li>
+            <li>
+              <a href="https://eryc.cc/" target="_blank">Eryc</a>
+            </li>
+            <li>
+              <a href="https://fabianschultz.com/" target="_blank">
+                Fabian Schultz
+              </a>
+            </li>
+            <li>
+              <a href="https://frankchimero.com/" target="_blank">
+                Frank Chimero
+              </a>
+            </li>
+            <li>
+              <a href="https://paco.me/" target="_blank"> Paco Coursey </a>
+            </li>
+            <li>
+              <a href="https://bepyan.me/" target="_blank"> Edward Kim </a>
+            </li>
+          </ul>
+        </div>
+      </SectionColumns>
+    </Section>
+  </Container>
+</BaseLayout>
