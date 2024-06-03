@@ -5,13 +5,15 @@ interface Props {
   image?: string;
 }
 
+import { SITE } from "../constants";
+
 import TopButtons from "../components/composed/top-buttons.astro";
 import Footer from "../components/footer.astro";
 import Head from "../components/head.astro";
 
 const {
-  title = "Donald Silveira",
-  description = "I'm a Full-Stack & Mobile Engineer based in Porto Alegre, Brazil.",
+  title = SITE.TITLE,
+  description = SITE.DESCRIPTION,
   image = "/open-graph.png",
 } = Astro.props;
 ---
