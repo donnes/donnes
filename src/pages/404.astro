@@ -1,0 +1,32 @@
+---
+import { SITE } from "../constants";
+
+import Back from "../components/composed/back.astro";
+import Container from "../components/composed/container.astro";
+import BaseLayout from "../layouts/base-layout.astro";
+
+import { getLangFromUrl, getLocaleHref, useTranslations } from "../lib/i18n";
+
+const lang = getLangFromUrl(Astro.url);
+const t = useTranslations(lang);
+---
+
+<BaseLayout title={`404 | ${SITE.TITLE}`}>
+  <Container>
+    <div class="grid place-items-center gap-3">
+      <div data-animate data-animate-speed="slow">
+        <h4 class="text-2xl font-semibold text-zinc-950 dark:text-zinc-50">
+          {t("404.title")}
+        </h4>
+      </div>
+      <div data-animate data-animate-speed="slow">
+        <p data-animate data-animate-speed="slow">{t("404.description")}</p>
+      </div>
+      <span data-animate data-animate-speed="slow">
+        <Back href={getLocaleHref(new URL("/", Astro.url), lang)}>
+          {t("404.back-home")}
+        </Back>
+      </span>
+    </div>
+  </Container>
+</BaseLayout>
