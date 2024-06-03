@@ -25,6 +25,14 @@ export function getDefaultPathname(url: string | URL) {
   return result;
 }
 
+export function getLocaleHref(url: URL, lang: string) {
+  const currentLang = getLangFromUrl(url);
+  const defaultPath = getDefaultPathname(url);
+  const href = getTranslatedPath(currentLang);
+
+  return href(defaultPath, lang);
+}
+
 export function useTranslations(lang: Language) {
   return function t(key: keyof (typeof translations)[typeof defaultLang]) {
     return translations[lang][key] || translations[defaultLang][key];

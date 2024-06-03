@@ -6,17 +6,11 @@ import {
 } from "../ui/dropdown-menu";
 import { DotIcon, LanguagesIcon } from "../ui/icons";
 
-import {
-  getDefaultPathname,
-  getLangFromUrl,
-  getTranslatedPath,
-} from "../../lib/i18n";
+import { getLangFromUrl, getLocaleHref } from "../../lib/i18n";
 import { languages } from "../../lib/i18n/translations";
 
 export function LanguagesSwitch({ url }: { url: URL }) {
   const currentLang = getLangFromUrl(url);
-  const defaultPath = getDefaultPathname(url);
-  const href = getTranslatedPath(currentLang);
 
   return (
     <DropdownMenu>
@@ -26,7 +20,7 @@ export function LanguagesSwitch({ url }: { url: URL }) {
       <DropdownMenuContent>
         {Object.entries(languages).map(([lang, langName]) => (
           <DropdownMenuItem key={lang} className="justify-between" asChild>
-            <a href={href(defaultPath, lang)} className="no-underline">
+            <a href={getLocaleHref(url, lang)} className="no-underline">
               {langName}
               {lang === currentLang && <DotIcon />}
             </a>
