@@ -21,11 +21,15 @@ body {
   @apply flex flex-col;
   @apply bg-zinc-50 dark:bg-zinc-950;
   @apply text-zinc-950/75 dark:text-zinc-50/75;
-  @apply selection:bg-blue-500/20 selection:text-blue-500 selection:border-blue-500 dark:selection:bg-blue-400/20 dark:selection:text-blue-400 dark:selection:border-blue-400;
+  @apply selection:bg-purple-500/20 selection:text-purple-500 selection:border-purple-500 dark:selection:bg-purple-400/20 dark:selection:text-purple-400 dark:selection:border-purple-400;
 }
 
 main {
   @apply flex-1 py-32;
+}
+
+a {
+  @apply text-zinc-800 dark:text-zinc-400 inline-flex items-center underline underline-offset-[6px] decoration-zinc-500 hover:decoration-zinc-900 dark:decoration-zinc-400 hover:dark:decoration-zinc-100 transition-colors;
 }
 
 .blur {

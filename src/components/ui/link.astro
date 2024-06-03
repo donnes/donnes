@@ -1,6 +1,5 @@
 ---
 import type { HTMLAttributes } from "astro/types";
-import { cn } from "../../lib/utils";
 
 interface Props extends HTMLAttributes<"a"> {
   href: string;
@@ -10,19 +9,8 @@ interface Props extends HTMLAttributes<"a"> {
 const { href, class: className, showArrow = true, ...rest } = Astro.props;
 ---
 
-<a
-  href={href}
-  class={cn(
-    "group text-zinc-800 dark:text-zinc-400 inline-flex items-center",
-    className
-  )}
-  {...rest}
->
-  <span
-    class="underline underline-offset-[6px] decoration-zinc-500 group-hover:decoration-zinc-900 dark:decoration-zinc-400 group-hover:dark:decoration-zinc-100 transition-colors"
-  >
-    <slot />
-  </span>
+<a href={href} class={className} {...rest}>
+  <slot />
   {
     showArrow && (
       <svg

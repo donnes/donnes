@@ -12,6 +12,15 @@ const experiences = defineCollection({
   }),
 });
 
+const sections = defineCollection({
+  type: "content",
+  schema: z.object({
+    title: z.string(),
+    role: z.string(),
+  }),
+});
+
 export const collections = {
   experiences,
+  sections,
 };

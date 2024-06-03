@@ -1,0 +1,17 @@
+---
+import Container from "./composed/container.astro";
+
+const year = new Date().getFullYear();
+---
+
+<footer class="py-6">
+  <Container>
+    <div class="flex items-center justify-between">
+      <p class="text-sm text-zinc-400 dark:text-zinc-500">
+        © {year} Donald Silveira
+      </p>
+
+      <a class="text-sm text-zinc-400 dark:text-zinc-500">Sitemap</a>
+    </div>
+  </Container>
+</footer>

@@ -5,8 +5,9 @@ interface Props {
   image?: string;
 }
 
+import ThemeButton from "../components/composed/theme-button.astro";
+import Footer from "../components/footer.astro";
 import Head from "../components/head.astro";
-import ThemeButton from "../components/theme-button.astro";
 
 const {
   title = "Donald Silveira",
@@ -16,7 +17,7 @@ const {
 ---
 
 <!doctype html>
-<html lang="en">
+<html lang={Astro.currentLocale}>
   <head>
     <Head title={title} description={description} image={image} />
   </head>
@@ -26,5 +27,6 @@ const {
     <main>
       <slot />
     </main>
+    <Footer />
   </body>
 </html>
