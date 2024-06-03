@@ -5,6 +5,8 @@ export const languages = {
   "pt-br": "Português (Brasil)",
 };
 
+export type Language = keyof typeof languages;
+
 export const defaultLang = "en";
 
 export const translations = {

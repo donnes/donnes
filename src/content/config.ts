@@ -3,12 +3,15 @@ import { defineCollection, z } from "astro:content";
 const experiences = defineCollection({
   type: "content",
   schema: z.object({
+    startYear: z.string(),
+    endYear: z.string().optional(),
     role: z.string(),
     company: z.string(),
     link: z.string(),
-    description: z.array(z.string()),
-    startYear: z.string(),
-    endYear: z.string().optional(),
+    description: z.object({
+      en: z.array(z.string()),
+      "pt-br": z.array(z.string()),
+    }),
   }),
 });
 

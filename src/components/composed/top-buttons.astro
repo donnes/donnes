@@ -1,0 +1,9 @@
+---
+import { LanguagesSwitch } from "./language-switch";
+import ThemeButton from "./theme-button.astro";
+---
+
+<header class="fixed flex items-center gap-x-1 top-8 right-8 z-50">
+  <LanguagesSwitch client:load url={Astro.url} />
+  <ThemeButton />
+</header>
