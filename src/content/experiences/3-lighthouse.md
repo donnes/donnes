@@ -7,10 +7,10 @@ link: https://lighthouseit.com.br
 role: Senior Full-Stack Engineer
 description: {
     en: [
-        "I led as Principal Mobile Engineer the rebuilding of Panvel’s e-commerce mobile app, which is one of the largest e-commerce from Brazil’s Southern.",
+        "I've led the development of <a href='https://panvel.com' target='_blank'>Panvel</a>’s new e-commerce mobile app as Principal Mobile Engineer, which is one of the biggest e-commerce from Brazil’s Southern.",
     ],
     'pt-br': [
-        "Liderei como Mobile Engineer o desenvolvimento do aplicativo móvel de e-commerce da Panvel, que é um dos maiores e-commerces do Brasil.",
+        "Liderei como Mobile Engineer o desenvolvimento do novo aplicativo móvel de e-commerce da <a href='https://panvel.com' target='_blank'>Panvel</a>, que é um dos maiores e-commerces do Brasil.",
     ]
 }
 ---

@@ -64,7 +64,7 @@ const experiences: CollectionEntry<"experiences">[] =
             </h3>
             <Link href={exp.data.link}>{exp.data.company}</Link>
             {exp.data.description[lang].map((desc) => (
-              <p class="pt-4">{desc}</p>
+              <p class="pt-4"><Fragment set:html={desc} /></p>
             ))}
           </div>
         </SectionColumns>

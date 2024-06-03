@@ -7,12 +7,12 @@ link: https://casadosaber.com.br
 role: Senior Full-Stack Engineer
 description: {
     en: [
-        "Led the development of the mobile app from scratch, improving the UI/UX, performance, and scalability significantly.", 
-        "I've built a Design System that has been used across all applications, creating a consistent UI/UX for the business products.",
+        "Most of my time at Casa do Saber was spent leading the development of our streaming platform for almost all platforms, including mobile, web, and TV's.",
+        "Also, I've built a Design System that has being used across all applications, including landing pages, and the website itself.",
     ],
     'pt-br': [
-        "Liderei o desenvolvimento do aplicativo a partir do zero, melhorando o visual e experiência de usuário, desempenho e escalabilidade significativamente.",
-        "Criei um Design System que é utilizado em todas as aplicações, tornando o visual dos produtos da empresa mais consistente e também melhornado a experiência do usuário.", 
+        "A maior parte do meu tempo na Casa do Saber foi dedicado a liderar o desenvolvimento da plataforma de streaming para diversas plataformas, incluindo móvel, web e TV.",
+        "Além disso, construí um Design System que é utilizado em todas as aplicações, incluindo páginas de vendas, e o próprio site.",
     ]
 }
 ---
