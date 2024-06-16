@@ -7,9 +7,8 @@ import Container from "../components/composed/container.astro";
 import SectionColumns from "../components/composed/section-columns.astro";
 import Section from "../components/composed/section.astro";
 import Socials from "../components/composed/socials.astro";
-import Badge from "../components/ui/badge.astro";
 
-import { getLangFromUrl, useTranslations } from '../lib/i18n';
+import { getLangFromUrl, useTranslations } from "../lib/i18n";
 
 const lang = getLangFromUrl(Astro.url);
 const t = useTranslations(lang);
@@ -17,12 +16,18 @@ const t = useTranslations(lang);
 const experiencesCollection: CollectionEntry<"experiences">[] =
   await getCollection("experiences");
 
-const experiences = experiencesCollection.filter((entry) => entry.slug.includes(lang));
+const experiences = experiencesCollection
+  .filter((entry) => entry.slug.includes(lang))
+  .filter((_, index) => index <= 2);
 ---
 
 <BaseLayout>
   <Container>
-    <Section class="border-t-0 mt-0 pt-0" data-animate data-animate-speed="slow">
+    <Section
+      class="border-t-0 mt-0 pt-0"
+      data-animate
+      data-animate-speed="slow"
+    >
       <SectionColumns>
         <div>
           <h1 class="text-2xl font-bold text-zinc-950 dark:text-zinc-50">
@@ -30,12 +35,12 @@ const experiences = experiencesCollection.filter((entry) => entry.slug.includes(
           </h1>
           <h3>Full-Stack & Mobile Engineer</h3>
         </div>
-        <div>
+        <div class="space-y-4">
           <p class="font-mono">
-            <Fragment set:html={t('home.hero.description.1')} />
+            <Fragment set:html={t("home.hero.description.1")} />
           </p>
-          <p class="font-mono pt-4">
-            {t('home.hero.description.2')}
+          <p class="font-mono">
+            <Fragment set:html={t("home.hero.description.2")} />
           </p>
           <Socials />
         </div>
@@ -45,46 +50,47 @@ const experiences = experiencesCollection.filter((entry) => entry.slug.includes(
       <SectionColumns>
         <div>
           <h3 class="text-lg font-bold text-zinc-950 dark:text-zinc-50">
-            {t('home.experience.title')}
+            {t("home.experience.title")}
           </h3>
         </div>
       </SectionColumns>
-      {experiences.map((exp) => (
-        <SectionColumns class="pt-8">
-          <div>
-            {exp.data.endYear === "Present" ? (
-              <span class="font-medium">{exp.data.startYear}</span>
-              <Badge>Present</Badge>
-            ) : (
-              <span class="font-medium">{exp.data.startYear} - {exp.data.endYear}</span>
-            )}
-          </div>
-          <div>
-            <h3 class="font-medium text-zinc-950 dark:text-zinc-50">
-              {exp.data.role}
-            </h3>
-            <a href={exp.data.link}>
-              {exp.data.company}
-              <svg
-                xmlns="http://www.w3.org/2000/svg"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                stroke-width="2"
-                stroke-linecap="round"
-                stroke-linejoin="round"
-                class="w-4 h-4"
-              >
-                <path d="M7 7h10v10" />
-                <path d="M7 17 17 7" />
-              </svg>
-            </a>
-            {exp.data.description.map((desc) => (
-              <p class="pt-4"><Fragment set:html={desc} /></p>
-            ))}
-          </div>
-        </SectionColumns>
-      ))}
+      {
+        experiences.map((exp) => (
+          <SectionColumns class="pt-8">
+            <div>
+              <span class="font-medium">
+                {exp.data.startYear} - {exp.data.endYear}
+              </span>
+            </div>
+            <div>
+              <h3 class="font-medium text-zinc-950 dark:text-zinc-50">
+                {exp.data.role}
+              </h3>
+              <a href={exp.data.link}>
+                {exp.data.company}
+                <svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  stroke-width="2"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  class="w-4 h-4"
+                >
+                  <path d="M7 7h10v10" />
+                  <path d="M7 17 17 7" />
+                </svg>
+              </a>
+              {exp.data.description.map((desc) => (
+                <p class="pt-4">
+                  <Fragment set:html={desc} />
+                </p>
+              ))}
+            </div>
+          </SectionColumns>
+        ))
+      }
     </Section>
     <Section data-animate data-animate-speed="slow">
       <SectionColumns>
@@ -95,9 +101,7 @@ const experiences = experiencesCollection.filter((entry) => entry.slug.includes(
         </div>
       </SectionColumns>
       <SectionColumns class="pt-6">
-        <div>
-          Syntax
-        </div>
+        <div>Syntax</div>
         <div>
           <ul class="list-none list-inside space-y-2">
             <li>TypeScript</li>
@@ -105,9 +109,7 @@ const experiences = experiencesCollection.filter((entry) => entry.slug.includes(
         </div>
       </SectionColumns>
       <SectionColumns class="pt-6">
-        <div>
-          Languages
-        </div>
+        <div>Languages</div>
         <div>
           <ul class="list-none list-inside space-y-2">
             <li>JavaScript</li>
@@ -116,9 +118,7 @@ const experiences = experiencesCollection.filter((entry) => entry.slug.includes(
         </div>
       </SectionColumns>
       <SectionColumns class="pt-6">
-        <div>
-          JS Frameworks
-        </div>
+        <div>JS Frameworks</div>
         <div>
           <ul class="list-none list-inside space-y-2">
             <li>
@@ -134,9 +134,7 @@ const experiences = experiencesCollection.filter((entry) => entry.slug.includes(
         </div>
       </SectionColumns>
       <SectionColumns class="pt-6">
-        <div>
-          JS Runtimes
-        </div>
+        <div>JS Runtimes</div>
         <div>
           <ul class="list-none list-inside space-y-2">
             <li>
@@ -149,31 +147,33 @@ const experiences = experiencesCollection.filter((entry) => entry.slug.includes(
         </div>
       </SectionColumns>
       <SectionColumns class="pt-6">
-        <div>
-          CSS Frameworks
-        </div>
+        <div>CSS Frameworks</div>
         <div>
           <ul class="list-none list-inside space-y-2">
             <li>
-              <a href="https://tailwindcss.com/" target="_blank">Tailwind CSS</a>
+              <a href="https://tailwindcss.com/" target="_blank">
+                Tailwind CSS
+              </a>
             </li>
             <li>
-              <a href="https://www.radix-ui.com/themes" target="_blank">Radix Themes</a>
+              <a href="https://www.radix-ui.com/themes" target="_blank">
+                Radix Themes
+              </a>
             </li>
           </ul>
         </div>
       </SectionColumns>
       <SectionColumns class="pt-6">
-        <div>
-          UI Libraries
-        </div>
+        <div>UI Libraries</div>
         <div>
           <ul class="list-none list-inside space-y-2">
             <li>
               <a href="https://ui.shadcn.com/" target="_blank">Shadcn UI</a>
             </li>
             <li>
-              <a href="https://www.radix-ui.com/primitives" target="_blank">Radix UI</a>
+              <a href="https://www.radix-ui.com/primitives" target="_blank">
+                Radix UI
+              </a>
             </li>
           </ul>
         </div>
