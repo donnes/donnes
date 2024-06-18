@@ -12,7 +12,7 @@ export const defaultLang = "en";
 export const translations = {
   en: {
     // Home
-    "home.hero.description.1": `I'm a Senior Full-Stack & Mobile Engineer based in <a href=${SITE.CITY_LINK} target="_blank">Porto Alegre, Brazil</a>.`,
+    "home.hero.description.1": `I'm a Senior Full-Stack & Mobile Engineer based in <a href=${SITE.CITY_LINK} target="_blank">Porto Alegre, BR</a>.`,
     "home.hero.description.2":
       "What satisfies me most is building amazing products that make people and businesses prosper.",
     "home.experience.title": "Work Experience",
