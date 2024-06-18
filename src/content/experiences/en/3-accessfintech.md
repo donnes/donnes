@@ -6,6 +6,6 @@ company: AccessFintech
 link: https://accessfintech.com
 role: Senior Frontend Engineer
 description: [
-    "I have worked as a contractor helping AccessFintech’s team to migrate core features to a new codebase, ensuring fixing bugs, and implement unit and E2E tests during the process.",
+    "I have worked as a part-time contractor helping AccessFintech’s team to migrate core features to a new codebase, ensuring fixing bugs, and implement unit and E2E tests during the process.",
 ]
 ---
