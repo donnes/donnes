@@ -14,7 +14,7 @@ import Head from "../components/head.astro";
 const {
   title = SITE.TITLE,
   description = SITE.DESCRIPTION,
-  image = "/open-graph.png",
+  image = SITE.OPEN_GRAPH.IMAGE,
 } = Astro.props;
 ---
 
