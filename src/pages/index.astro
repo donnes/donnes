@@ -9,6 +9,7 @@ import Section from "../components/composed/section.astro";
 import Socials from "../components/composed/socials.astro";
 
 import { getLangFromUrl, useTranslations } from "../lib/i18n";
+import { cn } from "../lib/utils";
 
 const lang = getLangFromUrl(Astro.url);
 const t = useTranslations(lang);
@@ -91,6 +92,22 @@ const experiences = experiencesCollection
           </SectionColumns>
         ))
       }
+      <SectionColumns class="pt-8">
+        <div></div>
+        <div class="flex items-center justify-center">
+          <a
+            href="/cv"
+            class={cn(
+              "px-2 py-1 inline-flex items-center justify-center border no-underline text-sm rounded-full transition-colors",
+              "border-zinc-200 bg-zinc-100 dark:border-zinc-800 dark:bg-zinc-900 hover:dark:bg-zinc-800",
+              "hover:text-zinc-950 hover:dark:text-zinc-50",
+              "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+            )}
+          >
+            All experiences
+          </a>
+        </div>
+      </SectionColumns>
     </Section>
     <Section data-animate data-animate-speed="slow">
       <SectionColumns>
