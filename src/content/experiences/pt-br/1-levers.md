@@ -2,7 +2,7 @@
 startYear: "2023"
 endYear: "Atual"
 
-company: Levers
+company: Levers (YC S22)
 link: https://uselevers.com
 role: Founding Frontend Engineer
 description: [
