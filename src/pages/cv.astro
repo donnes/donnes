@@ -5,6 +5,7 @@ import { type CollectionEntry, getCollection } from "astro:content";
 
 import { SITE } from "../constants";
 
+import SkillRating from "../components/composed/skill-rating.astro";
 import Socials from "../components/composed/socials.astro";
 import Head from "../components/head.astro";
 
@@ -37,9 +38,9 @@ const experiences = experiencesCollection.filter((entry) =>
       }
     </style>
   </head>
-  <body class="h-full">
-    <div class="flex flex-col md:flex-row h-full">
-      <div class="md:flex-1 p-8">
+  <body class="text-sm">
+    <div class="flex flex-col md:flex-row">
+      <div class="md:flex-1 p-8 min-h-screen h-full">
         <div>
           <h1 class="text-4xl font-bold text-zinc-950">Donald Silveira</h1>
           <h2 class="text-lg font-medium pb-2">Full-Stack & Mobile Engineer</h2>
@@ -57,7 +58,7 @@ const experiences = experiencesCollection.filter((entry) =>
           </Socials>
         </div>
 
-        <div class="pt-12 space-y-4">
+        <div class="pt-12 space-y-2">
           <h3 class="text-lg font-bold text-zinc-950">Work Experience</h3>
           {
             experiences.map((exp) => (
@@ -97,9 +98,34 @@ const experiences = experiencesCollection.filter((entry) =>
             ))
           }
         </div>
+
+        <div class="pt-6 space-y-2">
+          <h3 class="text-lg font-bold text-zinc-950">Certificates</h3>
+
+          <div class="pb-2">
+            <div class="flex items-center">
+              <h3 class="flex-1 font-medium text-zinc-950 dark:text-zinc-50">
+                IBM Full-Stack JavaScript Developer
+              </h3>
+              <div class="font-medium text-sm">Jul 2024</div>
+            </div>
+
+            <p class="pt-2">Coursera</p>
+          </div>
+          <div class="pb-2">
+            <div class="flex items-center">
+              <h3 class="flex-1 font-medium text-zinc-950 dark:text-zinc-50">
+                Meta Front-End Developer
+              </h3>
+              <div class="font-medium text-sm">Jul 2024</div>
+            </div>
+
+            <p class="pt-2">Coursera</p>
+          </div>
+        </div>
       </div>
       <div
-        class="print:w-[280px] md:w-[400px] bg-zinc-950 text-white p-8 space-y-8"
+        class="print:w-[280px] md:w-[400px] min-h-screen h-full bg-zinc-950 text-white p-8 space-y-8"
       >
         <div class="flex items-center justify-center">
           <Image
@@ -125,41 +151,23 @@ const experiences = experiencesCollection.filter((entry) =>
 
           <div class="grid grid-cols-2 items-center gap-4">
             <div>JavaScript</div>
-            <div class="w-full h-2 bg-zinc-700 rounded-sm overflow-hidden">
-              <div class="w-[80%] bg-zinc-50 h-full"></div>
-            </div>
+            <SkillRating rating={8} />
             <div>TypeScript</div>
-            <div class="w-full h-2 bg-zinc-700 rounded-sm overflow-hidden">
-              <div class="w-[80%] bg-zinc-50 h-full"></div>
-            </div>
+            <SkillRating rating={8} />
             <div>React.JS</div>
-            <div class="w-full h-2 bg-zinc-700 rounded-sm overflow-hidden">
-              <div class="w-[80%] bg-zinc-50 h-full"></div>
-            </div>
+            <SkillRating rating={7} />
             <div>React Native</div>
-            <div class="w-full h-2 bg-zinc-700 rounded-sm overflow-hidden">
-              <div class="w-[80%] bg-zinc-50 h-full"></div>
-            </div>
+            <SkillRating rating={7} />
             <div>Next.JS</div>
-            <div class="w-full h-2 bg-zinc-700 rounded-sm overflow-hidden">
-              <div class="w-[80%] bg-zinc-50 h-full"></div>
-            </div>
+            <SkillRating rating={7} />
             <div>Node.js</div>
-            <div class="w-full h-2 bg-zinc-700 rounded-sm overflow-hidden">
-              <div class="w-[70%] bg-zinc-50 h-full"></div>
-            </div>
+            <SkillRating rating={6} />
             <div>Python</div>
-            <div class="w-full h-2 bg-zinc-700 rounded-sm overflow-hidden">
-              <div class="w-[50%] bg-zinc-50 h-full"></div>
-            </div>
+            <SkillRating rating={5} />
             <div>SQL & NoSQL</div>
-            <div class="w-full h-2 bg-zinc-700 rounded-sm overflow-hidden">
-              <div class="w-[60%] bg-zinc-50 h-full"></div>
-            </div>
+            <SkillRating rating={6} />
             <div>CI/CD</div>
-            <div class="w-full h-2 bg-zinc-700 rounded-sm overflow-hidden">
-              <div class="w-[80%] bg-zinc-50 h-full"></div>
-            </div>
+            <SkillRating rating={7} />
           </div>
         </div>
 

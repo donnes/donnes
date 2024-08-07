@@ -4,5 +4,8 @@
   "editor.defaultFormatter": "biomejs.biome",
   "[astro]": {
     "editor.defaultFormatter": "astro-build.astro-vscode"
+  },
+  "[html]": {
+    "editor.defaultFormatter": "vscode.html-language-features"
   }
 }
