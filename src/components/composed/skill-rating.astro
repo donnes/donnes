@@ -15,7 +15,7 @@ const { rating } = Astro.props;
       .map((_, index) => (
         <div
           class={cn(
-            "w-2 h-2 rounded-full bg-zinc-50",
+            "w-2 h-2 rounded-full bg-zinc-50 shrink-0",
             index + 1 > rating && "bg-zinc-700"
           )}
         />
