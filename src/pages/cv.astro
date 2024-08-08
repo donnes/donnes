@@ -3,7 +3,7 @@ import "../global.css";
 import { Image } from "astro:assets";
 import { type CollectionEntry, getCollection } from "astro:content";
 
-import { SITE } from "../constants";
+import { CERTIFICATES, SITE } from "../constants";
 
 import SkillRating from "../components/composed/skill-rating.astro";
 import Socials from "../components/composed/socials.astro";
@@ -101,27 +101,35 @@ const experiences = experiencesCollection.filter((entry) =>
 
         <div class="pt-6 space-y-2">
           <h3 class="text-lg font-bold text-zinc-950">Certificates</h3>
+          {
+            CERTIFICATES.map((cert) => (
+              <div class="pb-2">
+                <div class="flex items-center">
+                  <a href={cert.link} class="flex-1">
+                    <h3 class="font-medium text-zinc-950 dark:text-zinc-50">
+                      {cert.title}
+                    </h3>
+                    <svg
+                      xmlns="http://www.w3.org/2000/svg"
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="currentColor"
+                      stroke-width="2"
+                      stroke-linecap="round"
+                      stroke-linejoin="round"
+                      class="w-4 h-4"
+                    >
+                      <path d="M7 7h10v10" />
+                      <path d="M7 17 17 7" />
+                    </svg>
+                  </a>
+                  <div class="font-medium text-sm">{cert.date}</div>
+                </div>
 
-          <div class="pb-2">
-            <div class="flex items-center">
-              <h3 class="flex-1 font-medium text-zinc-950 dark:text-zinc-50">
-                IBM Full-Stack JavaScript Developer
-              </h3>
-              <div class="font-medium text-sm">Jul 2024</div>
-            </div>
-
-            <p class="pt-2">Coursera</p>
-          </div>
-          <div class="pb-2">
-            <div class="flex items-center">
-              <h3 class="flex-1 font-medium text-zinc-950 dark:text-zinc-50">
-                Meta Front-End Developer
-              </h3>
-              <div class="font-medium text-sm">Jul 2024</div>
-            </div>
-
-            <p class="pt-2">Coursera</p>
-          </div>
+                <p class="pt-2">{cert.insitution}</p>
+              </div>
+            ))
+          }
         </div>
       </div>
       <div

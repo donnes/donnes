@@ -10,3 +10,18 @@ export const SITE = {
     IMAGE: "/open-graph.png",
   },
 };
+
+export const CERTIFICATES = [
+  {
+    title: "IBM Full-Stack JavaScript Developer",
+    date: "Jul 2024",
+    insitution: "Coursera",
+    link: "https://coursera.org/verify/professional-cert/UFUWEENM8HKH",
+  },
+  {
+    title: "Meta Front-End Developer",
+    date: "Jul 2024",
+    insitution: "Coursera",
+    link: "https://coursera.org/verify/professional-cert/YDZ7N3TA4YK2",
+  },
+];
