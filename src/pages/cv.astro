@@ -5,7 +5,6 @@ import "../global.css";
 
 import { CERTIFICATES, SITE } from "../constants";
 
-import SkillRating from "../components/composed/skill-rating.astro";
 import Socials from "../components/composed/socials.astro";
 import Head from "../components/head.astro";
 
@@ -83,8 +82,23 @@ const experiences = experiencesCollection.filter((entry) =>
             </address>
           </header>
 
+          <section class="pt-12 pb-4">
+            <h3 class="text-lg font-bold text-zinc-950 mb-2">Summary</h3>
+            <p
+              class="text-zinc-700 dark:text-zinc-300 leading-relaxed"
+              itemprop="description"
+            >
+              Senior Full-Stack & Mobile Engineer with 10+ years of experience
+              building products that scale. Founding engineer at Levers (YC
+              S22), specializing in full-stack development, mobile applications,
+              and AI integrations. Self-taught programmer since age 15, with a
+              track record of delivering high-impact solutions across fintech,
+              e-commerce, and B2B SaaS platforms.
+            </p>
+          </section>
+
           <section
-            class="pt-12 space-y-2"
+            class="pt-6 space-y-2"
             itemscope
             itemtype="https://schema.org/ItemList"
           >
@@ -155,7 +169,7 @@ const experiences = experiencesCollection.filter((entry) =>
             itemscope
             itemtype="https://schema.org/ItemList"
           >
-            <h3 class="text-lg font-bold text-zinc-950">Education</h3>
+            <h3 class="text-lg font-bold text-zinc-950">Certifications</h3>
             {
               CERTIFICATES.map((cert) => (
                 <article
@@ -163,41 +177,36 @@ const experiences = experiencesCollection.filter((entry) =>
                   itemscope
                   itemtype="https://schema.org/EducationalOccupationalCredential"
                 >
-                  <div class="flex items-center">
-                    <a
-                      href={cert.link}
-                      class="flex-1"
-                      itemprop="credentialCategory"
+                  <a
+                    href={cert.link}
+                    class="text-zinc-600 hover:text-zinc-950 dark:hover:text-zinc-50"
+                    itemprop="credentialCategory"
+                  >
+                    <h4
+                      class="font-medium text-sm text-zinc-950 dark:text-zinc-50 inline"
+                      itemprop="name"
                     >
-                      <h4
-                        class="font-medium text-zinc-950 dark:text-zinc-50"
-                        itemprop="name"
-                      >
-                        {cert.title}
-                      </h4>
-                      <svg
-                        xmlns="http://www.w3.org/2000/svg"
-                        viewBox="0 0 24 24"
-                        fill="none"
-                        stroke="currentColor"
-                        stroke-width="2"
-                        stroke-linecap="round"
-                        stroke-linejoin="round"
-                        class="w-4 h-4"
-                        aria-hidden="true"
-                      >
-                        <path d="M7 7h10v10" />
-                        <path d="M7 17 17 7" />
-                      </svg>
-                    </a>
-                    <time class="font-medium text-sm" datetime={cert.date}>
-                      {cert.date}
-                    </time>
-                  </div>
-
-                  <p class="pt-2" itemprop="educationalCredentialAwarded">
-                    {cert.insitution}
-                  </p>
+                      {cert.title}
+                    </h4>
+                    <span class="text-sm text-zinc-500 dark:text-zinc-400">
+                      {" "}
+                      · {cert.insitution}
+                    </span>
+                    <svg
+                      xmlns="http://www.w3.org/2000/svg"
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="currentColor"
+                      stroke-width="2"
+                      stroke-linecap="round"
+                      stroke-linejoin="round"
+                      class="w-3 h-3 inline ml-1"
+                      aria-hidden="true"
+                    >
+                      <path d="M7 7h10v10" />
+                      <path d="M7 17 17 7" />
+                    </svg>
+                  </a>
                 </article>
               ))
             }
@@ -235,27 +244,31 @@ const experiences = experiencesCollection.filter((entry) =>
           >
             <h3 class="text-lg font-bold">Skills</h3>
 
-            <div class="grid grid-cols-2 items-center gap-y-4">
-              <div>AI</div>
-              <SkillRating rating={7} />
-              <div>JavaScript</div>
-              <SkillRating rating={8} />
-              <div>TypeScript</div>
-              <SkillRating rating={8} />
-              <div>React.JS</div>
-              <SkillRating rating={7} />
-              <div>React Native</div>
-              <SkillRating rating={7} />
-              <div>Next.JS</div>
-              <SkillRating rating={7} />
-              <div>Node.js</div>
-              <SkillRating rating={6} />
-              <div>Python</div>
-              <SkillRating rating={5} />
-              <div>SQL & NoSQL</div>
-              <SkillRating rating={6} />
-              <div>CI/CD</div>
-              <SkillRating rating={7} />
+            <div class="flex flex-col space-y-3">
+              <div>
+                <div class="text-sm font-medium mb-1">Core Stack</div>
+                <div class="text-sm text-zinc-400">
+                  TypeScript, JavaScript, React, React Native, Next.js, Node.js
+                </div>
+              </div>
+              <div>
+                <div class="text-sm font-medium mb-1">Backend & Data</div>
+                <div class="text-sm text-zinc-400">
+                  Go, Python, Node.js, SQL, NoSQL
+                </div>
+              </div>
+              <div>
+                <div class="text-sm font-medium mb-1">
+                  Infrastructure & Delivery
+                </div>
+                <div class="text-sm text-zinc-400">AWS, Azure, GCP, CI/CD</div>
+              </div>
+              <div>
+                <div class="text-sm font-medium mb-1">AI & Automation</div>
+                <div class="text-sm text-zinc-400">
+                  LLM integrations, workflow automation
+                </div>
+              </div>
             </div>
           </section>
 
@@ -288,121 +301,5 @@ const experiences = experiencesCollection.filter((entry) =>
         </aside>
       </div>
     </main>
-
-    <!-- ATS-Optimized Hidden Keywords Section -->
-    <div class="sr-only" aria-hidden="true">
-      <h2>Resume Keywords</h2>
-      <p>
-        Software Engineer, Full Stack Developer, Full-Stack Developer, Frontend
-        Developer, Backend Developer, Mobile Developer, Web Developer, Senior
-        Engineer, Founding Engineer, Senior Full-Stack Engineer, Senior Frontend
-        Engineer, Full Stack Engineer, Mobile Engineer, Software Developer,
-        Programmer, Full Stack & Mobile Engineer.
-      </p>
-    </div>
-    <div class="sr-only" aria-hidden="true">
-      <h2>Professional Summary</h2>
-      <p>
-        I'm a Senior Full-Stack & Mobile Engineer based in Curitiba, BR. What
-        satisfies me most is building amazing products that make people and
-        businesses prosper.
-      </p>
-    </div>
-    <div class="sr-only" aria-hidden="true">
-      <h2>Technologies</h2>
-      <p>
-        JavaScript, JS, TypeScript, TS, Python, Node.js, NodeJS, Node, React,
-        ReactJS, React.js, React Native, Next.js, NextJS, NestJS, Nest.js,
-        Express.js, Express, HTML5, CSS3, SQL, NoSQL, MongoDB, PostgreSQL,
-        MySQL, GraphQL, REST API, REST APIs, API Development, Web APIs.
-      </p>
-    </div>
-    <div class="sr-only" aria-hidden="true">
-      <h2>Frameworks and Libraries</h2>
-      <p>
-        React, React Native, Next.js, NestJS, Express.js, Astro, Tailwind CSS,
-        Shadcn UI, React.js, ReactJS, NextJS, Nest.js.
-      </p>
-    </div>
-    <div class="sr-only" aria-hidden="true">
-      <h2>Mobile Development</h2>
-      <p>
-        React Native, Mobile Development, iOS Development, Android Development,
-        Cross-platform Development, Mobile App Development, Native Mobile Apps,
-        Mobile Applications.
-      </p>
-    </div>
-    <div class="sr-only" aria-hidden="true">
-      <h2>Tools and Practices</h2>
-      <p>
-        Git, GitHub, GitLab, CI/CD, Continuous Integration, Continuous
-        Deployment, DevOps, Agile, Scrum, TDD, Test-Driven Development, Unit
-        Testing, E2E Testing, End-to-End Testing, Integration Testing, Automated
-        Testing, Quality Assurance, Code Review, Version Control.
-      </p>
-    </div>
-    <div class="sr-only" aria-hidden="true">
-      <h2>Skills and Expertise</h2>
-      <p>
-        Full Stack Development, Frontend Development, Backend Development, API
-        Development, REST APIs, GraphQL, Microservices, Monorepo, Design
-        Systems, Internationalization, i18n, Responsive Design, Performance
-        Optimization, Web Performance, Code Architecture, System Design,
-        Software Architecture, Database Design, E-commerce Development, B2B
-        Platforms, Accounts Receivable, Finance Technology, Fintech, AI
-        Integration, Machine Learning, Artificial Intelligence, Automation,
-        Workflow Automation, Payment Processing, Real-time Analytics, Analytics
-        Dashboards, Accounting Systems Integration, Banking Infrastructure,
-        Multi-channel Communication, Invoice Reconciliation, Collections
-        Automation, Self-service Portals, Customer Portals, Business Portals,
-        Platform Migration, Legacy System Migration, PHP to Node.js Migration,
-        UI/UX Redesign, User Interface Design, User Experience Design, TV
-        Applications, Casting Devices, Price Monitoring, E-commerce Platforms,
-        Pharmaceutical E-commerce, MVP Development, Rapid Prototyping, Iterative
-        Development.
-      </p>
-    </div>
-    <div class="sr-only" aria-hidden="true">
-      <h2>Location</h2>
-      <p>
-        Curitiba, Brazil, BR, South America, Paraná, Curitiba PR, Brazil South,
-        Southern Brazil.
-      </p>
-    </div>
-    <div class="sr-only" aria-hidden="true">
-      <h2>Languages</h2>
-      <p>
-        Portuguese, Português, English, Native Portuguese, Proficient English,
-        Bilingual, Portuguese Native Speaker, English Proficient.
-      </p>
-    </div>
-    <div class="sr-only" aria-hidden="true">
-      <h2>Certifications</h2>
-      <p>
-        IBM Full-Stack JavaScript Developer, Meta Front-End Developer,
-        Professional Certifications, Coursera Certifications, Full Stack
-        Certification, Frontend Certification.
-      </p>
-    </div>
-    <div class="sr-only" aria-hidden="true">
-      <h2>Experience</h2>
-      <p>
-        Y Combinator, YC S22, Startup Experience, Founding Team, Early Stage
-        Startup, B2B SaaS, Finance Technology, E-commerce, Healthcare
-        Technology, Pharmaceutical Industry, Accounts Receivable Management,
-        Collections Management, Platform Transformation, Legacy Migration, Team
-        Leadership, Engineering Leadership, Technical Leadership, Code Review,
-        Mentoring, Agile Development, Scrum Methodology, Sprint Planning,
-        Product Development, Feature Development, Bug Fixing, Testing, Quality
-        Assurance.
-      </p>
-    </div>
-    <div class="sr-only" aria-hidden="true">
-      <h2>Companies</h2>
-      <p>
-        Levers, Casa do Saber, AccessFintech, Lighthouse, Moovin Plataforma
-        E-commerce, Panvel, Y Combinator Startup.
-      </p>
-    </div>
   </body>
 </html>
