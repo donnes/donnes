@@ -1,4 +1,4 @@
-import { SITE } from "../../constants";
+import { CITY } from "../../constants";
 
 export const languages = {
   en: "English",
@@ -12,7 +12,7 @@ export const defaultLang = "en";
 export const translations = {
   en: {
     // Home
-    "home.hero.description.1": `I'm a Senior Full-Stack & Mobile Engineer based in <a href=${SITE.CITY_LINK} target="_blank">Porto Alegre, BR</a>.`,
+    "home.hero.description.1": `I'm a Senior Full-Stack & Mobile Engineer based in <strong itemprop="addressLocality">${CITY}</strong>.`,
     "home.hero.description.2":
       "What satisfies me most is building amazing products that make people and businesses prosper.",
     "home.experience.title": "Work Experience",
@@ -36,7 +36,7 @@ export const translations = {
   },
   "pt-br": {
     // Home
-    "home.hero.description.1": `Sou Desenvolvedor Full-Stack & Mobile e atualmente moro em <a href=${SITE.CITY_LINK} target="_blank">Porto Alegre, RS</a>.`,
+    "home.hero.description.1": `Sou Desenvolvedor Full-Stack & Mobile e atualmente moro em <strong itemprop="addressLocality">${CITY}</strong>.`,
     "home.hero.description.2":
       "O que mais me satisfaz é construir produtos incríveis que fazem pessoas e negócios prosperarem.",
     "home.experience.title": "Experiência",

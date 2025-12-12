@@ -1,7 +1,7 @@
 ---
-import "../global.css";
 import { Image } from "astro:assets";
 import { type CollectionEntry, getCollection } from "astro:content";
+import "../global.css";
 
 import { CERTIFICATES, SITE } from "../constants";
 
@@ -10,6 +10,7 @@ import Socials from "../components/composed/socials.astro";
 import Head from "../components/head.astro";
 
 import { getLangFromUrl, useTranslations } from "../lib/i18n";
+import { cn } from "../lib/utils";
 
 const lang = getLangFromUrl(Astro.url);
 const t = useTranslations(lang);
@@ -38,77 +39,91 @@ const experiences = experiencesCollection.filter((entry) =>
       }
     </style>
   </head>
-  <body class="text-sm">
-    <div class="flex flex-col md:flex-row">
-      <div class="md:flex-1 p-8 min-h-screen h-full">
-        <div>
-          <h1 class="text-4xl font-bold text-zinc-950">Donald Silveira</h1>
-          <h2 class="text-lg font-medium pb-2">Full-Stack & Mobile Engineer</h2>
-          <Socials>
-            <li class="-mt-2">
-              <a href="mailto:donaldsilveira@gmail.com" class="text-sm">
-                donaldsilveira@gmail.com
-              </a>
-            </li>
-            <li class="-mt-2">
-              <a href="phone:+5551982426594" class="text-sm">
-                +55 (51) 98242-6594
-              </a>
-            </li>
-          </Socials>
-        </div>
-
-        <div class="pt-12 space-y-2">
-          <h3 class="text-lg font-bold text-zinc-950">Work Experience</h3>
-          {
-            experiences.map((exp) => (
-              <div class="pb-2">
-                <div class="flex items-center">
-                  <h3 class="flex-1 font-medium text-zinc-950 dark:text-zinc-50">
-                    {exp.data.role}
-                  </h3>
-                  <div class="font-medium text-sm">
-                    {exp.data.startYear} - {exp.data.endYear}
-                  </div>
-                </div>
-
-                <a href={exp.data.link} class="text-zinc-600">
-                  {exp.data.company}
-                  <svg
-                    xmlns="http://www.w3.org/2000/svg"
-                    viewBox="0 0 24 24"
-                    fill="none"
-                    stroke="currentColor"
-                    stroke-width="2"
-                    stroke-linecap="round"
-                    stroke-linejoin="round"
-                    class="w-4 h-4"
+  <body class="text-sm" itemscope itemtype="https://schema.org/Person">
+    <main class="py-0">
+      <div class="flex flex-col md:flex-row h-full">
+        <div class="md:flex-1 p-8 min-h-screen h-full">
+          <header>
+            <h1 class="text-4xl font-bold text-zinc-950" itemprop="name">
+              Donald Silveira
+            </h1>
+            <h2 class="text-lg font-medium pb-2" itemprop="jobTitle">
+              Full-Stack & Mobile Engineer
+            </h2>
+            <address>
+              <Socials>
+                <li class="-mt-2">
+                  <a
+                    href="https://linkedin.com/in/donaldsilveira"
+                    class="text-sm"
+                    itemprop="sameAs"
                   >
-                    <path d="M7 7h10v10" />
-                    <path d="M7 17 17 7" />
-                  </svg>
-                </a>
+                    linkedin.com/in/donaldsilveira
+                  </a>
+                </li>
+                <li class="-mt-2">
+                  <a
+                    href="mailto:donaldsilveira@gmail.com"
+                    class="text-sm"
+                    itemprop="email"
+                  >
+                    donaldsilveira@gmail.com
+                  </a>
+                </li>
+                <li class="-mt-2">
+                  <a
+                    href="tel:+5551982426594"
+                    class="text-sm"
+                    itemprop="telephone"
+                  >
+                    +55 51 98242-6594
+                  </a>
+                </li>
+              </Socials>
+            </address>
+          </header>
 
-                {exp.data.description.map((desc) => (
-                  <p class="pt-2">
-                    <Fragment set:html={desc} />
-                  </p>
-                ))}
-              </div>
-            ))
-          }
-        </div>
+          <section
+            class="pt-12 space-y-2"
+            itemscope
+            itemtype="https://schema.org/ItemList"
+          >
+            <h3 class="text-lg font-bold text-zinc-950">Work Experience</h3>
+            {
+              experiences.map((exp) => (
+                <article
+                  class={cn(
+                    "pb-2",
+                    exp.slug.includes("lighthouse")
+                      ? "print:break-before-page print:pt-16"
+                      : ""
+                  )}
+                  itemscope
+                  itemtype="https://schema.org/OrganizationRole"
+                >
+                  <div class="flex items-center">
+                    <h4
+                      class="flex-1 font-medium text-zinc-950 dark:text-zinc-50"
+                      itemprop="roleName"
+                    >
+                      {exp.data.role}
+                    </h4>
+                    <time
+                      class="font-medium text-sm"
+                      datetime={`${exp.data.startYear}/${exp.data.endYear}`}
+                    >
+                      {exp.data.startYear} - {exp.data.endYear}
+                    </time>
+                  </div>
 
-        <div class="pt-6 space-y-2">
-          <h3 class="text-lg font-bold text-zinc-950">Certificates</h3>
-          {
-            CERTIFICATES.map((cert) => (
-              <div class="pb-2">
-                <div class="flex items-center">
-                  <a href={cert.link} class="flex-1">
-                    <h3 class="font-medium text-zinc-950 dark:text-zinc-50">
-                      {cert.title}
-                    </h3>
+                  <a
+                    href={exp.data.link}
+                    class="text-zinc-600"
+                    itemprop="worksFor"
+                    itemscope
+                    itemtype="https://schema.org/Organization"
+                  >
+                    <span itemprop="name">{exp.data.company}</span>
                     <svg
                       xmlns="http://www.w3.org/2000/svg"
                       viewBox="0 0 24 24"
@@ -118,78 +133,276 @@ const experiences = experiencesCollection.filter((entry) =>
                       stroke-linecap="round"
                       stroke-linejoin="round"
                       class="w-4 h-4"
+                      aria-hidden="true"
                     >
                       <path d="M7 7h10v10" />
                       <path d="M7 17 17 7" />
                     </svg>
                   </a>
-                  <div class="font-medium text-sm">{cert.date}</div>
-                </div>
 
-                <p class="pt-2">{cert.insitution}</p>
+                  {exp.data.description.map((desc) => (
+                    <p class="pt-2" itemprop="description">
+                      <Fragment set:html={desc} />
+                    </p>
+                  ))}
+                </article>
+              ))
+            }
+          </section>
+
+          <section
+            class="pt-6 print:break-after-page space-y-2"
+            itemscope
+            itemtype="https://schema.org/ItemList"
+          >
+            <h3 class="text-lg font-bold text-zinc-950">Education</h3>
+            {
+              CERTIFICATES.map((cert) => (
+                <article
+                  class="pb-2"
+                  itemscope
+                  itemtype="https://schema.org/EducationalOccupationalCredential"
+                >
+                  <div class="flex items-center">
+                    <a
+                      href={cert.link}
+                      class="flex-1"
+                      itemprop="credentialCategory"
+                    >
+                      <h4
+                        class="font-medium text-zinc-950 dark:text-zinc-50"
+                        itemprop="name"
+                      >
+                        {cert.title}
+                      </h4>
+                      <svg
+                        xmlns="http://www.w3.org/2000/svg"
+                        viewBox="0 0 24 24"
+                        fill="none"
+                        stroke="currentColor"
+                        stroke-width="2"
+                        stroke-linecap="round"
+                        stroke-linejoin="round"
+                        class="w-4 h-4"
+                        aria-hidden="true"
+                      >
+                        <path d="M7 7h10v10" />
+                        <path d="M7 17 17 7" />
+                      </svg>
+                    </a>
+                    <time class="font-medium text-sm" datetime={cert.date}>
+                      {cert.date}
+                    </time>
+                  </div>
+
+                  <p class="pt-2" itemprop="educationalCredentialAwarded">
+                    {cert.insitution}
+                  </p>
+                </article>
+              ))
+            }
+          </section>
+        </div>
+        <aside
+          class="print:max-w-[260px] md:max-w-[400px] min-h-screen h-full bg-zinc-950 text-white print:p-4 p-8 space-y-8"
+        >
+          <div class="flex items-center justify-center">
+            <Image
+              src="/me.jpg"
+              alt="Donald Silveira"
+              width={140}
+              height={140}
+              class="rounded-md grayscale"
+              itemprop="image"
+            />
+          </div>
+          <section class="flex flex-col space-y-4">
+            <h3 class="text-lg font-bold">About</h3>
+            <div class="[&>a]:text-zinc-400" itemprop="description">
+              <p>
+                <Fragment set:html={t("home.hero.description.1")} />
+              </p>
+              <p class="pt-4">
+                <Fragment set:html={t("home.hero.description.2")} />
+              </p>
+            </div>
+          </section>
+
+          <section
+            class="flex flex-col space-y-4"
+            itemscope
+            itemtype="https://schema.org/ItemList"
+          >
+            <h3 class="text-lg font-bold">Skills</h3>
+
+            <div class="grid grid-cols-2 items-center gap-y-4">
+              <div>AI</div>
+              <SkillRating rating={7} />
+              <div>JavaScript</div>
+              <SkillRating rating={8} />
+              <div>TypeScript</div>
+              <SkillRating rating={8} />
+              <div>React.JS</div>
+              <SkillRating rating={7} />
+              <div>React Native</div>
+              <SkillRating rating={7} />
+              <div>Next.JS</div>
+              <SkillRating rating={7} />
+              <div>Node.js</div>
+              <SkillRating rating={6} />
+              <div>Python</div>
+              <SkillRating rating={5} />
+              <div>SQL & NoSQL</div>
+              <SkillRating rating={6} />
+              <div>CI/CD</div>
+              <SkillRating rating={7} />
+            </div>
+          </section>
+
+          <section
+            class="flex flex-col space-y-4"
+            itemscope
+            itemtype="https://schema.org/ItemList"
+          >
+            <h3 class="text-lg font-bold">Languages</h3>
+
+            <div class="grid grid-cols-2 items-center gap-4">
+              <div
+                itemprop="itemListElement"
+                itemscope
+                itemtype="https://schema.org/ListItem"
+              >
+                <span itemprop="name">Português</span>
               </div>
-            ))
-          }
-        </div>
+              <div class="text-zinc-400" itemprop="description">Native</div>
+              <div
+                itemprop="itemListElement"
+                itemscope
+                itemtype="https://schema.org/ListItem"
+              >
+                <span itemprop="name">English</span>
+              </div>
+              <div class="text-zinc-400" itemprop="description">Proficient</div>
+            </div>
+          </section>
+        </aside>
       </div>
-      <div
-        class="print:max-w-[300px] md:max-w-[400px] min-h-screen h-full bg-zinc-950 text-white p-8 space-y-8"
-      >
-        <div class="flex items-center justify-center">
-          <Image
-            src="/me.jpg"
-            alt="Donald Silveira"
-            width={140}
-            height={140}
-            class="rounded-md grayscale"
-          />
-        </div>
-        <div class="flex flex-col space-y-4">
-          <h3 class="text-lg font-bold">About</h3>
-          <p class="[&>a]:text-zinc-400">
-            <Fragment set:html={t("home.hero.description.1")} />
-          </p>
-          <p class="pt-4">
-            <Fragment set:html={t("home.hero.description.2")} />
-          </p>
-        </div>
+    </main>
 
-        <div class="flex flex-col space-y-4">
-          <h3 class="text-lg font-bold">Top Skills</h3>
-
-          <div class="grid grid-cols-2 items-center gap-y-4">
-            <div>JavaScript</div>
-            <SkillRating rating={8} />
-            <div>TypeScript</div>
-            <SkillRating rating={8} />
-            <div>React.JS</div>
-            <SkillRating rating={7} />
-            <div>React Native</div>
-            <SkillRating rating={7} />
-            <div>Next.JS</div>
-            <SkillRating rating={7} />
-            <div>Node.js</div>
-            <SkillRating rating={6} />
-            <div>Python</div>
-            <SkillRating rating={5} />
-            <div>SQL & NoSQL</div>
-            <SkillRating rating={6} />
-            <div>CI/CD</div>
-            <SkillRating rating={7} />
-          </div>
-        </div>
-
-        <div class="flex flex-col space-y-4">
-          <h3 class="text-lg font-bold">Languages</h3>
-
-          <div class="grid grid-cols-2 items-center gap-4">
-            <div>Português</div>
-            <div class="text-zinc-400">Native</div>
-            <div>English</div>
-            <div class="text-zinc-400">Proficient</div>
-          </div>
-        </div>
-      </div>
+    <!-- ATS-Optimized Hidden Keywords Section -->
+    <div class="sr-only" aria-hidden="true">
+      <h2>Resume Keywords</h2>
+      <p>
+        Software Engineer, Full Stack Developer, Full-Stack Developer, Frontend
+        Developer, Backend Developer, Mobile Developer, Web Developer, Senior
+        Engineer, Founding Engineer, Senior Full-Stack Engineer, Senior Frontend
+        Engineer, Full Stack Engineer, Mobile Engineer, Software Developer,
+        Programmer, Full Stack & Mobile Engineer.
+      </p>
+    </div>
+    <div class="sr-only" aria-hidden="true">
+      <h2>Professional Summary</h2>
+      <p>
+        I'm a Senior Full-Stack & Mobile Engineer based in Curitiba, BR. What
+        satisfies me most is building amazing products that make people and
+        businesses prosper.
+      </p>
+    </div>
+    <div class="sr-only" aria-hidden="true">
+      <h2>Technologies</h2>
+      <p>
+        JavaScript, JS, TypeScript, TS, Python, Node.js, NodeJS, Node, React,
+        ReactJS, React.js, React Native, Next.js, NextJS, NestJS, Nest.js,
+        Express.js, Express, HTML5, CSS3, SQL, NoSQL, MongoDB, PostgreSQL,
+        MySQL, GraphQL, REST API, REST APIs, API Development, Web APIs.
+      </p>
+    </div>
+    <div class="sr-only" aria-hidden="true">
+      <h2>Frameworks and Libraries</h2>
+      <p>
+        React, React Native, Next.js, NestJS, Express.js, Astro, Tailwind CSS,
+        Shadcn UI, React.js, ReactJS, NextJS, Nest.js.
+      </p>
+    </div>
+    <div class="sr-only" aria-hidden="true">
+      <h2>Mobile Development</h2>
+      <p>
+        React Native, Mobile Development, iOS Development, Android Development,
+        Cross-platform Development, Mobile App Development, Native Mobile Apps,
+        Mobile Applications.
+      </p>
+    </div>
+    <div class="sr-only" aria-hidden="true">
+      <h2>Tools and Practices</h2>
+      <p>
+        Git, GitHub, GitLab, CI/CD, Continuous Integration, Continuous
+        Deployment, DevOps, Agile, Scrum, TDD, Test-Driven Development, Unit
+        Testing, E2E Testing, End-to-End Testing, Integration Testing, Automated
+        Testing, Quality Assurance, Code Review, Version Control.
+      </p>
+    </div>
+    <div class="sr-only" aria-hidden="true">
+      <h2>Skills and Expertise</h2>
+      <p>
+        Full Stack Development, Frontend Development, Backend Development, API
+        Development, REST APIs, GraphQL, Microservices, Monorepo, Design
+        Systems, Internationalization, i18n, Responsive Design, Performance
+        Optimization, Web Performance, Code Architecture, System Design,
+        Software Architecture, Database Design, E-commerce Development, B2B
+        Platforms, Accounts Receivable, Finance Technology, Fintech, AI
+        Integration, Machine Learning, Artificial Intelligence, Automation,
+        Workflow Automation, Payment Processing, Real-time Analytics, Analytics
+        Dashboards, Accounting Systems Integration, Banking Infrastructure,
+        Multi-channel Communication, Invoice Reconciliation, Collections
+        Automation, Self-service Portals, Customer Portals, Business Portals,
+        Platform Migration, Legacy System Migration, PHP to Node.js Migration,
+        UI/UX Redesign, User Interface Design, User Experience Design, TV
+        Applications, Casting Devices, Price Monitoring, E-commerce Platforms,
+        Pharmaceutical E-commerce, MVP Development, Rapid Prototyping, Iterative
+        Development.
+      </p>
+    </div>
+    <div class="sr-only" aria-hidden="true">
+      <h2>Location</h2>
+      <p>
+        Curitiba, Brazil, BR, South America, Paraná, Curitiba PR, Brazil South,
+        Southern Brazil.
+      </p>
+    </div>
+    <div class="sr-only" aria-hidden="true">
+      <h2>Languages</h2>
+      <p>
+        Portuguese, Português, English, Native Portuguese, Proficient English,
+        Bilingual, Portuguese Native Speaker, English Proficient.
+      </p>
+    </div>
+    <div class="sr-only" aria-hidden="true">
+      <h2>Certifications</h2>
+      <p>
+        IBM Full-Stack JavaScript Developer, Meta Front-End Developer,
+        Professional Certifications, Coursera Certifications, Full Stack
+        Certification, Frontend Certification.
+      </p>
+    </div>
+    <div class="sr-only" aria-hidden="true">
+      <h2>Experience</h2>
+      <p>
+        Y Combinator, YC S22, Startup Experience, Founding Team, Early Stage
+        Startup, B2B SaaS, Finance Technology, E-commerce, Healthcare
+        Technology, Pharmaceutical Industry, Accounts Receivable Management,
+        Collections Management, Platform Transformation, Legacy Migration, Team
+        Leadership, Engineering Leadership, Technical Leadership, Code Review,
+        Mentoring, Agile Development, Scrum Methodology, Sprint Planning,
+        Product Development, Feature Development, Bug Fixing, Testing, Quality
+        Assurance.
+      </p>
+    </div>
+    <div class="sr-only" aria-hidden="true">
+      <h2>Companies</h2>
+      <p>
+        Levers, Casa do Saber, AccessFintech, Lighthouse, Moovin Plataforma
+        E-commerce, Panvel, Y Combinator Startup.
+      </p>
     </div>
   </body>
 </html>

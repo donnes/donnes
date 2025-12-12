@@ -1,5 +1,5 @@
 ---
-import { GithubIcon, LinkedinIcon, TwitterIcon } from "../ui/icons";
+import { GithubIcon, TwitterIcon } from "../ui/icons";
 ---
 
 <ol class="flex items-center gap-4 flex-wrap">
@@ -8,6 +8,7 @@ import { GithubIcon, LinkedinIcon, TwitterIcon } from "../ui/icons";
       href="https://github.com/donnes"
       class="hover:text-black dark:hover:text-white transition-colors"
       target="_blank"
+      itemprop="sameAs"
     >
       <GithubIcon />
     </a>
@@ -17,17 +18,9 @@ import { GithubIcon, LinkedinIcon, TwitterIcon } from "../ui/icons";
       href="https://x.com/donaldsilveira"
       class="hover:text-black dark:hover:text-white transition-colors"
       target="_blank"
+      itemprop="sameAs"
     >
       <TwitterIcon />
-    </a>
-  </li>
-  <li>
-    <a
-      href="https://linkedin.com/in/donaldsilveira"
-      class="hover:text-zinc-950 dark:hover:text-zinc-50 transition-colors"
-      target="_blank"
-    >
-      <LinkedinIcon />
     </a>
   </li>
   <slot />
