@@ -16,6 +16,8 @@ export const translations = {
     "home.hero.description.2":
       "What satisfies me most is building amazing products that make people and businesses prosper.",
     "home.experience.title": "Work Experience",
+    "cv.summary":
+      "Founding Engineer with 10+ years building production systems across Fintech, E-commerce, and SaaS. Currently architecting AI-powered B2B solutions at Levers (YC S22) that automate financial operations at scale. Led platform modernizations, rebuilt legacy systems, and shipped mobile applications from scratch. Specialized in Full-Stack and Mobile development, delivering high-impact solutions from concept to deployment.",
 
     // Colophon
     "colophon.tecnology.title": "Tech Stack",
@@ -40,6 +42,8 @@ export const translations = {
     "home.hero.description.2":
       "O que mais me satisfaz é construir produtos incríveis que fazem pessoas e negócios prosperarem.",
     "home.experience.title": "Experiência",
+    "cv.summary":
+      "Founding Engineer com mais de 10 anos construindo sistemas de produção em Fintech, E-commerce e SaaS. Atualmente, lidero a arquitetura de soluções B2B com IA na Levers (YC S22) que automatizam operações financeiras em escala. Liderei modernizações de plataformas, reconstruí sistemas legados e lancei aplicativos móveis do zero. Especializado em desenvolvimento Full-Stack e Mobile, entregando soluções de alto impacto do conceito à implantação.",
 
     // Colophon
     "colophon.tecnology.title": "Tecnologia",

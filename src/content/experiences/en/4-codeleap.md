@@ -6,8 +6,6 @@ company: CodeLeap
 link: https://www.codeleap.co.uk
 role: Senior Full-Stack Engineer
 description: [
-    "Developed a SaaS platform for automated video generation using Remotion.",
-    "Created mobile apps using React Native for small businesses.",
-    "Implemented new features, bug fixes, and improvements across all work-in-progress projects.",
+    "Developed a SaaS platform for automated video generation using Remotion, built React Native mobile apps for small businesses, and implemented new features, bug fixes, and improvements across all active projects."
 ]
 ---
