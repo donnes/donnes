@@ -10,6 +10,7 @@ import Socials from "../components/composed/socials.astro";
 
 import { getLangFromUrl, useTranslations } from "../lib/i18n";
 import { cn } from "../lib/utils";
+import { SITE } from "../constants";
 
 const lang = getLangFromUrl(Astro.url);
 const t = useTranslations(lang);
@@ -17,9 +18,17 @@ const t = useTranslations(lang);
 const experiencesCollection: CollectionEntry<"experiences">[] =
   await getCollection("experiences");
 
-const experiences = experiencesCollection
-  .filter((entry) => entry.slug.includes(lang))
-  .filter((_, index) => [0, 1, 3].includes(index));
+const allExperiences = experiencesCollection.filter((entry) =>
+  entry.slug.includes(lang),
+);
+
+const experiences = allExperiences.filter((_, index) =>
+  [0, 1, 3].includes(index),
+);
+
+const hiddenExperiences = allExperiences.filter(
+  (_, index) => ![0, 1, 3].includes(index),
+);
 ---
 
 <BaseLayout>
@@ -32,15 +41,15 @@ const experiences = experiencesCollection
       <SectionColumns>
         <div>
           <h1 class="text-2xl font-bold text-zinc-950 dark:text-zinc-50">
-            Donald Silveira
+            {SITE.TITLE}
           </h1>
-          <h3>Full-Stack & Mobile Engineer</h3>
+          <h3>{SITE.ROLE}</h3>
         </div>
         <div class="space-y-4">
-          <p class="font-mono">
+          <p>
             <Fragment set:html={t("home.hero.description.1")} />
           </p>
-          <p class="font-mono">
+          <p>
             <Fragment set:html={t("home.hero.description.2")} />
           </p>
           <Socials />
@@ -92,22 +101,71 @@ const experiences = experiencesCollection
           </SectionColumns>
         ))
       }
-      <SectionColumns class="pt-8">
-        <div></div>
-        <div class="flex items-center justify-center">
-          <a
-            href="/cv"
-            class={cn(
-              "px-2 py-1 inline-flex items-center justify-center border no-underline text-sm rounded-full transition-colors",
-              "border-zinc-200 bg-zinc-100 dark:border-zinc-800 dark:bg-zinc-900 hover:dark:bg-zinc-800",
-              "hover:text-zinc-950 hover:dark:text-zinc-50",
-              "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
-            )}
-          >
-            All experiences
-          </a>
-        </div>
-      </SectionColumns>
+      {
+        hiddenExperiences.length > 0 && (
+          <>
+            <div
+              id="hidden-experiences"
+              class="hidden-experiences-container"
+              style="display: none;"
+            >
+              {hiddenExperiences.map((exp) => (
+                <SectionColumns class="pt-8">
+                  <div>
+                    <span class="font-medium">
+                      {exp.data.startYear} - {exp.data.endYear}
+                    </span>
+                  </div>
+                  <div>
+                    <h3 class="font-medium text-zinc-950 dark:text-zinc-50">
+                      {exp.data.role}
+                    </h3>
+                    <a href={exp.data.link}>
+                      {exp.data.company}
+                      <svg
+                        xmlns="http://www.w3.org/2000/svg"
+                        viewBox="0 0 24 24"
+                        fill="none"
+                        stroke="currentColor"
+                        stroke-width="2"
+                        stroke-linecap="round"
+                        stroke-linejoin="round"
+                        class="w-4 h-4"
+                      >
+                        <path d="M7 7h10v10" />
+                        <path d="M7 17 17 7" />
+                      </svg>
+                    </a>
+                    {exp.data.description.map((desc) => (
+                      <p class="pt-4">
+                        <Fragment set:html={desc} />
+                      </p>
+                    ))}
+                  </div>
+                </SectionColumns>
+              ))}
+            </div>
+            <SectionColumns class="pt-8">
+              <div />
+              <div class="flex items-center justify-center">
+                <button
+                  id="toggle-experiences"
+                  aria-expanded="false"
+                  aria-controls="hidden-experiences"
+                  class={cn(
+                    "px-2 py-1 inline-flex items-center justify-center border text-sm rounded-full transition-colors cursor-pointer",
+                    "border-zinc-200 bg-zinc-100 dark:border-zinc-800 dark:bg-zinc-900 hover:dark:bg-zinc-800",
+                    "hover:text-zinc-950 hover:dark:text-zinc-50",
+                    "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2",
+                  )}
+                >
+                  Show more
+                </button>
+              </div>
+            </SectionColumns>
+          </>
+        )
+      }
     </Section>
     <Section data-animate data-animate-speed="slow">
       <SectionColumns>
@@ -120,7 +178,7 @@ const experiences = experiencesCollection
       <SectionColumns class="pt-6">
         <div>Syntax</div>
         <div>
-          <ul class="list-none list-inside space-y-2">
+          <ul class="list-none list-inside flex flex-wrap gap-x-2 gap-y-1">
             <li>TypeScript</li>
           </ul>
         </div>
@@ -128,24 +186,38 @@ const experiences = experiencesCollection
       <SectionColumns class="pt-6">
         <div>Languages</div>
         <div>
-          <ul class="list-none list-inside space-y-2">
+          <ul class="list-none list-inside flex flex-wrap gap-x-2 gap-y-1">
             <li>JavaScript</li>
+            <li>·</li>
             <li>Python</li>
+            <li>·</li>
+            <li>Go</li>
           </ul>
         </div>
       </SectionColumns>
       <SectionColumns class="pt-6">
         <div>JS Frameworks</div>
         <div>
-          <ul class="list-none list-inside space-y-2">
+          <ul class="list-none list-inside flex flex-wrap gap-x-2 gap-y-1">
             <li>
               <a href="https://react.dev/" target="_blank">ReactJS</a>
             </li>
+            <li>·</li>
             <li>
               <a href="https://nextjs.org/" target="_blank">Next.JS</a>
             </li>
+            <li>·</li>
             <li>
               <a href="https://astro.build/" target="_blank">Astro</a>
+            </li>
+            <li>·</li>
+            <li>
+              <a href="https://reactnative.dev/" target="_blank">React Native</a
+              >
+            </li>
+            <li>·</li>
+            <li>
+              <a href="https://expo.dev/" target="_blank">Expo</a>
             </li>
           </ul>
         </div>
@@ -153,10 +225,11 @@ const experiences = experiencesCollection
       <SectionColumns class="pt-6">
         <div>JS Runtimes</div>
         <div>
-          <ul class="list-none list-inside space-y-2">
+          <ul class="list-none list-inside flex flex-wrap gap-x-2 gap-y-1">
             <li>
               <a href="https://nodejs.org/en" target="_blank">Node.js</a>
             </li>
+            <li>·</li>
             <li>
               <a href="https://bun.sh/" target="_blank">Bun</a>
             </li>
@@ -166,12 +239,13 @@ const experiences = experiencesCollection
       <SectionColumns class="pt-6">
         <div>CSS Frameworks</div>
         <div>
-          <ul class="list-none list-inside space-y-2">
+          <ul class="list-none list-inside flex flex-wrap gap-x-2 gap-y-1">
             <li>
               <a href="https://tailwindcss.com/" target="_blank">
                 Tailwind CSS
               </a>
             </li>
+            <li>·</li>
             <li>
               <a href="https://www.radix-ui.com/themes" target="_blank">
                 Radix Themes
@@ -183,10 +257,11 @@ const experiences = experiencesCollection
       <SectionColumns class="pt-6">
         <div>UI Libraries</div>
         <div>
-          <ul class="list-none list-inside space-y-2">
+          <ul class="list-none list-inside flex flex-wrap gap-x-2 gap-y-1">
             <li>
               <a href="https://ui.shadcn.com/" target="_blank">Shadcn UI</a>
             </li>
+            <li>·</li>
             <li>
               <a href="https://www.radix-ui.com/primitives" target="_blank">
                 Radix UI
@@ -195,6 +270,156 @@ const experiences = experiencesCollection
           </ul>
         </div>
       </SectionColumns>
+      <SectionColumns class="pt-6">
+        <div>Database</div>
+        <div>
+          <ul class="list-none list-inside flex flex-wrap gap-x-2 gap-y-1">
+            <li>NoSQL</li>
+            <li>·</li>
+            <li>
+              <a href="https://www.mysql.com/" target="_blank">MySQL</a>
+            </li>
+            <li>·</li>
+            <li>
+              <a href="https://www.postgresql.org/" target="_blank"
+                >PostgreSQL</a
+              >
+            </li>
+            <li>·</li>
+            <li>
+              <a href="https://redis.io/" target="_blank">Redis</a>
+            </li>
+          </ul>
+        </div>
+      </SectionColumns>
+      <SectionColumns class="pt-6">
+        <div>Cloud</div>
+        <div>
+          <ul class="list-none list-inside flex flex-wrap gap-x-2 gap-y-1">
+            <li>
+              <a href="https://aws.amazon.com/" target="_blank">AWS</a>
+            </li>
+            <li>·</li>
+            <li>
+              <a href="https://cloud.google.com/" target="_blank">GCP</a>
+            </li>
+            <li>·</li>
+            <li>
+              <a href="https://www.cloudflare.com/" target="_blank"
+                >Cloudflare</a
+              >
+            </li>
+            <li>·</li>
+            <li>
+              <a href="https://vercel.com/" target="_blank">Vercel</a>
+            </li>
+            <li>·</li>
+            <li>
+              <a href="https://www.docker.com/" target="_blank">Docker</a>
+            </li>
+          </ul>
+        </div>
+      </SectionColumns>
+      <SectionColumns class="pt-6">
+        <div>AI & Automation</div>
+        <div>
+          <ul class="list-none list-inside flex flex-wrap gap-x-2 gap-y-1">
+            <li>
+              <a href="https://openrouter.ai/" target="_blank">OpenRouter</a>
+            </li>
+            <li>·</li>
+            <li>
+              <a href="https://sdk.vercel.ai/" target="_blank">Vercel AI SDK</a>
+            </li>
+            <li>·</li>
+            <li>
+              <a href="https://n8n.io/" target="_blank">n8n</a>
+            </li>
+          </ul>
+        </div>
+      </SectionColumns>
+      <SectionColumns class="pt-6">
+        <div>Tools</div>
+        <div>
+          <ul class="list-none list-inside flex flex-wrap gap-x-2 gap-y-1">
+            <li>
+              <a href="https://git-scm.com/" target="_blank">Git</a>
+            </li>
+            <li>·</li>
+            <li>
+              <a href="https://github.com/features/actions" target="_blank"
+                >GitHub Actions</a
+              >
+            </li>
+            <li>·</li>
+            <li>
+              <a href="https://circleci.com/" target="_blank">CircleCI</a>
+            </li>
+            <li>·</li>
+            <li>
+              <a href="https://turbo.build/repo" target="_blank">Turborepo</a>
+            </li>
+            <li>·</li>
+            <li>
+              <a href="https://sentry.io/" target="_blank">Sentry</a>
+            </li>
+          </ul>
+        </div>
+      </SectionColumns>
     </Section>
   </Container>
+
+  <style>
+    .hidden-experiences-container {
+      overflow: hidden;
+      transition:
+        max-height 0.4s ease-in-out,
+        opacity 0.3s ease-in-out;
+      max-height: 0;
+      opacity: 0;
+    }
+
+    .hidden-experiences-container.expanded {
+      max-height: 5000px;
+      opacity: 1;
+      display: block !important;
+    }
+  </style>
+
+  <script>
+    document.addEventListener("DOMContentLoaded", () => {
+      const toggleButton = document.getElementById("toggle-experiences");
+      const hiddenContainer = document.getElementById("hidden-experiences");
+
+      if (!toggleButton || !hiddenContainer) return;
+
+      toggleButton.addEventListener("click", () => {
+        const isExpanded = hiddenContainer.classList.contains("expanded");
+
+        if (isExpanded) {
+          hiddenContainer.classList.remove("expanded");
+          toggleButton.setAttribute("aria-expanded", "false");
+          // Hide after transition completes
+          setTimeout(() => {
+            if (!hiddenContainer.classList.contains("expanded")) {
+              toggleButton.textContent = "Show more";
+              hiddenContainer.style.display = "none";
+            }
+          }, 150);
+        } else {
+          hiddenContainer.style.display = "block";
+          // Trigger reflow to ensure display change is applied
+          hiddenContainer.offsetHeight;
+          hiddenContainer.classList.add("expanded");
+          toggleButton.setAttribute("aria-expanded", "true");
+
+          setTimeout(() => {
+            if (hiddenContainer.classList.contains("expanded")) {
+              toggleButton.textContent = "Show less";
+            }
+          }, 150);
+        }
+      });
+    });
+  </script>
 </BaseLayout>

@@ -2,9 +2,10 @@ export const CITY = "Curitiba, Paraná, BR";
 
 export const SITE = {
   TITLE: "Donald Silveira",
-  DESCRIPTION: `I'm a Full-Stack & Mobile Engineer based in ${CITY}.`,
+  ROLE: "Senior Full-Stack Engineer",
+  DESCRIPTION: `I'm a Senior Full-Stack Engineer based in ${CITY}.`,
   EMAIL: "donaldsilveira@gmail.com",
-  CV_LINK: "https://read.cv/donnes",
+  CV_LINK: "https://go.donnes.dev/cv",
   CITY_LINK: "https://maps.app.goo.gl/39ThLzrLt9zydRxw6",
   OPEN_GRAPH: {
     IMAGE: "/open-graph.png",
