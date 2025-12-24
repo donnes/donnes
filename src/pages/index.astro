@@ -22,13 +22,9 @@ const allExperiences = experiencesCollection.filter((entry) =>
   entry.slug.includes(lang),
 );
 
-const experiences = allExperiences.filter((_, index) =>
-  [0, 1, 3].includes(index),
-);
+const experiences = allExperiences.slice(0, 3);
 
-const hiddenExperiences = allExperiences.filter(
-  (_, index) => ![0, 1, 3].includes(index),
-);
+const hiddenExperiences = allExperiences.slice(3);
 ---
 
 <BaseLayout>
