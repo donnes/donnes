@@ -5,7 +5,7 @@ What satisfies me most is building amazing products that make people and busines
 
 ### 🛠 Building
 
-![Syncode](https://github.com/syncode)&nbsp;
+![Syncode](https://github.com/donnes/syncode)&nbsp;
 
 ### 📫 How to reach me:
 
