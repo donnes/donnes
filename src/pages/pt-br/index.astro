@@ -1,5 +1,12 @@
 ---
-import Page from "../index.astro";
+import BeachHome from "../../components/beach/beach-home.astro";
+import BeachLayout from "../../components/beach/beach-layout.astro";
+import { STRINGS } from "../../components/beach/strings";
+
+const lang = "pt-br";
+const S = STRINGS[lang];
 ---
 
-<Page />
+<BeachLayout lang={lang} title={S.title} description={S.description}>
+  <BeachHome lang={lang} />
+</BeachLayout>

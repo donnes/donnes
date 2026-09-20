@@ -1,12 +1,13 @@
-export const CITY = "Curitiba, Paraná, BR";
+export const CITY = "Jurerê Internacional, Florianópolis - SC, BR";
 
 export const SITE = {
   TITLE: "Donald Silveira",
-  ROLE: "Senior Full-Stack Engineer",
-  DESCRIPTION: `I'm a Senior Full-Stack Engineer based in ${CITY}.`,
+  ROLE: "AI Product Engineer",
+  DESCRIPTION: `I'm an AI Product Engineer based in ${CITY}.`,
   EMAIL: "donaldsilveira@gmail.com",
   CV_LINK: "https://go.donnes.dev/cv",
-  CITY_LINK: "https://maps.app.goo.gl/39ThLzrLt9zydRxw6",
+  CITY_LINK:
+    "https://www.google.com/maps/search/?api=1&query=Jurer%C3%AA+Internacional%2C+Florian%C3%B3polis+-+SC",
   OPEN_GRAPH: {
     IMAGE: "/open-graph.png",
   },

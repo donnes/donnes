@@ -1,0 +1,97 @@
+---
+// <head> for the beach homepage. Same meta as components/head.astro, but WITHOUT global.css:
+// its Tailwind-era `body`, `main` and `a` rules would wreck the scene.
+import SpeedInsights from "@vercel/speed-insights/astro";
+
+interface Props {
+  title: string;
+  description: string;
+  image?: string;
+}
+
+const { title, description, image } = Astro.props;
+const canonicalURL = new URL(Astro.url.pathname, Astro.site);
+const alternates = [
+  { hreflang: "en", href: new URL("/", Astro.site) },
+  { hreflang: "pt-BR", href: new URL("/pt-br/", Astro.site) },
+  { hreflang: "x-default", href: new URL("/", Astro.site) },
+];
+---
+
+<!-- Global Metadata -->
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+<meta name="generator" content={Astro.generator} />
+<!-- the top of the sky; the scene keeps it in step with the time of day -->
+<meta name="theme-color" content="#2f9fe0" />
+
+<!-- Font preloads -->
+<link rel="preload" href="/fonts/geist.woff2" as="font" type="font/woff2" crossorigin />
+<link rel="preload" href="/fonts/geist-mono.woff2" as="font" type="font/woff2" crossorigin />
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link
+  href="https://fonts.googleapis.com/css2?family=Caveat:wght@500;700&family=Fraunces:ital,opsz,wght,SOFT,WONK@0,9..144,300..700,0..100,0..1;1,9..144,300..700,0..100,0..1&display=swap"
+  rel="stylesheet"
+/>
+
+<!-- Canonical URL + languages -->
+<link rel="canonical" href={canonicalURL} />
+{alternates.map((a) => <link rel="alternate" hreflang={a.hreflang} href={a.href} />)}
+
+<!-- Primary Meta Tags -->
+<title>{title}</title>
+<meta name="title" content={title} />
+<meta name="description" content={description} />
+
+<!-- Open Graph / Facebook -->
+<meta property="og:type" content="website" />
+<meta property="og:url" content={canonicalURL} />
+<meta property="og:title" content={title} />
+<meta property="og:description" content={description} />
+{image && <meta property="og:image" content={new URL(image, Astro.site)} />}
+
+<!-- Twitter -->
+<meta property="twitter:card" content="summary_large_image" />
+<meta property="twitter:url" content={canonicalURL} />
+<meta property="twitter:title" content={title} />
+<meta property="twitter:description" content={description} />
+{image && <meta property="twitter:image" content={new URL(image, Astro.site)} />}
+
+<!-- First paint: the right time of day and the painting's place on screen, before any CSS or script loads -->
+<script is:inline>
+  (function () {
+    var root = document.documentElement;
+    root.classList.add("js");
+    try {
+      var q = new URLSearchParams(location.search).get("tod");
+      var p = new Intl.DateTimeFormat("en-GB", { timeZone: "America/Sao_Paulo", hour: "2-digit", minute: "2-digit", hour12: false }).format(new Date()).split(":");
+      var m = Number(p[0]) * 60 + Number(p[1]);
+      var tod = m < 330 ? "night" : m < 400 ? "dawn" : m < 600 ? "morning" : m < 960 ? "day" : m < 1060 ? "golden" : m < 1120 ? "dusk" : "night";
+      // first paint only: the scene script takes over with the real sunrise/sunset and weather
+      root.dataset.tod = q === "midday" || q === "afternoon" ? "day" : /^(dawn|morning|day|golden|dusk|night)$/.test(q || "") ? q : tod;
+    } catch (e) {
+      root.dataset.tod = "day";
+    }
+    try {
+      var sky = { dawn: "#4a5f9c", morning: "#6cb6e2", day: "#2f9fe0", golden: "#6d9fc8", dusk: "#36447c", night: "#0b1230" }[root.dataset.tod];
+      var meta = document.querySelector('meta[name="theme-color"]');
+      if (sky && meta) meta.setAttribute("content", sky);
+    } catch (e) {}
+    try {
+      // where the 1600×1000 painting lands on screen, so sprites line up on first paint
+      var W = (root.clientWidth || innerWidth) + 48;
+      var H = innerHeight + 48;
+      var k = Math.max(W / 1600, H / 1000);
+      root.style.setProperty("--fs", k.toFixed(4));
+      root.style.setProperty("--ox", ((W - 1600 * k) / 2 - 24).toFixed(1) + "px");
+      root.style.setProperty("--oy", ((H - 1000 * k) / 2 - 24).toFixed(1) + "px");
+      root.style.setProperty("--hz", ((H - 1000 * k) / 2 + 235 * k).toFixed(1) + "px");
+      if (!matchMedia("(prefers-reduced-motion: reduce)").matches) root.classList.add("jb-intro");
+    } catch (e) {}
+  })();
+</script>
+
+<!-- Speed Insights -->
+<SpeedInsights />

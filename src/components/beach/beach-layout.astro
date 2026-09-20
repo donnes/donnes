@@ -1,0 +1,47 @@
+---
+// HTML shell for the beach homepage: no site chrome and no global.css, the scene owns the whole look.
+import { SITE } from "../../constants";
+import BeachHead from "./beach-head.astro";
+import { type BeachLang, STRINGS } from "./strings";
+
+interface Props {
+  lang: BeachLang;
+  title: string;
+  description: string;
+}
+
+const { lang, title, description } = Astro.props;
+---
+
+<!doctype html>
+<html lang={STRINGS[lang].htmlLang}>
+  <head>
+    <BeachHead title={title} description={description} image={SITE.OPEN_GRAPH.IMAGE} />
+  </head>
+  <body>
+    <slot />
+  </body>
+</html>
+
+<style is:global>
+  @font-face {
+    font-family: "Geist";
+    src: url("/fonts/geist.woff2") format("woff2");
+    font-weight: 100 900;
+    font-display: swap;
+  }
+  @font-face {
+    font-family: "Geist Mono";
+    src: url("/fonts/geist-mono.woff2") format("woff2");
+    font-weight: 100 900;
+    font-display: swap;
+  }
+  *,
+  *::before,
+  *::after {
+    box-sizing: border-box;
+  }
+  body {
+    margin: 0;
+  }
+</style>
