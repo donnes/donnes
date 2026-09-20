@@ -45,6 +45,10 @@ export type StackGroup = {
   items: string[];
   featured?: boolean;
   note?: string;
+  /** What the group is used for; shown large, with `items` as a "built with" line. */
+  capabilities?: string[];
+  /** Tools behind the capabilities, grouped by what they are for. */
+  toolsets?: { label: string; items: string[] }[];
 };
 
 type Localized = Record<Language, string>;
@@ -56,6 +60,8 @@ const STACK: {
   items: (string | Localized)[];
   featured?: boolean;
   note?: Localized;
+  capabilities?: Localized[];
+  toolsets?: { label: Localized; items: string[] }[];
 }[] = [
   {
     group: l("AI & Agents", "IA e agentes"),
@@ -64,15 +70,57 @@ const STACK: {
       "Agents in the product and in the workflow.",
       "Agentes no produto e no fluxo de trabalho.",
     ),
+    capabilities: [
+      l("Voice AI agents in production", "Agentes de voz com IA em produção"),
+      l(
+        "LLM-extracted signals and call intelligence",
+        "Sinais extraídos por LLM e inteligência de chamadas",
+      ),
+      l(
+        "RAG over knowledge bases for agents",
+        "RAG sobre bases de conhecimento para agentes",
+      ),
+      l(
+        "Evals and tracing for LLM features",
+        "Evals e tracing para features com LLM",
+      ),
+      l(
+        "Prompt and context engineering",
+        "Engenharia de prompt e de contexto",
+      ),
+      l(
+        "Realtime streaming of agent output",
+        "Streaming em tempo real da saída dos agentes",
+      ),
+    ],
+    toolsets: [
+      {
+        label: l("Models & SDKs", "Modelos e SDKs"),
+        items: ["Claude & OpenAI SDKs", "Vercel AI SDK", "OpenRouter"],
+      },
+      { label: l("RAG", "RAG"), items: ["Qdrant", "LangChain", "Haystack"] },
+      {
+        label: l("Evals & tracing", "Evals e tracing"),
+        items: ["Braintrust", "promptfoo", "LangSmith"],
+      },
+      {
+        label: l("Voice & orchestration", "Voz e orquestração"),
+        items: ["LiveKit", "Twilio", "Trigger.dev", "n8n"],
+      },
+    ],
     items: [
-      "Claude Code",
-      "Agent Skills & Plugins",
-      "MCP",
+      "Claude & OpenAI SDKs",
       "Vercel AI SDK",
-      "Mastra",
       "OpenRouter",
-      l("Claude & OpenAI APIs", "APIs do Claude e da OpenAI"),
-      l("Voice agents", "Agentes de voz"),
+      "Qdrant",
+      "LangChain",
+      "Haystack",
+      "Braintrust",
+      "promptfoo",
+      "LangSmith",
+      "LiveKit",
+      "Twilio",
+      "Trigger.dev",
       "n8n",
     ],
   },
@@ -127,6 +175,8 @@ export function getStack(lang: Language): StackGroup[] {
     group: g.group[lang],
     featured: g.featured,
     note: g.note?.[lang],
+    capabilities: g.capabilities?.map((c) => c[lang]),
+    toolsets: g.toolsets?.map((t) => ({ label: t.label[lang], items: t.items })),
     items: g.items.map((it) => (typeof it === "string" ? it : it[lang])),
   }));
 }

@@ -1166,9 +1166,25 @@ const VB = { viewBox: "0 0 1600 1000", preserveAspectRatio: "xMidYMid slice", fo
                       {g.note && <small>{g.note}</small>}
                     </dt>
                     <dd>
-                      <ul>
-                        {g.items.map((it) => <li>{it}</li>)}
-                      </ul>
+                      {g.capabilities && (
+                        <ul class="jb-caps">
+                          {g.capabilities.map((c) => <li>{c}</li>)}
+                        </ul>
+                      )}
+                      {g.toolsets ? (
+                        <dl class="jb-sets">
+                          {g.toolsets.map((t) => (
+                            <div>
+                              <dt>{t.label}</dt>
+                              <dd>{t.items.join(" · ")}</dd>
+                            </div>
+                          ))}
+                        </dl>
+                      ) : (
+                        <ul>
+                          {g.items.map((it) => <li>{it}</li>)}
+                        </ul>
+                      )}
                     </dd>
                   </div>
                 ))
@@ -1634,7 +1650,7 @@ const VB = { viewBox: "0 0 1600 1000", preserveAspectRatio: "xMidYMid slice", fo
   .jb-notes strong { font-weight: 560; background: linear-gradient(transparent 56%, #ffe08a 56% 94%, transparent 94%); }
 
   .jb-stack-lede { margin: 6px 0 0; font-size: 15px; line-height: 1.45; color: #2b2720; }
-  .jb-bag { margin: 16px 0 0; display: grid; gap: 14px 22px; }
+  .jb-bag { margin: 12px 0 0; display: grid; gap: 11px 22px; }
   .jb-bag > div { position: relative; padding-left: 16px; }
   .jb-bag > div::before { content: ""; position: absolute; left: 0; top: 5px; bottom: 3px; width: 6px; border-radius: 3px; background: var(--tab); border: 1.5px solid var(--ink); }
   .jb-bag dt { font: 700 23px/1 var(--hand); color: var(--ink); }
@@ -1642,11 +1658,15 @@ const VB = { viewBox: "0 0 1600 1000", preserveAspectRatio: "xMidYMid slice", fo
   .jb-bag dd { margin: 6px 0 0; }
   .jb-bag ul { margin: 0; padding: 0; list-style: none; display: flex; flex-wrap: wrap; gap: 5px 6px; }
   .jb-bag li { padding: 3px 9px; border: 1.5px solid var(--ink); border-radius: 999px; background: #fffdf6; font-size: 13px; line-height: 1.35; color: #23201a; white-space: nowrap; }
-  .jb-bag > .jb-bag-feat { grid-column: 1 / -1; padding: 14px 16px 15px; border: 1.5px solid var(--ink); border-radius: 14px; background: color-mix(in srgb, var(--tab) 26%, #fffdf6); box-shadow: 3px 3px 0 var(--ink); }
+  .jb-bag > .jb-bag-feat { grid-column: 1 / -1; padding: 11px 16px 12px; border: 1.5px solid var(--ink); border-radius: 14px; background: color-mix(in srgb, var(--tab) 26%, #fffdf6); box-shadow: 3px 3px 0 var(--ink); }
   .jb-bag > .jb-bag-feat::before { display: none; }
   .jb-bag > .jb-bag-feat dt { font-size: 28px; }
-  .jb-bag > .jb-bag-feat li { padding: 5px 12px; font-size: 14.5px; font-weight: 600; background: #fffdf6; }
-  .jb-bag > .jb-bag-feat li:nth-child(-n + 3) { background: var(--ink); color: #fffdf6; }
+  .jb-bag .jb-caps { display: grid; grid-template-columns: 1fr; gap: 5px 22px; margin-top: 8px; }
+  .jb-bag .jb-caps li { position: relative; padding: 0 0 0 20px; border: 0; border-radius: 0; background: none; white-space: normal; font: 600 15.5px/1.28 var(--sans); letter-spacing: -0.01em; color: var(--ink); }
+  .jb-bag .jb-caps li::before { content: ""; position: absolute; left: 0; top: 0.42em; width: 10px; height: 10px; border-radius: 3px; background: var(--tab); border: 1.5px solid var(--ink); transform: rotate(8deg); }
+  .jb-bag .jb-sets { margin: 10px 0 0; padding-top: 9px; border-top: 1.5px dashed color-mix(in srgb, var(--ink) 35%, transparent); display: grid; grid-template-columns: 1fr; gap: 8px 22px; }
+  .jb-bag .jb-sets dt { font: 600 10.5px/1.2 var(--mono, "Geist Mono", monospace); letter-spacing: 0.09em; text-transform: uppercase; color: #5a5245; }
+  .jb-bag .jb-sets dd { margin: 3px 0 0; font-size: 13.5px; line-height: 1.4; font-weight: 500; color: #23201a; }
   .jb-sign { margin: 18px 0 0; font: 500 22px/1 var(--hand); color: var(--green); transform: rotate(-1.5deg); transform-origin: left; }
 
   .jb-stamps { float: right; display: flex; align-items: flex-start; margin: -4px -4px 4px 12px; }
@@ -1673,6 +1693,7 @@ const VB = { viewBox: "0 0 1600 1000", preserveAspectRatio: "xMidYMid slice", fo
     .jb-lang { margin-right: 0; font-size: 12px; }
     .jb-hello { font-size: 18px; padding: 14px 26px; }
     .jb-bag { grid-template-columns: 1fr 1fr; }
+    .jb-bag .jb-caps, .jb-bag .jb-sets { grid-template-columns: 1fr 1fr; }
   }
 
   /* ── with JS: the page is one screen and the sections become one sheet of paper ── */
@@ -1825,6 +1846,17 @@ const VB = { viewBox: "0 0 1600 1000", preserveAspectRatio: "xMidYMid slice", fo
     .jb-crab, .jb-gull, .jb-bird ~ .jb-bird, .jb-not-lite, .jb-kite-go, .jb-heat, .jb-cloud.extra:nth-child(n + 6), .jb-bub:nth-child(2n), .jb-splash:nth-child(2n), .jb-rip:nth-child(2n), .jb-cap:nth-child(2n), .jb-wisp:nth-child(2n), .jb-ff:nth-child(n + 5), .jb-mist:nth-child(3) { display: none !important; }
   }
   @media (max-width: 560px) { .jb-wx-w, html.js .jb-ball { display: none; } }
+  /* Phones and tablets: url() SVG filters rasterise in software at full device resolution (and again on
+     every frame for the layers that sway), and blend modes force extra full-screen surfaces. That is
+     enough to get the tab killed on low-memory devices, so touch devices get GPU-only equivalents. */
+  @media (max-width: 1100px), (pointer: coarse) {
+    .jb-scene [filter], .jb-world [filter], .jb-fg [filter] { filter: none !important; }
+    .jb-veiled { filter: brightness(var(--veil-b, 1)) !important; }
+    .jb-grain { mix-blend-mode: normal !important; opacity: 0.16 !important; }
+    .jb-scene *, .jb-world * { mix-blend-mode: normal !important; }
+    .jb-layer, .jb-fg, .jb-cloud, .jb-bird, .jb-crab, .jb-art, .jb-idle, .jb-ride, .jb-flap { will-change: auto !important; }
+  }
+
   @media (max-width: 420px) {
     .jb-meta { font-size: 10.5px; padding: 5px 9px 6px 8px; } .jb-cond { gap: 0 7px; } .jb-live { gap: 7px; }
   }
@@ -2481,6 +2513,7 @@ const VB = { viewBox: "0 0 1600 1000", preserveAspectRatio: "xMidYMid slice", fo
     const theme = rgb(cols[0]).replace(/ /g, ", "); // the browser chrome continues the top of the sky
     if (themeMeta && themeMeta.content !== theme) themeMeta.content = theme;
     const veil = cols[18];
+    setVar("--veil-b", ((0.2126 * veil[0] + 0.7152 * veil[1] + 0.0722 * veil[2]) / 255).toFixed(3));
     VEILED.forEach((k, i) => setVar(k, rgb(veiledBase[i].map((v, ch) => (v * veil[ch]) / 255))));
     const stars = base.n[0];
     const lights = clamp(Math.max(base.n[1], e.dark * 1.7 - 0.1), 0, 1);
