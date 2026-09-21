@@ -11,10 +11,14 @@ interface Props {
 
 const { title, description, image } = Astro.props;
 const canonicalURL = new URL(Astro.url.pathname, Astro.site);
+const localizedPath = Astro.url.pathname.replace(/^\/pt-br(?=\/|$)/, "") || "/";
+const englishPath = localizedPath === "/" ? "/" : localizedPath;
+const portuguesePath =
+  localizedPath === "/" ? "/pt-br/" : `/pt-br${localizedPath}`;
 const alternates = [
-  { hreflang: "en", href: new URL("/", Astro.site) },
-  { hreflang: "pt-BR", href: new URL("/pt-br/", Astro.site) },
-  { hreflang: "x-default", href: new URL("/", Astro.site) },
+  { hreflang: "en", href: new URL(englishPath, Astro.site) },
+  { hreflang: "pt-BR", href: new URL(portuguesePath, Astro.site) },
+  { hreflang: "x-default", href: new URL(englishPath, Astro.site) },
 ];
 ---
 

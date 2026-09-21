@@ -1,5 +1,9 @@
 ---
-import Page from "../colophon.astro";
+import BeachLayout from "../../components/beach/beach-layout.astro";
+import ColophonPage from "../../components/beach/colophon-page.astro";
+import { SITE } from "../../constants";
 ---
 
-<Page />
+<BeachLayout lang="pt-br" title={`Colophon | ${SITE.TITLE}`} description="Como esta praia digital foi desenhada e construída.">
+  <ColophonPage lang="pt-br" />
+</BeachLayout>

@@ -1,6 +1,26 @@
 ---
 const pt = Astro.props.lang === "pt-br";
+// the 404 beach: a plain sign, no match and no notebook
+const notFound = Astro.props.notFound === true;
 ---
+{notFound ? (
+<div class="habitat-sign habitat-sign-off" role="img" aria-label="No matches today" data-pt-label="Sem jogos hoje">
+  <svg viewBox="0 0 164 138" aria-hidden="true" focusable="false">
+    <ellipse cx="88" cy="129" rx="65" ry="7" fill="#624a32" opacity=".17" />
+    <g filter="url(#wobS)">
+      <path d="M35 60 29 130 39 128 47 61M121 61 127 127 137 130 133 61" fill="#997249" />
+      <path d="m6 8 151-3 2 91-151 5z" fill="#a78050" />
+      <path d="m13 16 136-4 1 77-135 4z" fill="#304e47" />
+      <path d="m15 21 131-4M16 88l132-4" fill="none" stroke="#d4b67c" opacity=".5" />
+    </g>
+    <g fill="#f6ebce" text-anchor="middle">
+      <text x="82" y="48" class="sign-off" data-pt="Sem jogos">No matches</text>
+      <text x="82" y="74" class="sign-off" data-pt="hoje">today</text>
+    </g>
+  </svg>
+</div>
+) : (
+<>
 <button class="habitat-sign" id="habitat-sign" type="button" aria-haspopup="dialog" aria-controls="habitat-notes" aria-label={pt ? "Abrir o caderno da IA na praia" : "Open the beach AI notebook"}>
   <svg viewBox="0 0 164 138" aria-hidden="true" focusable="false">
     <ellipse cx="88" cy="129" rx="65" ry="7" fill="#624a32" opacity=".17" />
@@ -46,6 +66,8 @@ const pt = Astro.props.lang === "pt-br";
   <ol id="habitat-decisions" class="notes-decisions"><li>{pt ? "Esperando a próxima jogada." : "Waiting for the next shot."}</li></ol>
   <p class="notes-footer">{pt ? "Feito de sol, areia e pequenas decisões." : "Made of sunshine, sand, and small decisions."}</p>
 </dialog>
+</>
+)}
 <style>
   .habitat-sign { position: fixed; z-index: 3; left: calc(var(--ox, 0px) + var(--hb-x, 1400) * var(--fs, 1) * 1px); top: calc(var(--oy, 0px) + var(--hb-y, 558) * var(--fs, 1) * 1px); width: calc(var(--hb-w, 138) * 1px); padding: 0; border: 0; background: none; cursor: pointer; transform: translateX(-50%) scale(var(--fs, 1)) rotate(-3deg); transform-origin: 50% 0; color: #f6ebce; }
   .habitat-sign svg { display: block; width: 100%; overflow: visible; }
@@ -55,6 +77,8 @@ const pt = Astro.props.lang === "pt-br";
   .match-summary { padding-block: 8px; border-bottom: 1px solid #9c8b664f; }
   .habitat-sign .sign-score { font-size: 28px; font-variant-numeric: tabular-nums; }
   .habitat-sign .sign-hint { font-size: 13px; }
+  .habitat-sign .sign-off { font-size: 27px; }
+  .habitat-sign-off { cursor: default; }
   :global(html:not(.jb-ready)) .habitat-sign, :global(html[data-og]) .habitat-sign { visibility: hidden; }
   :global(html[data-panel]) .habitat-sign { visibility: hidden; }
   .habitat-notes { color: #37372d; background: repeating-linear-gradient(0deg, transparent 0 27px, #94866c13 27px 28px), #f7efd9; width: min(570px, calc(100vw - 32px)); max-height: calc(100svh - 40px); margin: auto; padding: 32px 34px 26px 42px; border: 1px solid #9e8960; border-radius: 4px 13px 13px 5px; box-shadow: 6px 6px 0 #d5c6a0, 9px 9px 0 #8d7957, 0 24px 90px #1b29284d; overflow-y: auto; }

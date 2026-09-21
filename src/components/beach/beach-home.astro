@@ -11,9 +11,11 @@ import { type BeachLang, STRINGS } from "./strings";
 
 interface Props {
   lang: BeachLang;
+  /** the 404 page: the same beach with nothing left on the sand, an empty court and "404" drawn by the water */
+  notFound?: boolean;
 }
 
-const { lang } = Astro.props;
+const { lang, notFound = false } = Astro.props;
 const S = STRINGS[lang];
 const PROFILE = getProfile(lang);
 const STACK = getStack(lang);
@@ -433,6 +435,10 @@ const btPlayers = [
   { k: "b", person: "wife", shirt: "bt-pink", shorts: "bt-pink", skin: "bt-skin-b" },
 ];
 
+// 404: finger-drawn in the sand, laid on the ground with the court's oblique projection
+const NF_DIGITS = ["M118 24Q84 78 36 138Q100 146 172 136M130 62Q124 130 128 200", "M290 26C226 14 212 198 280 198C350 198 346 40 276 24", "M458 24Q424 78 376 138Q440 146 512 136M470 62Q464 130 468 200"].join("");
+const NF_GROUND = `matrix(1 ${BT.m} -0.3 0.58 70 50)`;
+
 const VB = { viewBox: "0 0 1600 1000", preserveAspectRatio: "xMidYMid slice", focusable: "false" } as const;
 ---
 
@@ -655,7 +661,7 @@ const VB = { viewBox: "0 0 1600 1000", preserveAspectRatio: "xMidYMid slice", fo
     </defs>
   </svg>
 
-  <div class="jb-scene" aria-hidden="true" data-shore={JSON.stringify(SHORE)}>
+  <div class="jb-scene" aria-hidden="true" data-shore={JSON.stringify(SHORE)} data-nf={notFound ? "" : undefined}>
     <svg class="jb-layer i-sky" data-d="0.15" {...VB}><use href="#L-sky"></use></svg>
     <svg class="jb-layer jb-nojs" {...VB}><use href="#L-sunNojs"></use></svg>
     <svg class="jb-layer i-sky jb-xstars" data-d="0.15" {...VB}><use href="#L-xstars"></use></svg>
@@ -771,7 +777,7 @@ const VB = { viewBox: "0 0 1600 1000", preserveAspectRatio: "xMidYMid slice", fo
           </g>
         </svg>
         {
-          btPlayers.map((pl, i) => (
+          !notFound && btPlayers.map((pl, i) => (
             <div class={`jb-bt-pl jb-bt-pl-${pl.k}`} data-person={pl.person} style={`transform:translate3d(${i ? 55 : -115}px,${f(BT.m * (i ? 85 : -85) - 64)}px,0)${i ? " scaleX(-1)" : ""}`}>
               <i class="jb-bt-sh"></i>
               <svg viewBox="-30 -64 60 72" focusable="false">
@@ -828,6 +834,19 @@ const VB = { viewBox: "0 0 1600 1000", preserveAspectRatio: "xMidYMid slice", fo
         <i class="jb-bt-pok"></i>
         <i class="jb-bt-puff"></i>
       </div>
+      {notFound && (
+        <svg class="jb-nf-sand jb-veiled" viewBox="0 0 600 186" focusable="false">
+          <g transform={NF_GROUND}>
+            <path class="nf-rim" d={NF_DIGITS} transform="translate(0 7)"></path>
+            <path class="nf-groove" d={NF_DIGITS}></path>
+            <path class="nf-bed" d={NF_DIGITS} transform="translate(0 -2)"></path>
+            <path class="nf-soak" d={NF_DIGITS} transform="translate(0 2)"></path>
+          </g>
+          <!-- the stick that wrote it -->
+          <path class="o-shadow" d="M520 136l62 -17l1 4l-62 18Z"></path>
+          <path class="nf-stick" d="M518 133l63 -18M548 125l7 -9"></path>
+        </svg>
+      )}
       <div class="jb-gull">
         <svg viewBox="-22 -26 44 38" focusable="false">
           <g class="gull-stand">
@@ -882,12 +901,6 @@ const VB = { viewBox: "0 0 1600 1000", preserveAspectRatio: "xMidYMid slice", fo
         </svg>
       ))}
     </div>
-    <div class="jb-rainbox">
-      <i class="jb-rainfall jb-rain-far jb-not-lite"></i>
-      <i class="jb-rainfall jb-rain-mid"></i>
-      <i class="jb-rainfall jb-rain-near jb-not-lite"></i>
-      <i class="jb-rainfall jb-rain-first"></i>
-    </div>
     <div class="jb-tint"></div>
     <div class="jb-dimmer"></div>
     <i class="jb-flash"></i>
@@ -896,11 +909,20 @@ const VB = { viewBox: "0 0 1600 1000", preserveAspectRatio: "xMidYMid slice", fo
   </div>
 
   <main class="jb-world">
-    <HabitatBoard lang={lang} />
-    <header class="jb-id">
-      <h1>{PROFILE.name}</h1>
-      <p class="jb-role"><span>{PROFILE.role}</span></p>
-      <p class="jb-now">{currently}</p>
+    <HabitatBoard lang={lang} notFound={notFound} />
+    <header class:list={["jb-id", notFound && "jb-id-nf"]}>
+      {notFound ? (
+        <>
+          <h1 data-pt="Página não encontrada">Page not found</h1>
+          <p class="jb-role"><span data-pt="A maré levou esta página.">The tide took this page.</span></p>
+        </>
+      ) : (
+        <>
+          <h1>{PROFILE.name}</h1>
+          <p class="jb-role"><span>{PROFILE.role}</span></p>
+          <p class="jb-now">{currently}</p>
+        </>
+      )}
       <div class="jb-meta">
         <p class="jb-place">
           <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M12 21s-6.500-6-6.500-11a6.500 6.500 0 0 1 13 0c0 5-6.500 11-6.500 11Z"></path><circle cx="12" cy="10" r="2.200"></circle></svg>
@@ -916,6 +938,7 @@ const VB = { viewBox: "0 0 1600 1000", preserveAspectRatio: "xMidYMid slice", fo
       </div>
     </header>
 
+    {!notFound && (<>
     <!-- the only navigation: four things left on the sand (placed in painting units by the script) -->
     <nav class="jb-stage jb-objs" data-d="0.45" aria-label={S.nav.objects}>
       <button type="button" class="jb-obj jb-o-work" style="--w:440;--i:1" data-open="work" data-fx="0.385" data-y="896" data-pfx="0.29" data-prow="bottom" aria-haspopup="dialog" aria-expanded="false" aria-controls="jb-book" aria-label={S.work.aria}>
@@ -1065,16 +1088,18 @@ const VB = { viewBox: "0 0 1600 1000", preserveAspectRatio: "xMidYMid slice", fo
         </span>
       </button>
     </nav>
+    </>)}
 
     <div class="jb-top">
       <nav class="jb-lang" aria-label={S.nav.language}>
-        <a href="/" lang="en" hreflang="en" aria-label="English" aria-current={lang === "en" ? "page" : undefined}>EN</a>
+        <a href="/" lang="en" hreflang="en" aria-label="English" aria-current={!notFound && lang === "en" ? "page" : undefined}>EN</a>
         <span aria-hidden="true">·</span>
-        <a href="/pt-br/" lang="pt-BR" hreflang="pt-BR" aria-label="Português (Brasil)" aria-current={lang === "pt-br" ? "page" : undefined}>PT</a>
+        <a href="/pt-br/" lang="pt-BR" hreflang="pt-BR" aria-label="Português (Brasil)" aria-current={!notFound && lang === "pt-br" ? "page" : undefined}>PT</a>
       </nav>
-      <a class="jb-hello" href={`mailto:${PROFILE.email}`}>{S.contact.hello}</a>
+      {notFound ? <a class="jb-hello" id="jb-nf-home" href="/" data-pt="Volte outro dia">Come back another day</a> : <a class="jb-hello" href={`mailto:${PROFILE.email}`}>{S.contact.hello}</a>}
     </div>
 
+    {!notFound && (<>
     <!-- Work: the notebook that was lying on the towel. One role per spread, newest first. Without JS it is a plain list of every role. -->
     <section class="jb-book" id="jb-book" role="dialog" aria-modal="false" aria-labelledby="jb-h-work" tabindex="-1">
       <div class="jb-grab jb-bk-grab" aria-hidden="true"><i></i></div>
@@ -1250,9 +1275,20 @@ const VB = { viewBox: "0 0 1600 1000", preserveAspectRatio: "xMidYMid slice", fo
     <nav class="jb-dock" aria-label={S.nav.dock}>
       {[["work", S.work.label], ["about", S.about.label], ["stack", S.stack.label], ["contact", S.contact.label]].map(([id, label]) => <button type="button" data-go={id}>{label}</button>)}
     </nav>
+    </>)}
 
     <svg class="jb-fg jb-sway-a jb-veiled" viewBox="0 0 1600 260" preserveAspectRatio="xMidYMax slice" aria-hidden="true" focusable="false"><use href="#L-fgA"></use></svg>
     <svg class="jb-fg jb-fg-late jb-sway-b jb-veiled" viewBox="0 0 1600 260" preserveAspectRatio="xMidYMax slice" aria-hidden="true" focusable="false"><use href="#L-fgB"></use></svg>
+
+    <!-- the rain falls in front of everything left on the sand, not behind it -->
+    <div class="jb-rainsky" aria-hidden="true">
+      <div class="jb-rainbox">
+        <i class="jb-rainfall jb-rain-far jb-not-lite"></i>
+        <i class="jb-rainfall jb-rain-mid"></i>
+        <i class="jb-rainfall jb-rain-near jb-not-lite"></i>
+        <i class="jb-rainfall jb-rain-first"></i>
+      </div>
+    </div>
   </main>
 
 <style is:global>
@@ -1406,15 +1442,7 @@ const VB = { viewBox: "0 0 1600 1000", preserveAspectRatio: "xMidYMid slice", fo
   .jb-scene { position: absolute; inset: 0 0 auto 0; height: 60svh; overflow: hidden; z-index: 0; background: var(--sky-1); }
   html.js .jb-scene { position: fixed; height: 100svh; }
   .jb-draft { will-change: opacity; position: fixed; inset: 0; z-index: 3; overflow: hidden; pointer-events: none; background: #f5f0e5; }
-  .jb-draft-paint { position: absolute; inset: 0; filter: grayscale(1); }
-  .jb-draft [filter], .jb-draft .jb-veiled { filter: none !important; }
-  .jb-draft .jb-scene { background: #f5f0e5; }
-  .jb-deck-drawing { display: none; }
-  .jb-draft .jb-deck { background: none; -webkit-mask-image: none !important; mask-image: none !important; }
-  .jb-draft .jb-deck-drawing { display: block; width: 100%; height: 100%; }
-  .jb-draft .jb-grain, .jb-draft .jb-tag { visibility: hidden; }
-  .jb-draft *, .jb-draft *::before, .jb-draft *::after { animation-play-state: paused !important; transition: none !important; pointer-events: none !important; }
-  html.js .jb-draft .jb-scene { position: absolute; }
+  .jb-deck-drawing { display: none; } /* cloud contours, read by the pencil canvas only */
   .jb-layer { position: absolute; inset: -24px; width: calc(100% + 48px); height: calc(100% + 48px); display: block; }
   html.js .jb-nojs { display: none; }
   .jb-xstars { opacity: calc(var(--stars) * var(--clear, 0.5)); }
@@ -1517,8 +1545,9 @@ const VB = { viewBox: "0 0 1600 1000", preserveAspectRatio: "xMidYMid slice", fo
   [data-night] .jb-bird path { stroke: #0a1026; }
   .jb-crown { transform-origin: 50% 52%; }
   /* rain: a few big tiled streak layers, skewed by the wind (the skew slants both the streaks and their fall) */
-  .jb-rainbox { display: none; position: absolute; inset: -300px -260px 0; pointer-events: none; transform: skewX(var(--rain-a, -10deg)); }
-  [data-rain] .jb-rainbox { display: block; }
+  .jb-rainsky { display: none; position: fixed; inset: 0; z-index: 3; overflow: hidden; pointer-events: none; }
+  [data-rain] .jb-rainsky { display: block; }
+  .jb-rainbox { position: absolute; inset: -300px -260px 0; transform: skewX(var(--rain-a, -10deg)); }
   .jb-rainfall { position: absolute; inset: -360px 0 0; transition: opacity 0.4s linear; }
   .jb-rain-far { opacity: var(--r-far, 0); background: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='90' height='180'><g stroke='%23eaf4fb' stroke-width='1' stroke-linecap='round' opacity='.7'><path d='M10 6v12M34 60v13M58 20v12M80 96v13M22 120v12M66 150v12M46 100v11M4 160v10'/></g></svg>"); }
   .jb-rain-mid { opacity: var(--r-mid, 0); background: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='140' height='280'><g stroke='%23f1f8fd' stroke-width='1.5' stroke-linecap='round' opacity='.75'><path d='M16 8v22M60 50v24M112 20v22M38 130v24M92 110v22M128 190v24M70 210v22M8 236v22M104 250v20'/></g></svg>"); }
@@ -1538,6 +1567,8 @@ const VB = { viewBox: "0 0 1600 1000", preserveAspectRatio: "xMidYMid slice", fo
   .jb-id { position: absolute; z-index: 4; top: 16px; left: 18px; right: 18px; color: var(--on-sky); transition: color 1.2s ease; }
   .jb-id::before { content: ""; position: absolute; z-index: -1; inset: -34px auto -30px -60px; width: min(760px, 120%); background: radial-gradient(closest-side, var(--id-back), transparent); pointer-events: none; }
   .jb-id h1 { margin: 0; max-width: calc(100% - 130px); font: 520 clamp(31px, 3.7vw, 54px) / 0.98 var(--serif); font-variation-settings: "SOFT" 100, "WONK" 1; letter-spacing: -0.03em; }
+  .jb-id-nf h1 { max-width: calc(100% - 250px); } /* clear of the wider "come back" button */
+  @media (max-width: 600px) { .jb-id.jb-id-nf { top: 92px; } .jb-id-nf h1 { max-width: none; } } /* phones: the heading drops under the button */
   .jb-role { margin: 7px 0 0; font: italic 460 clamp(19px, 2.1vw, 30px) / 1.12 var(--serif); font-variation-settings: "SOFT" 100; letter-spacing: -0.012em; }
   .jb-role span { padding: 0 3px 1px 1px; background: linear-gradient(transparent 84%, #ffc93c 84% 96%, transparent 96%); }
   .jb-now { display: none; align-items: center; gap: 9px; margin: 11px 0 0; font: 480 14.5px/1.3 var(--sans); letter-spacing: -0.005em; }
@@ -1636,6 +1667,16 @@ const VB = { viewBox: "0 0 1600 1000", preserveAspectRatio: "xMidYMid slice", fo
   [data-bt="play"] .jb-bt-ball.is-on { opacity: 1; } [data-bt="play"] .jb-bt-bsh.is-on { opacity: 0.45; }
   .jb-bt-pok, .jb-bt-puff { width: 14px; height: 14px; margin: -7px 0 0 -7px; border-radius: 50%; opacity: 0; }
   .jb-bt-pok { border: 1.6px solid #fffdf4; } .jb-bt-puff { height: 8px; margin-top: -6px; background: radial-gradient(closest-side, rgb(255 236 196 / 0.95), rgb(236 186 120 / 0.5) 60%, transparent); }
+  /* ── 404: written in the sand with a stick (the grooves take the day's sand colours, so they follow the palette) ── */
+  .jb-nf-sand { left: calc(var(--nf-x, 640) * 1px); top: calc(var(--nf-y, 800) * 1px); width: calc(var(--nf-w, 560) * 1px); height: auto; translate: -50% -50%; overflow: visible; visibility: hidden; }
+  html.jb-ready .jb-nf-sand { visibility: visible; }
+  .jb-nf-sand path { fill: none; stroke-linecap: round; stroke-linejoin: round; }
+  .nf-rim { stroke: var(--sand-lt); stroke-width: 27; opacity: calc(0.9 - var(--wet-b, 0) * 1.4); } /* rained-on sand loses its pale rim */
+  .nf-groove { stroke: color-mix(in srgb, var(--wet) 82%, #7a5530); stroke-width: 23; }
+  .nf-bed { stroke: color-mix(in srgb, var(--wet) 58%, #6b4a2a); stroke-width: 11; opacity: 0.8; }
+  .nf-soak { stroke: #4e3824; stroke-width: 25; opacity: calc(var(--wet-b, 0) * 1.5); } /* rained-on sand: the grooves go dark like the beach around them */
+  .jb-nf-sand .nf-stick { stroke: #6c5138; stroke-width: 4; } /* raw brown: the veil on the drawing tints it */
+  .jb-nf-sand .o-shadow { fill: var(--v-shade); }
 
   .jb-flap { transform-box: view-box; }
   .jb-tag { position: absolute; left: 50%; top: calc(100% - 4px); transform: translateX(-50%) rotate(-3deg); padding: 1px 13px 4px; background: var(--cream); color: var(--ink); border: 1.5px solid var(--ink); border-radius: 11px 11px 11px 3px; font: 700 27px/1.05 var(--hand); white-space: nowrap; box-shadow: 0 3px 0 -1px rgb(60 40 10 / 0.25), 0 0 calc(var(--lights, 0) * 20px) calc(var(--lights, 0) * 3px) rgb(255 226 150 / calc(var(--lights, 0) * 0.55)); transition: transform 0.35s var(--spring), background-color 0.2s, opacity 0.3s ease 0.2s; }
@@ -2044,6 +2085,10 @@ const VB = { viewBox: "0 0 1600 1000", preserveAspectRatio: "xMidYMid slice", fo
     html.jb-intro:not(.jb-draft-ready) .jb-scene::after { content: ""; position: absolute; inset: 0; z-index: 10; background: #f5f0e5; }
     html.jb-intro:not(.jb-draft-ready) .jb-objs { visibility: hidden; }
     html.jb-intro:not(.jb-draft-ready) .jb-obj { visibility: hidden; }
+    /* Rain waits for the paint: none of it is composited under the paper while the beach is drawn. */
+    html.jb-intro:not(.jb-intro-done) :is(.jb-rainsky, .jb-rip, .jb-splash, .jb-spray) { display: none; }
+    html.jb-intro-done .jb-rainsky { animation: jb-rain-in 0.6s ease; }
+    @keyframes jb-rain-in { from { opacity: 0; } }
     /* Both copies keep the same pose until the color reveal finishes. */
     html.jb-intro:not(.jb-intro-prepared) :is(.jb-scene, .jb-objs, .jb-fg),
     html.jb-intro:not(.jb-intro-prepared) :is(.jb-scene, .jb-objs) * { animation-play-state: paused !important; transition: none !important; }
@@ -2162,6 +2207,7 @@ const VB = { viewBox: "0 0 1600 1000", preserveAspectRatio: "xMidYMid slice", fo
 
   /* ───────────── painting → screen mapping, and where the four things sit ───────────── */
   const scene = q(".jb-scene");
+  const NOT_FOUND = scene?.dataset.nf != null; // the 404 beach: nobody plays and no AI is asked
   const SHORE: number[][] = JSON.parse(scene?.dataset.shore || "[[0,600],[1600,500]]");
   const HORIZON = 235;
   function shoreY(x: number): number {
@@ -2232,6 +2278,13 @@ const VB = { viewBox: "0 0 1600 1000", preserveAspectRatio: "xMidYMid slice", fo
     st.setProperty("--hb-x", (fit.portrait ? fit.left + fit.width * 0.84 : cx + 205).toFixed(1));
     st.setProperty("--hb-y", (fit.portrait ? Math.min(cy - 8, (viewportHeight - 54 - 230 * k * fit.s - 86 - fit.oy) / fit.s) : cy - 8).toFixed(1));
     st.setProperty("--hb-w", (fit.portrait ? 90 / fit.s : 138).toFixed(1));
+    if (NOT_FOUND) {
+      // "404" sits on the open sand in front of the court: left of centre on a wide screen, a bottom row on a portrait one
+      const nw = fit.portrait ? fit.width * 0.8 : clamp(fit.width * 0.44, 460, 680);
+      st.setProperty("--nf-x", (fit.left + fit.width * (fit.portrait ? 0.5 : 0.4)).toFixed(1));
+      st.setProperty("--nf-y", (fit.portrait ? (viewportHeight * 0.885 - fit.oy) / fit.s : Math.min(820, bottom - nw * 0.2 - 70 / fit.s)).toFixed(1));
+      st.setProperty("--nf-w", nw.toFixed(1));
+    }
     return true;
   }
   measure();
@@ -2250,6 +2303,7 @@ const VB = { viewBox: "0 0 1600 1000", preserveAspectRatio: "xMidYMid slice", fo
   type Task = (dt: number, now: number) => void;
   const tasks: Task[] = [];
   let introPending = root.classList.contains("jb-intro") && !calm.matches;
+  let introBlending = false; // the paper is fading: the paint underneath is on show and must hold still
   let running = false;
   let last = 0;
   let held = false; // lite phones: a sheet covers the beach, so the scene stops entirely (see holdScene)
@@ -2277,7 +2331,7 @@ const VB = { viewBox: "0 0 1600 1000", preserveAspectRatio: "xMidYMid slice", fo
     if (on === held) return;
     held = on;
     // paused one by one rather than with a class on <html>: that would restyle the whole painting at the very moment a sheet starts to move
-    const parts = [scene, q(".jb-objs"), ...qa(".jb-fg")];
+    const parts = [scene, q(".jb-objs"), q(".jb-rainsky"), ...qa(".jb-fg")];
     for (const a of document.getAnimations?.() ?? []) {
       const el = (a.effect as KeyframeEffect | null)?.target;
       if (a instanceof CSSTransition || !el || !parts.some((p) => p?.contains(el))) continue;
@@ -2571,7 +2625,9 @@ const VB = { viewBox: "0 0 1600 1000", preserveAspectRatio: "xMidYMid slice", fo
     } else syncClouds(false);
   }
   function update() {
-    if (introPending && state) return; // Apply incoming weather after the two copies have blended.
+    // Weather that arrives while the paper still covers the beach snaps in unseen (nothing runs yet, so applyState snaps);
+    // only the short fade to colour holds it back, rather than easing a whole new sky in right after the reveal.
+    if (introBlending && state) return;
     const next = readState();
     const p = state;
     if (p && p.sky === next.sky && p.phase === next.phase && Math.abs(p.cyc - next.cyc) < 0.0015 && p.cover === next.cover && p.wind === next.wind && p.windX === next.windX && p.temp === next.temp && p.kmh === next.kmh && p.label === next.label && p.preview === next.preview) return;
@@ -2711,7 +2767,7 @@ const VB = { viewBox: "0 0 1600 1000", preserveAspectRatio: "xMidYMid slice", fo
     setVar("--id-back", darkSky ? "rgb(10 14 40 / 0.42)" : "rgb(255 250 235 / 0.5)");
     setVar("--id-plate", darkSky ? "rgb(8 12 34 / 0.52)" : "rgb(255 251 240 / 0.64)");
     // beach tennis: a rally in dry daylight under an open sky; otherwise the rackets wait by the net (or the court is left to the rain)
-    btWant = e.rFirst > 0.04 || e.wet > 0.5 ? "wet" : e.deck < 0.5 && e.fog < 0.45 && e.storm < 0.1 && e.cyc > 0.085 && e.cyc < 0.965 ? "play" : "rest";
+    btWant = e.rFirst > 0.04 || e.wet > 0.5 ? "wet" : !NOT_FOUND && e.deck < 0.5 && e.fog < 0.45 && e.storm < 0.1 && e.cyc > 0.085 && e.cyc < 0.965 ? "play" : "rest";
     const shut = e.cyc > 1.035 || e.cyc < 0.085;
     const hot = (state?.temp ?? 0) >= 28 && !!lum.sunUp && e.rFirst < 0.05 && e.deck < 0.5;
     const cold = state?.temp != null && state.temp <= 15;
@@ -2985,7 +3041,7 @@ const VB = { viewBox: "0 0 1600 1000", preserveAspectRatio: "xMidYMid slice", fo
   const habitatContext = (): Context => root.hasAttribute("data-night") ? "night"
     : env.rMid > 0.1 || env.storm > 0.1 || btWant === "wet" ? "wet" : env.wind > 0.55 ? "windy" : "sunny";
   async function requestHabitat(context: Context) {
-    if (habitat.requests >= 2 || habitat.requested.has(context)) return;
+    if (NOT_FOUND || habitat.requests >= 2 || habitat.requested.has(context)) return;
     habitat.requested.add(context);
     habitat.requests++;
     try {
@@ -3213,7 +3269,8 @@ const VB = { viewBox: "0 0 1600 1000", preserveAspectRatio: "xMidYMid slice", fo
   /* ───────────── beach tennis: one-set Donald vs Wife exhibition, volleys only ───────────── */
   const court = q(".jb-court");
   let btSnap = () => {};
-  if (court) {
+  // the 404 court has no players: it simply stays at rest, rackets by the net
+  if (court && !NOT_FOUND) {
     const M = Number(court.dataset.m) || -0.085;
     const baseline = Number(court.dataset.baseline) || 140;
     const serveX = (face: number) => -face * (baseline + 24);
@@ -4014,43 +4071,8 @@ const VB = { viewBox: "0 0 1600 1000", preserveAspectRatio: "xMidYMid slice", fo
     draft.dataset.phase = "prepare";
     draft.setAttribute("aria-hidden", "true");
     draft.inert = true;
-    const paint = document.createElement("div");
-    paint.className = "jb-draft-paint";
-    if (LITE) paint.style.opacity = "0"; // Keep preparation behind the paper; canvas supplies the visible ink.
+    const paint = document.createElement("div"); // Paper only, until the canvas has read the contours.
     const drawingSources = [scene, q(".jb-objs"), q("#habitat-sign"), ...qa(".jb-fg")].filter((el): el is HTMLElement => !!el);
-    for (const source of LITE ? [] : drawingSources) {
-      if (!source) continue;
-      const copy = source.cloneNode(true) as Element;
-      for (const el of [copy, ...qa<Element>("*", copy)]) {
-        el.removeAttribute("id");
-        el.removeAttribute("aria-controls");
-      }
-      paint.append(copy);
-    }
-    // Expand <use> instances so each contour can receive a normalized pencil stroke.
-    // Keep the original definitions for clip paths, but never duplicate their IDs.
-    const expandUses = (host: Element, depth = 0) => {
-      if (depth > 8) return;
-      for (const use of qa<SVGUseElement>("use", host)) {
-        const href = use.getAttribute("href") || use.getAttribute("xlink:href");
-        if (!href?.startsWith("#")) continue;
-        const source = document.getElementById(href.slice(1));
-        if (!source) continue;
-        const group = document.createElementNS("http://www.w3.org/2000/svg", "g");
-        for (const attr of [...use.attributes]) {
-          if (!["href", "xlink:href", "x", "y", "id"].includes(attr.name)) group.setAttribute(attr.name, attr.value);
-        }
-        const offset = document.createElementNS("http://www.w3.org/2000/svg", "g");
-        offset.setAttribute("transform", `translate(${use.getAttribute("x") || 0} ${use.getAttribute("y") || 0})`);
-        const geometry = source.cloneNode(true) as Element;
-        for (const el of [geometry, ...qa<Element>("[id]", geometry)]) el.removeAttribute("id");
-        offset.append(geometry);
-        group.append(offset);
-        expandUses(group, depth + 1);
-        use.replaceWith(group);
-      }
-    };
-    expandUses(paint);
     draft.append(paint);
     q(".jb-world")?.append(draft);
     root.classList.add("jb-draft-ready");
@@ -4063,37 +4085,20 @@ const VB = { viewBox: "0 0 1600 1000", preserveAspectRatio: "xMidYMid slice", fo
     pausedScene.forEach(animation => animation.pause());
     root.classList.add("jb-intro-prepared");
 
-    const contours = (LITE ? drawingSources.flatMap(source => qa<SVGGeometryElement | SVGUseElement | SVGTextElement>("path, rect, circle, ellipse, line, polyline, polygon, use, text", source)) : qa<SVGGeometryElement>("path, rect, circle, ellipse, line, polyline, polygon", paint))
+    // One canvas draws the contours in place: no second copy of the scene, no inherited stroke style to recalculate each frame.
+    const contours = drawingSources.flatMap(source => qa<SVGGeometryElement | SVGUseElement | SVGTextElement>("path, rect, circle, ellipse, line, polyline, polygon, use, text", source))
       .filter((el) => !el.closest("defs, clipPath, mask"));
-    const drawings = qa<SVGSVGElement>("svg", paint);
-    if (!LITE) {
-      // Read styles together before writing, so conversion does not repeatedly force layout.
-      const fills = contours.map((el) => getComputedStyle(el).fill);
-      contours.forEach((el, i) => {
-        el.setAttribute("pathLength", "1");
-        el.style.setProperty("fill", fills[i] === "none" ? "none" : "#f5f0e5", "important");
-        el.style.setProperty("stroke", "#777166", "important");
-        el.style.setProperty("stroke-width", "0.8px", "important");
-        el.style.setProperty("stroke-linecap", "round", "important");
-        el.style.setProperty("stroke-linejoin", "round", "important");
-        el.style.setProperty("stroke-dasharray", "1", "important");
-        el.style.setProperty("stroke-dashoffset", "inherit", "important");
-        el.setAttribute("vector-effect", "non-scaling-stroke");
-      });
-      drawings.forEach((svg) => { svg.style.strokeDashoffset = "1"; });
-    }
     let drawingRaf = 0;
     let drawingTime = 0;
     let drawingLast = 0;
-    const strokes: Animation[] = [];
     let reveal: Animation | undefined;
     const finishIntro = () => {
       if (!introPending) return;
       introPending = false;
+      introBlending = false;
       cancelAnimationFrame(drawingRaf);
       draft.remove();
       reveal?.cancel();
-      strokes.forEach((stroke) => stroke.cancel());
       root.classList.add("jb-intro-done");
       if (!held && !document.hidden && !calm.matches) pausedScene.forEach(animation => animation.play());
       window.removeEventListener("resize", resizeIntro);
@@ -4105,10 +4110,8 @@ const VB = { viewBox: "0 0 1600 1000", preserveAspectRatio: "xMidYMid slice", fo
     };
     const syncReveal = () => {
       drawingLast = 0;
-      for (const animation of [...strokes, ...(reveal ? [reveal] : [])]) {
-        if (document.hidden) animation.pause();
-        else animation.play();
-      }
+      if (document.hidden) reveal?.pause();
+      else reveal?.play();
     };
     const introWidth = measuredWidth, introHeight = measuredHeight;
     const resizeIntro = () => {
@@ -4121,41 +4124,27 @@ const VB = { viewBox: "0 0 1600 1000", preserveAspectRatio: "xMidYMid slice", fo
     // One animation per SVG inherits down to its paths, rather than one per contour.
     const fadeToPaint = () => {
       draft.dataset.phase = "color";
+      introBlending = true;
       reveal = draft.animate([{ opacity: 1 }, { opacity: 0 }], {
         duration: 700, easing: "ease", fill: "both",
       });
       syncReveal();
       void reveal.finished.then(finishIntro, finishIntro);
     };
-    if (LITE) {
-      void prepareBeachDrawing(root, contours, measuredWidth, measuredHeight).then(({ canvas, draw }) => {
-        if (!introPending) return;
-        paint.replaceWith(canvas);
-        const trace = (now: number) => {
-          if (!introPending) return;
-          if (!document.hidden && drawingLast) drawingTime += Math.min(50, now - drawingLast);
-          drawingLast = now;
-          if (drawingTime > 0 && draft.dataset.phase !== "drawing") draft.dataset.phase = "drawing";
-          draw(drawingTime);
-          if (drawingTime >= 1350) fadeToPaint();
-          else drawingRaf = requestAnimationFrame(trace);
-        };
-        drawingRaf = requestAnimationFrame(trace);
-      }).catch(finishIntro);
-    } else requestAnimationFrame(() => requestAnimationFrame(() => {
+    void prepareBeachDrawing(root, contours, measuredWidth, measuredHeight).then(({ canvas, draw }) => {
       if (!introPending) return;
-      draft.dataset.phase = "drawing";
-      drawings.forEach((svg, i) => {
-        strokes.push(svg.animate([{ strokeDashoffset: "1" }, { strokeDashoffset: "0" }], {
-          duration: 900, delay: (i / Math.max(1, drawings.length - 1)) * 450,
-          easing: "linear", fill: "both",
-        }));
-      });
-      void Promise.all(strokes.map(stroke => stroke.finished)).then(() => {
-        if (introPending) fadeToPaint();
-      }, finishIntro);
-      syncReveal();
-    }));
+      paint.replaceWith(canvas);
+      const trace = (now: number) => {
+        if (!introPending) return;
+        if (!document.hidden && drawingLast) drawingTime += Math.min(50, now - drawingLast);
+        drawingLast = now;
+        if (drawingTime > 0 && draft.dataset.phase !== "drawing") draft.dataset.phase = "drawing";
+        draw(drawingTime);
+        if (drawingTime >= 1350) fadeToPaint();
+        else drawingRaf = requestAnimationFrame(trace);
+      };
+      drawingRaf = requestAnimationFrame(trace);
+    }).catch(finishIntro);
   }
 
   const wanted = location.hash.slice(1) || params.get("p") || "";
