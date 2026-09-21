@@ -29,12 +29,14 @@ const alternates = [
 <!-- Font preloads -->
 <link rel="preload" href="/fonts/geist.woff2" as="font" type="font/woff2" crossorigin />
 <link rel="preload" href="/fonts/geist-mono.woff2" as="font" type="font/woff2" crossorigin />
-<link rel="preconnect" href="https://fonts.googleapis.com" />
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-<link
-  href="https://fonts.googleapis.com/css2?family=Caveat:wght@500;700&family=Fraunces:ital,opsz,wght,SOFT,WONK@0,9..144,300..700,0..100,0..1;1,9..144,300..700,0..100,0..1&display=swap"
-  rel="stylesheet"
-/>
+<!-- Display fonts, self-hosted (no third-party connection before first paint). Only what the page sets: Fraunces upright
+     400–520 with opsz + WONK, Fraunces italic 460, both pinned at SOFT 100 (so `font-variation-settings: "SOFT" 100` is a
+     no-op kept for fallbacks), Caveat 500–700. Latin subset: covers EN and PT-BR. Instanced by Google Fonts (css2 axis ranges). -->
+<style is:inline>
+  @font-face { font-family: "Fraunces"; font-style: normal; font-weight: 400 520; font-display: swap; src: url(/fonts/fraunces-latin.woff2) format("woff2"); unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD; }
+  @font-face { font-family: "Fraunces"; font-style: italic; font-weight: 460; font-display: swap; src: url(/fonts/fraunces-italic-latin.woff2) format("woff2"); unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD; }
+  @font-face { font-family: "Caveat"; font-style: normal; font-weight: 500 700; font-display: swap; src: url(/fonts/caveat-latin.woff2) format("woff2"); unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD; }
+</style>
 
 <!-- Canonical URL + languages -->
 <link rel="canonical" href={canonicalURL} />
@@ -51,6 +53,9 @@ const alternates = [
 <meta property="og:title" content={title} />
 <meta property="og:description" content={description} />
 {image && <meta property="og:image" content={new URL(image, Astro.site)} />}
+{image && <meta property="og:image:type" content={image.endsWith(".png") ? "image/png" : "image/jpeg"} />}
+{image && <meta property="og:image:width" content="1200" />}
+{image && <meta property="og:image:height" content="630" />}
 
 <!-- Twitter -->
 <meta property="twitter:card" content="summary_large_image" />
@@ -87,7 +92,6 @@ const alternates = [
       root.style.setProperty("--fs", k.toFixed(4));
       root.style.setProperty("--ox", ((W - 1600 * k) / 2 - 24).toFixed(1) + "px");
       root.style.setProperty("--oy", ((H - 1000 * k) / 2 - 24).toFixed(1) + "px");
-      root.style.setProperty("--hz", ((H - 1000 * k) / 2 + 235 * k).toFixed(1) + "px");
       if (!matchMedia("(prefers-reduced-motion: reduce)").matches) root.classList.add("jb-intro");
     } catch (e) {}
   })();

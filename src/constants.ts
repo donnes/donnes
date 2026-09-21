@@ -9,7 +9,7 @@ export const SITE = {
   CITY_LINK:
     "https://www.google.com/maps/search/?api=1&query=Jurer%C3%AA+Internacional%2C+Florian%C3%B3polis+-+SC",
   OPEN_GRAPH: {
-    IMAGE: "/open-graph.png",
+    IMAGE: "/open-graph.jpg",
   },
 };
 

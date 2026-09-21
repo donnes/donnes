@@ -94,21 +94,198 @@ function yAt(pts: Pt[], x: number): number {
   return pts[pts.length - 1][1];
 }
 
+/* ───────────────────────── baked wobble ─────────────────────────
+   The hand-cut edges used to come from feTurbulence + feDisplacementMap filters (#wob, #wobS, #dry), which rasterise in
+   software and again at every palette step. The same displacement is now applied to the geometry, here, at build time:
+   a seeded value-noise field nudges points sampled along each outline. Three fields mirror the three filters. */
+function field(seed: number, cellX: number, cellY: number, amp: number, tear = 0) {
+  const r = rng(seed);
+  const t = rng(seed + 1); // `tear`: a per-point nick on top of the smooth field (the displacement map was never smooth at pixel scale)
+  const G = Array.from({ length: 512 }, () => r() * 2 - 1);
+  const lat = (ix: number, iy: number, k: number) => G[(Math.imul(ix, 73856093) ^ Math.imul(iy, 19349663) ^ Math.imul(k + 1, 83492791)) & 511];
+  const vn = (x: number, y: number, k: number) => {
+    const ix = Math.floor(x), iy = Math.floor(y), fx = x - ix, fy = y - iy;
+    const sx = fx * fx * (3 - 2 * fx), sy = fy * fy * (3 - 2 * fy);
+    const a = lat(ix, iy, k), b = lat(ix + 1, iy, k), c = lat(ix, iy + 1, k), d = lat(ix + 1, iy + 1, k);
+    return a + (b - a) * sx + (c - a + (a - b + d - c) * sx) * sy;
+  };
+  return ([x, y]: Pt): Pt => {
+    const u = x / cellX, v = y / cellY;
+    return [x + amp * (vn(u, v, 0) + 0.5 * vn(u * 2, v * 2, 1)) + tear * (t() - 0.5), y + amp * (vn(u, v, 2) + 0.5 * vn(u * 2, v * 2, 3)) + tear * (t() - 0.5)];
+  };
+}
+// (amplitudes: Perlin noise keeps close to its mean, so a displacement `scale` of 12 only ever moved an edge ±2)
+const WOB = field(4, 91, 62, 3.2); // long lazy wander: shorelines, ridges, broad strokes (was #wob, scale 12)
+const WOBS = field(9, 18, 18, 1.6, 0.7); // fine cut-paper jitter, a little torn: objects, blobs, fronds (was #wobS, scale 5)
+const DRYW = field(2, 83, 55, 2.6); // the dry brush's edge (was the first half of #dry, scale 10)
+// compact numbers: one decimal, no leading zero, a minus sign doubles as the separator
+const num = (v: number) => String(f(v)).replace(/^(-?)0\./, "$1.");
+const pair = (x: number, y: number) => `${num(x)}${num(y).startsWith("-") ? "" : " "}${num(y)}`;
+/** A quadratic B-spline through the midpoints of `p` (controls = the points), written as one `q` and a run of `t`s. */
+function spl(p: Pt[], closed = false): string {
+  const n = p.length;
+  const mid = (a: Pt, b: Pt): Pt => [(a[0] + b[0]) / 2, (a[1] + b[1]) / 2];
+  const ctl = closed ? [...p, p[0]] : p.slice(1);
+  const s0 = closed ? mid(p[n - 1], p[0]) : p[0];
+  let X = f(s0[0]), Y = f(s0[1]);
+  let cx = ctl[0][0], cy = ctl[0][1]; // the control the next segment will use (implied by reflection from the second one on)
+  let d = `M${pair(X, Y)}`;
+  for (let i = 0; i < ctl.length - 1; i++) {
+    // each end is chosen from the control actually in effect, so rounding never accumulates along the run
+    const last = !closed && i === ctl.length - 2;
+    const e: Pt = last ? ctl[i + 1] : [(cx + ctl[i + 1][0]) / 2, (cy + ctl[i + 1][1]) / 2];
+    const ex = f(e[0]), ey = f(e[1]);
+    d += i === 0 ? `q${pair(cx - X, cy - Y)} ${pair(ex - X, ey - Y)}` : `t${pair(ex - X, ey - Y)}`;
+    cx = 2 * ex - cx;
+    cy = 2 * ey - cy;
+    X = ex;
+    Y = ey;
+  }
+  return closed ? `${d}Z` : d;
+}
+/** A polyline in relative `l`s (keeps corners sharp: used for the fine jitter, where a spline would round them). */
+function poly(p: Pt[], closed = false): string {
+  let X = f(p[0][0]), Y = f(p[0][1]);
+  let d = `M${pair(X, Y)}`;
+  for (let i = 1; i < p.length; i++) {
+    const x = f(p[i][0]), y = f(p[i][1]);
+    if (x === X && y === Y) continue;
+    d += `l${pair(x - X, y - Y)}`;
+    X = x;
+    Y = y;
+  }
+  return closed ? `${d}Z` : d;
+}
+/** Points every ~`step` along the curve smooth() would draw through `pts`. */
+function dense(pts: Pt[], step: number): Pt[] {
+  const out: Pt[] = [pts[0]];
+  for (let i = 0; i < pts.length - 1; i++) {
+    const p0 = pts[i - 1] ?? pts[i], p1 = pts[i], p2 = pts[i + 1], p3 = pts[i + 2] ?? p2;
+    const c1: Pt = [p1[0] + (p2[0] - p0[0]) / 6, p1[1] + (p2[1] - p0[1]) / 6], c2: Pt = [p2[0] - (p3[0] - p1[0]) / 6, p2[1] - (p3[1] - p1[1]) / 6];
+    const k = Math.max(1, Math.round(Math.hypot(p2[0] - p1[0], p2[1] - p1[1]) / step));
+    for (let j = 1; j <= k; j++) {
+      const t = j / k, u = 1 - t;
+      out.push([u * u * u * p1[0] + 3 * u * u * t * c1[0] + 3 * u * t * t * c2[0] + t * t * t * p2[0], u * u * u * p1[1] + 3 * u * u * t * c1[1] + 3 * u * t * t * c2[1] + t * t * t * p2[1]]);
+    }
+  }
+  return out;
+}
+/** Path data → sampled subpaths (M L H V Q T C Z, absolute or relative; no arcs: see rectD / ellD). */
+function flat(d: string, step: number): { p: Pt[]; closed: boolean }[] {
+  const subs: { p: Pt[]; closed: boolean }[] = [];
+  let cur: Pt[] = [], x = 0, y = 0, sx = 0, sy = 0, qx = 0, qy = 0, prev = "";
+  const seg = (a: Pt, b: Pt, fn: (t: number) => Pt, curved = false) => {
+    const k = Math.max(curved ? 2 : 1, Math.round(Math.hypot(b[0] - a[0], b[1] - a[1]) / step));
+    for (let j = 1; j <= k; j++) cur.push(fn(j / k));
+  };
+  for (const m of d.matchAll(/([MLHVQTCZ])([^MLHVQTCZ]*)/gi)) {
+    const c = m[1], up = c.toUpperCase(), rel = c !== up;
+    const a = (m[2].match(/-?(?:\d*\.\d+|\d+\.?)(?:e-?\d+)?/gi) ?? []).map(Number);
+    const per = { M: 2, L: 2, H: 1, V: 1, Q: 4, T: 2, C: 6, Z: 0 }[up] ?? 0;
+    if (up === "Z") {
+      if (cur.length) subs.push({ p: cur, closed: true });
+      cur = [];
+      x = sx;
+      y = sy;
+      prev = "Z";
+      continue;
+    }
+    for (let i = 0; i + per <= a.length; i += per) {
+      const v = a.slice(i, i + per), ox = rel ? x : 0, oy = rel ? y : 0, from: Pt = [x, y];
+      if (up === "M" && i === 0) {
+        if (cur.length > 1) subs.push({ p: cur, closed: false });
+        x = sx = v[0] + ox;
+        y = sy = v[1] + oy;
+        cur = [[x, y]];
+      } else if (up === "M" || up === "L" || up === "H" || up === "V") {
+        const to: Pt = up === "H" ? [v[0] + ox, y] : up === "V" ? [x, v[0] + oy] : [v[0] + ox, v[1] + oy];
+        if (!cur.length) cur = [from];
+        seg(from, to, (t) => [from[0] + (to[0] - from[0]) * t, from[1] + (to[1] - from[1]) * t]);
+        [x, y] = to;
+      } else if (up === "Q" || up === "T") {
+        const c1: Pt = up === "Q" ? [v[0] + ox, v[1] + oy] : prev === "Q" ? [2 * x - qx, 2 * y - qy] : [x, y];
+        const to: Pt = up === "Q" ? [v[2] + ox, v[3] + oy] : [v[0] + ox, v[1] + oy];
+        if (!cur.length) cur = [from];
+        seg(from, to, (t) => [(1 - t) * (1 - t) * from[0] + 2 * (1 - t) * t * c1[0] + t * t * to[0], (1 - t) * (1 - t) * from[1] + 2 * (1 - t) * t * c1[1] + t * t * to[1]], true);
+        [qx, qy] = c1;
+        [x, y] = to;
+      } else if (up === "C") {
+        const c1: Pt = [v[0] + ox, v[1] + oy], c2: Pt = [v[2] + ox, v[3] + oy], to: Pt = [v[4] + ox, v[5] + oy];
+        if (!cur.length) cur = [from];
+        seg(from, to, (t) => { const u = 1 - t; return [u * u * u * from[0] + 3 * u * u * t * c1[0] + 3 * u * t * t * c2[0] + t * t * t * to[0], u * u * u * from[1] + 3 * u * u * t * c1[1] + 3 * u * t * t * c2[1] + t * t * t * to[1]]; }, true);
+        [x, y] = to;
+      }
+      prev = up === "Q" || up === "T" ? "Q" : up;
+    }
+  }
+  if (cur.length > 1) subs.push({ p: cur, closed: false });
+  return subs;
+}
+/** Bake a field into path data. `smoothed` writes splines (broad wander); otherwise polylines (fine jitter, sharp corners kept). */
+const bake = (d: string, W: (p: Pt) => Pt, step: number, smoothed = false) =>
+  flat(d, step).map((s) => { const q = (s.closed ? s.p.slice(0, -1) : s.p).map(W); return q.length < 2 ? "" : smoothed && q.length > 3 ? spl(q, s.closed) : poly(q, s.closed); }).join("");
+const wS = (d: string, step = 5) => bake(d, WOBS, step); // the objects' cut-paper edge
+// shapes as flattenable path data (so rects, circles and ellipses can be baked like any outline)
+const ellD = (cx: number, cy: number, rx: number, ry = rx) => {
+  const k = 1 / Math.cos(Math.PI / 8);
+  let d = `M${cx + rx} ${cy}`;
+  for (let i = 1; i <= 8; i++) {
+    const a = (i * Math.PI) / 4, b = a - Math.PI / 8;
+    d += `Q${f(cx + rx * k * Math.cos(b))} ${f(cy + ry * k * Math.sin(b))} ${f(cx + rx * Math.cos(a))} ${f(cy + ry * Math.sin(a))}`;
+  }
+  return `${d}Z`;
+};
+const rectD = (x: number, y: number, w: number, h: number, r = 0) =>
+  r ? `M${x + r} ${y}H${x + w - r}Q${x + w} ${y} ${x + w} ${y + r}V${y + h - r}Q${x + w} ${y + h} ${x + w - r} ${y + h}H${x + r}Q${x} ${y + h} ${x} ${y + h - r}V${y + r}Q${x} ${y} ${x + r} ${y}Z` : `M${x} ${y}H${x + w}V${y + h}H${x}Z`;
+/** A wobbly blob where a circle was: control points round the rim, displaced by the field, closed with a spline. */
+function blob(cx: number, cy: number, r: number, W: (p: Pt) => Pt, per = 11): string {
+  const n = Math.max(6, Math.min(16, Math.round((2 * Math.PI * r) / per)));
+  const c = Math.cos(Math.PI / n), R = r / ((c + 0.5 + 0.5 * c * c) / 2); // the spline runs inside its control polygon: push it out to the circle's radius
+  return spl(Array.from({ length: n }, (_, i) => W([cx + R * Math.cos((2 * Math.PI * i) / n), cy + R * Math.sin((2 * Math.PI * i) / n)])), true);
+}
+// plain circles / rotated ellipses / dots as subpaths, so hundreds of same-paint shapes can share one <path>
+// (one large arc that ends a hair from where it began, closed: a full circle/ellipse in half the bytes. Clockwise, like rectD and blob:
+// same-paint shapes must wind the same way to union under nonzero)
+const circD = (cx: number, cy: number, r: number) => `M${pair(cx - r, cy)}a${num(r)} ${num(r)} 0 1 1 0 .1Z`;
+const ovalD = (cx: number, cy: number, rx: number, ry: number, rot = 0) => {
+  const dx = rx * Math.cos((rot * Math.PI) / 180), dy = rx * Math.sin((rot * Math.PI) / 180);
+  return `M${pair(cx - dx, cy - dy)}a${num(rx)} ${num(ry)} ${Math.round(rot)} 1 1 ${pair(-0.1 * Math.sin((rot * Math.PI) / 180), 0.1 * Math.cos((rot * Math.PI) / 180))}Z`;
+};
+const dot = (x: number, y: number) => `M${pair(x, y)}h0`; // with stroke-linecap: round, a zero-length segment is a dot as wide as the stroke
+/** Group items that share paint into one path each: `key` → concatenated path data. */
+function merged<T>(items: T[], key: (t: T) => string, d: (t: T) => string): [string, string][] {
+  const m = new Map<string, string>();
+  for (const it of items) m.set(key(it), (m.get(key(it)) ?? "") + d(it));
+  return [...m.entries()];
+}
+const bucket = (v: number, levels: number[]) => levels.reduce((a, b) => (Math.abs(b - v) < Math.abs(a - v) ? b : a));
+/** Dry-brush streaks: long hairlines where the brush ran dry and the coat beneath shows (was the second half of #dry). Two stroke weights: [fine, broad]. */
+function streaks(seed: number, n: number, x0: number, x1: number, top: (x: number) => number, bottom: (x: number) => number): [string, string] {
+  const r = rng(seed);
+  const d: [string, string] = ["", ""];
+  for (let i = 0; i < n; i++) {
+    const len = 50 + r() * r() * 460, x = x0 + r() * (x1 - x0) - len / 2, t = top(x + len / 2), b = bottom(x + len / 2), y = t + r() * (b - t), k = r() < 0.72 ? 0 : 1, tilt = (r() - 0.5) * 3;
+    if (b > t) d[k] += `M${Math.round(x)} ${Math.round(y)}l${pair(Math.round(len), tilt)}`;
+  }
+  return d;
+}
+
 // camera: low and close. Sky is a slim band, the shore sweeps gently across the whole frame.
 const HORIZON = 235;
 const D = 380;
 const SHORE: Pt[] = [[-120, 596], [150, 588], [420, 571], [700, 546], [980, 518], [1250, 493], [1500, 474], [1720, 463]];
 const shoreShift = (d: number): Pt[] => SHORE.map(([x, y]) => [x, Math.max(HORIZON + 3, HORIZON + (y - HORIZON) * (1 - d / D))] as Pt);
-const below = (pts: Pt[]) => `${smooth(pts)}L1720 1120L-120 1120Z`;
+const wander = (pts: Pt[], W: (p: Pt) => Pt, step = 30) => spl(dense(pts, step).map(W)); // a smooth line, re-drawn by a slightly unsteady hand
+const below = (pts: Pt[], W?: (p: Pt) => Pt) => `${W ? wander(pts, W) : smooth(pts)}L1720 1120L-120 1120Z`;
 const seaBands = [
-  { cls: "sea1", d: below(shoreShift(262)) },
-  { cls: "sea2", d: below(shoreShift(176)) },
-  { cls: "sea3", d: below(shoreShift(98)) },
-  { cls: "sea4", d: below(shoreShift(40)) },
+  { cls: "sea1", d: below(shoreShift(262), DRYW) },
+  { cls: "sea2", d: below(shoreShift(176), DRYW) },
+  { cls: "sea3", d: below(shoreShift(98), DRYW) },
+  { cls: "sea4", d: below(shoreShift(40), DRYW) },
 ];
-const foamD = below(shoreShift(9));
-const wetD = below(shoreShift(-2));
-const sandD = below(shoreShift(-38));
+const foamD = below(shoreShift(9), WOB);
+const wetD = below(shoreShift(-2), WOB);
+const sandD = below(shoreShift(-38), DRYW);
 // the wave: a foam front + water film drawn on the shoreline; CSS scales the layer about the horizon,
 // which is exactly what shoreShift() does (perspective-correct roll-in)
 const band = (a: number, b: number) => `${smooth([...shoreShift(a), ...shoreShift(b).reverse()])}Z`;
@@ -118,8 +295,11 @@ const washLaceD = smooth(shoreShift(28));
 const washLace2D = smooth(shoreShift(46));
 const sheenD = band(3, -40);
 const swellLines = [smooth(shoreShift(280)), smooth(shoreShift(196)), smooth(shoreShift(118))];
-const foamLine1 = smooth(shoreShift(52));
-const foamLine2 = smooth(shoreShift(92));
+const foamLine1 = poly(dense(shoreShift(52), 14).map(WOBS));
+const foamLine2 = poly(dense(shoreShift(92), 14).map(WOBS));
+// where the brush ran dry: the deep-sea coat shows through the bands, the wet sand through the dry
+const seaStreaks = streaks(71, 210, -100, 1700, (x) => yAt(shoreShift(262), x) + 5, (x) => yAt(SHORE, x) - 8);
+const sandStreaks = streaks(72, 440, -100, 1700, (x) => yAt(shoreShift(-38), x) + 8, () => 1045);
 
 function ridge(seed: number, base: number, amp: number): string {
   const r = rng(seed);
@@ -127,14 +307,14 @@ function ridge(seed: number, base: number, amp: number): string {
   // the far range sinks to a low line where the sun rises (right) and sets (left), so both happen over open water
   const open = (x: number) => 0.14 + 0.86 * Math.max(Math.min(1, Math.max(0, (x - 770) / 100)) * Math.min(1, Math.max(0, (1030 - x) / 80)), Math.min(1, Math.max(0, (560 - x) / 160)), Math.min(1, Math.max(0, (x - 1080) / 100)));
   for (let x = -120; x <= 1720; x += 92) pts.push([x, base - amp * (0.25 + r() * 0.75) * open(x)]);
-  return `${smooth(pts)}L1720 ${HORIZON + 4}L-120 ${HORIZON + 4}Z`;
+  return `${wander(pts, WOB)}L1720 ${HORIZON + 4}L-120 ${HORIZON + 4}Z`;
 }
 const farRidge2 = ridge(11, HORIZON - 6, 40);
 const farRidge1 = ridge(23, HORIZON - 1, 22);
 const HILL_L: Pt[] = [[-120, 176], [-20, 186], [80, 203], [180, 219], [270, 231], [350, 239]];
 const HILL_R: Pt[] = [[1090, 240], [1170, 222], [1250, 197], [1340, 171], [1430, 149], [1520, 153], [1620, 129], [1720, 118]];
-const hillLD = `${smooth(HILL_L)}L350 ${HORIZON + 6}L-120 ${HORIZON + 6}Z`;
-const hillRD = `${smooth(HILL_R)}L1720 ${HORIZON + 8}L1090 ${HORIZON + 6}Z`;
+const hillLD = `${wander(HILL_L, DRYW, 20)}L350 ${HORIZON + 6}L-120 ${HORIZON + 6}Z`;
+const hillRD = `${wander(HILL_R, DRYW, 20)}L1720 ${HORIZON + 8}L1090 ${HORIZON + 6}Z`;
 function hillBlobs(pts: Pt[], base: number, n: number, seed: number, x0: number, x1: number) {
   const r = rng(seed);
   const out: { x: number; y: number; r: number; c: string }[] = [];
@@ -150,6 +330,8 @@ function hillBlobs(pts: Pt[], base: number, n: number, seed: number, x0: number,
   }
   return out;
 }
+// (dry-brush gaps in the morros show the pale sky behind them)
+const hillStreaks = [streaks(74, 10, -100, 340, (x) => yAt(HILL_L, x) + 6, () => HORIZON + 2), streaks(75, 34, 1120, 1720, (x) => yAt(HILL_R, x) + 6, () => HORIZON + 2)];
 const blobsL = hillBlobs(HILL_L, HORIZON + 2, 26, 5, -100, 330);
 const blobsR = hillBlobs(HILL_R, HORIZON + 2, 80, 9, 1110, 1700);
 const houses = [
@@ -252,7 +434,8 @@ const shells = [[330, 742], [742, 668], [1090, 640], [905, 930], [1420, 610], [5
 
 // restinga in the two bottom corners
 const DUNE: Pt[] = [[-120, 868], [50, 876], [200, 922], [340, 990], [460, 1040], [1140, 1040], [1270, 990], [1410, 930], [1570, 886], [1720, 868]];
-const duneD = `${smooth(DUNE)}L1720 1120L-120 1120Z`;
+const duneD = below(DUNE, DRYW);
+const duneStreaks = streaks(73, 90, -100, 1700, (x) => yAt(DUNE, x) + 8, () => 1045);
 type Blade = { d: string; c: string; w: number; seed?: { x: number; y: number; rot: number } };
 function tuft(x: number, y: number, h: number, n: number, r: () => number): Blade[] {
   const out: Blade[] = [];
@@ -263,7 +446,7 @@ function tuft(x: number, y: number, h: number, n: number, r: () => number): Blad
     const tx = bx + lean * hh * 0.55 + (r() - 0.5) * 8;
     const ty = y - hh;
     const c = ["g1", "g2", "g3", "g2", "straw"][Math.floor(r() * 5)];
-    const b: Blade = { d: `M${f(bx)} ${f(y)}Q${f(bx + lean * hh * 0.08)} ${f(y - hh * 0.62)} ${f(tx)} ${f(ty)}`, c, w: f(1.8 + r() * 2.4) };
+    const b: Blade = { d: `M${pair(bx, y)}q${pair(lean * hh * 0.08, -hh * 0.62)} ${pair(tx - bx, ty - y)}`, c, w: f(1.8 + r() * 2.4) };
     if (c === "straw" && r() < 0.7) b.seed = { x: f(tx), y: f(ty), rot: f(lean * 40) };
     out.push(b);
   }
@@ -321,6 +504,7 @@ const flapA = lerp(TW[1], TW[0], 0.17);
 const flapB = lerp(TW[1], TW[2], 0.32);
 const towelD = `M${pts(TW[0], flapA, flapB, TW[2], TW[3])}Z`;
 const flapD = `M${pts(flapA, flapB, [333.8, 91])}Z`;
+const towelW = wS(towelD); // the towel's cut-paper outline (also what clips its stripes)
 const towelStripes = (
   [[0.03, 0.11, "o-teal"], [0.15, 0.19, "o-gold"], [0.23, 0.33, "o-coral"], [0.37, 0.41, "o-gold"], [0.45, 0.55, "o-teal"], [0.59, 0.63, "o-gold"], [0.67, 0.77, "o-coral"], [0.81, 0.85, "o-gold"], [0.89, 0.97, "o-teal"]] as [number, number, string][]
 ).map(([a, b, c]) => ({ c, d: `M${pts(lerp(TW[0], TW[1], a), lerp(TW[0], TW[1], b), lerp(TW[3], TW[2], b), lerp(TW[3], TW[2], a))}Z` }));
@@ -425,10 +609,77 @@ const btPlayers = [
   { k: "b", shirt: "o-teal", shorts: "o-white", skin: "bt-skin-b", cap: false },
 ];
 
+/* ───────────────────────── land paint & the veil ─────────────────────────
+   The land keeps its daylight colours all day; the hour's "veil" is multiplied over them (night blues, golden-hour amber…).
+   That used to be an SVG filter over every land layer. Now the veiled colours are plain CSS variables: emitted here for the
+   first paint of each hour, and recomputed by the scene script (same multiply, see LAND there) at every palette step. */
+const LAND_PAINT: Record<string, string> = {
+  "--hill": "#4fa45e", "--hill-dk": "#2e7d56", "--hill-lt": "#8fce62",
+  "--sand": "#f8d49a", "--sand-lt": "#ffe8bd", "--sand-dk": "#ecba78", "--wet": "#dcab70", "--dune": "#f3c98a",
+  "--g1": "#3f9657", "--g2": "#7dbd55", "--g3": "#24694a", "--straw": "#e0b958",
+  "--p-wall": "#fbf3df", "--p-roof-a": "#d95a35", "--p-roof-b": "#b2452a", "--p-speck-dk": "#d29f5e", "--p-speck-lt": "#fff3d6",
+  "--p-starfish": "#f0583a", "--p-shell": "#fff6e4", "--p-trunk": "#96704a", "--p-ring": "#6c5138", "--p-seed": "#c99c45",
+};
+const VEILS: Record<string, string> = { dawn: "#d4aebb", morning: "#fff0de", golden: "#ffd9a6", dusk: "#ac8ab4", night: "#4c5f96" }; // = --veil of each [data-tod] box below
+const hex3 = (h: string) => [1, 3, 5].map((i) => parseInt(h.slice(i, i + 2), 16));
+const veiled = (h: string, v: string) => `#${hex3(h).map((c, i) => Math.round((c * hex3(v)[i]) / 255).toString(16).padStart(2, "0")).join("")}`;
+const landCss =
+  `:root{${Object.entries(LAND_PAINT).map(([k, v]) => `${k}:${v}`).join(";")}}` +
+  Object.entries(VEILS).map(([tod, v]) => `[data-tod="${tod}"]{${Object.entries(LAND_PAINT).map(([k, c]) => `${k}:${veiled(c, v)}`).join(";")}}`).join("");
+
+/* ───────────────────────── merged art ─────────────────────────
+   Hundreds of same-paint shapes (stars, speckles, wave strokes, blades…) become a handful of <path>s: stroke widths and
+   opacities are quantised into a few levels and everything that shares a level shares one path. Opacity is always
+   fill-/stroke-opacity (never `opacity`, which would make each shape a compositing group of its own). */
+const leveled = <T,>(items: T[], keyOf: (t: T) => (string | number)[], dOf: (t: T) => string) => merged(items, (t) => keyOf(t).join("|"), dOf).map(([k, d]) => ({ k: k.split("|"), d }));
+const starDots = (list: { x: number; y: number; r: number; o: number }[], rs: number[], os: number[]) => leveled(list, (s) => [bucket(s.r, rs), bucket(s.o, os)], (s) => dot(s.x, s.y));
+const starPaths = starDots(stars, [1, 1.5, 2.1], [0.5, 0.75, 1]);
+const xstarPaths = starDots(moreStars, [0.7, 1.1, 1.6], [0.4, 0.7, 1]);
+const skyStrokePaths = skyStrokes.map((s) => ({ ...s, d: bake(s.d, WOB, 40, true) }));
+const tonePaths = leveled(toneStrokes, (s) => [s.c, bucket(s.w, [3, 5, 7.5, 10.5]), bucket(s.o, [0.3, 0.45])], (s) => bake(s.d, WOBS, 12));
+const wavePaths = waves.map((half) => leveled(half, (s) => [bucket(s.w, [1.5, 2.5, 3.5, 4.5]), bucket(s.o, [0.55, 0.75, 0.92])], (s) => s.d));
+const glitPaths = [0, 1].map((k) => leveled(glitter.filter((_, i) => i % 2 === k), (s) => [bucket(s.w, [1.8, 3, 4.2]), bucket(s.o, [0.6, 0.82])], (s) => s.d));
+const sandStrokePaths = leveled(sandStrokes, (s) => [s.c, bucket(s.w, [8, 12, 17, 21])], (s) => bake(s.d, WOB, 40, true));
+const specklePaths = leveled(speckles, (s) => [s.c, bucket(s.r, [1.2, 1.8, 2.4, 2.9])], (s) => dot(s.x, s.y));
+const shellsD = shells.map((s) => `M${pair(s.x, s.y)}q${pair(9 * s.s, -14 * s.s)} ${pair(18 * s.s, 0)}q${pair(-9 * s.s, 6 * s.s)} ${pair(-18 * s.s, 0)}Z`).join("");
+const bladePaths = (list: Blade[], k: number, ws: number[]) => leveled(list, (b) => [b.c, bucket(b.w * k, ws)], (b) => b.d);
+const seedsD = (list: Blade[], rx: number, ry: number) => list.map((b) => (b.seed ? ovalD(b.seed.x, b.seed.y, ry, rx, b.seed.rot + 90) : "")).join("");
+const grassPaths = grass.map((g) => ({ blades: bladePaths(g, 1, [2.2, 3, 3.8]), seeds: seedsD(g, 2.6, 7) }));
+const fgPaths = fg.map((g) => ({ blades: bladePaths(g, 1.5, [3.3, 4.5, 5.7]), seeds: seedsD(g, 3.4, 10) }));
+// hill blobs keep their painting order (they overlap): only neighbours of the same green share a path
+const blobRuns = (list: { x: number; y: number; r: number; c: string }[]) =>
+  list.reduce<{ c: string; d: string }[]>((out, b) => {
+    const last = out[out.length - 1];
+    if (last && last.c === b.c) last.d += blob(b.x, b.y, b.r, WOBS);
+    else out.push({ c: b.c, d: blob(b.x, b.y, b.r, WOBS) });
+    return out;
+  }, []);
+const houseWalls = allHouses.map((h) => rectD(h.x, h.y, h.w, 9)).join("");
+const houseRoofs = merged(allHouses, (h) => h.c, (h) => `M${h.x - 2} ${h.y}L${h.x + h.w / 2} ${h.y - 7}L${h.x + h.w + 2} ${h.y}Z`);
+const wetBlotsD = wetBlots.map((b) => ovalD(b.x, b.y, b.rx, b.ry)).join("");
+const puddlesD = puddles.map((u) => ovalD(u.x, u.y, u.rx, u.ry)).join("");
+const puddleHiD = puddles.map((u) => `M${f(u.x - u.rx * 0.5)} ${f(u.y - u.ry * 0.25)}h${f(u.rx * 0.6)}`).join("");
+// a cloud: its puffs ride the slow field as whole circles (at that wavelength a displaced outline is a displaced circle), one path per tone
+const cloudArt = allClouds.map((c) => {
+  const at = (x: number, y: number, r: number) => { const [wx, wy] = WOB([c.cx + x, c.cy + y]); return circD(wx, wy, r); };
+  return {
+    key: c.key,
+    clip: `M${c.cx - c.w} ${c.cy - 1200}H${c.cx + c.w}V${c.cy + 7}${wander([[c.cx + c.w, c.cy + 7], [c.cx, c.cy + 7], [c.cx - c.w, c.cy + 7]], WOB, 40).replace(/^M[^q]+/, "")}Z`,
+    shade: rectD(f(c.cx - c.w / 2), f(c.cy - c.h * 0.3), c.w, f(c.h * 0.4), f(c.h * 0.15)) + c.puffs.map((p) => at(p.x, p.y, p.r)).join(""),
+    body: c.puffs.map((p) => at(p.x - c.h * 0.05, p.y - c.h * 0.11, p.r * 0.9)).join(""),
+    hi: c.puffs.filter((_, i) => i % 3 === 1).map((p) => at(p.x - p.r * 0.3, p.y - p.r * 0.42, p.r * 0.42)).join(""),
+  };
+});
+
 const VB = { viewBox: "0 0 1600 1000", preserveAspectRatio: "xMidYMid slice", focusable: "false" } as const;
+// a strip: a viewport-wide SVG that only covers painting rows y0…y1 (placed by CSS from --y0/--yh; "slice" keeps the painting's scale and centring)
+const strip = (y0: number, y1: number) => ({ viewBox: `0 ${y0} 1600 ${y1 - y0}`, preserveAspectRatio: "xMidYMid slice", focusable: "false", style: `--y0:${y0};--yh:${y1 - y0}` });
+// the dune grass only lives in the two bottom corners: one small sprite each (grass[0] is the left clump, grass[1] the right)
+const GRASS_BOX = [{ ...box(-60, 740, 470, 305), top: 740 }, { ...box(1160, 740, 500, 305), top: 740 }];
 ---
 
 <script is:inline type="application/json" id="jb-strings" set:html={clientStrings} />
+<style is:inline set:html={landCss}></style>
 <!-- "lite": phones, tablets and narrow windows get the cheap scene (see html.is-lite in the styles; the scene script keeps the class in sync) -->
 <script is:inline>
   document.documentElement.classList.toggle("is-lite", matchMedia("(max-width: 1100px), (pointer: coarse)").matches);
@@ -437,26 +688,7 @@ const VB = { viewBox: "0 0 1600 1000", preserveAspectRatio: "xMidYMid slice", fo
   <!-- ░░ paint box: every layer of the scene lives here once and is <use>d ░░ -->
   <svg class="jb-paintbox" width="0" height="0" aria-hidden="true" focusable="false">
     <defs>
-      <filter id="wob" x="-5%" y="-5%" width="110%" height="110%">
-        <feTurbulence type="fractalNoise" baseFrequency="0.011 0.016" numOctaves="2" seed="4" result="n"></feTurbulence>
-        <feDisplacementMap in="SourceGraphic" in2="n" scale="12" xChannelSelector="R" yChannelSelector="G"></feDisplacementMap>
-      </filter>
-      <filter id="wobS" x="-5%" y="-5%" width="110%" height="110%">
-        <feTurbulence type="fractalNoise" baseFrequency="0.045" numOctaves="2" seed="9" result="n"></feTurbulence>
-        <feDisplacementMap in="SourceGraphic" in2="n" scale="5" xChannelSelector="R" yChannelSelector="G"></feDisplacementMap>
-      </filter>
-      <filter id="dry" x="-5%" y="-5%" width="110%" height="110%">
-        <feTurbulence type="fractalNoise" baseFrequency="0.012 0.018" numOctaves="2" seed="2" result="n"></feTurbulence>
-        <feDisplacementMap in="SourceGraphic" in2="n" scale="10" xChannelSelector="R" yChannelSelector="G" result="w"></feDisplacementMap>
-        <feTurbulence type="fractalNoise" baseFrequency="0.006 0.42" numOctaves="2" seed="7" result="s"></feTurbulence>
-        <feColorMatrix in="s" type="matrix" values="0 0 0 0 0  0 0 0 0 0  0 0 0 0 0  9 0 0 0 -5.7" result="holes"></feColorMatrix>
-        <feComposite in="w" in2="holes" operator="out"></feComposite>
-      </filter>
-      <filter id="veil" x="0" y="0" width="100%" height="100%" color-interpolation-filters="sRGB">
-        <feFlood class="veil-flood" result="fl"></feFlood>
-        <feBlend in="SourceGraphic" in2="fl" mode="multiply" result="b"></feBlend>
-        <feComposite in="b" in2="SourceGraphic" operator="in"></feComposite>
-      </filter>
+      <!-- (no filters: the hand-cut wobble and the dry-brush streaks are baked into the geometry — see "baked wobble" in the frontmatter) -->
       <linearGradient id="skyGrad" x1="0" y1="0" x2="0" y2="1">
         <stop offset="0" class="st-sky0"></stop>
         <stop offset="0.42" class="st-sky1"></stop>
@@ -467,22 +699,20 @@ const VB = { viewBox: "0 0 1600 1000", preserveAspectRatio: "xMidYMid slice", fo
         <stop offset="0" class="st-halo" stop-opacity="0.75"></stop>
         <stop offset="1" class="st-halo" stop-opacity="0"></stop>
       </radialGradient>
-      <clipPath id="flat"><rect x="-1200" y="-1200" width="2400" height="1207"></rect></clipPath>
-      <clipPath id="towelClip"><path d={towelD}></path></clipPath>
+      <clipPath id="towelClip"><path d={towelW}></path></clipPath>
       <clipPath id="ballClip"><circle r="44"></circle></clipPath>
 
       <g id="L-sky">
         <rect x="-120" y="-120" width="1840" height="375" fill="url(#skyGrad)"></rect>
-        <g filter="url(#wob)" class="sky-strokes">
-          {skyStrokes.map((s) => <path d={s.d} stroke-width={s.w} opacity={s.o}></path>)}
-        </g>
-        <g class="stars">{stars.map((s) => <circle cx={s.x} cy={s.y} r={s.r} opacity={s.o}></circle>)}</g>
+        <g class="sky-strokes">{skyStrokePaths.map((s) => <path d={s.d} stroke-width={s.w} stroke-opacity={s.o}></path>)}</g>
+        <g class="stars">{starPaths.map((s) => <path d={s.d} stroke-width={f(Number(s.k[0]) * 2)} style={`--o:${s.k[1]}`}></path>)}</g>
+        <g class="stars xstars">{xstarPaths.map((s) => <path d={s.d} stroke-width={f(Number(s.k[0]) * 2)} style={`--o:${s.k[1]}`}></path>)}</g>
       </g>
       <g id="L-sunNojs">
         <circle cx={SUN_X} cy="96" r="140" fill="url(#halo)"></circle>
         <use href="#A-sun" x={SUN_X} y="96"></use>
       </g>
-      <circle id="A-sun" class="sun" r="40" filter="url(#wobS)"></circle>
+      <path id="A-sun" class="sun" d={blob(0, 0, 40, WOBS, 10)}></path>
       <clipPath id="moonClip"><path id="jb-moon-clip" d="M0 -30A30 30 0 0 1 0 30A30 30 0 0 1 0 -30Z"></path></clipPath>
       <g id="A-moon">
         <circle class="moon-dark" r="30"></circle>
@@ -491,39 +721,30 @@ const VB = { viewBox: "0 0 1600 1000", preserveAspectRatio: "xMidYMid slice", fo
       </g>
 
       {
-        allClouds.map((c) => (
-          <g id={`A-${c.key}`} transform={`translate(${c.cx} ${c.cy})`} filter="url(#wob)">
-            <g clip-path="url(#flat)">
-              <g class="c-shade">
-                <rect x={-c.w / 2} y={-c.h * 0.3} width={c.w} height={c.h * 0.4} rx={c.h * 0.15} />
-                {c.puffs.map((p) => <circle cx={p.x} cy={p.y} r={p.r} />)}
-              </g>
-              <g class="c-body">
-                {c.puffs.map((p) => <circle cx={f(p.x - c.h * 0.05)} cy={f(p.y - c.h * 0.11)} r={f(p.r * 0.9)} />)}
-              </g>
-              <g class="c-hi">
-                {c.puffs.filter((_, i) => i % 3 === 1).map((p) => <circle cx={f(p.x - p.r * 0.3)} cy={f(p.y - p.r * 0.42)} r={f(p.r * 0.42)} />)}
-              </g>
+        cloudArt.map((c) => (
+          <>
+            <clipPath id={`K-${c.key}`}><path d={c.clip}></path></clipPath>
+            <g id={`A-${c.key}`} clip-path={`url(#K-${c.key})`}>
+              <path class="c-shade" d={c.shade}></path>
+              <path class="c-body" d={c.body}></path>
+              <path class="c-hi" d={c.hi}></path>
             </g>
-          </g>
+          </>
         ))
       }
       <g id="L-cloudsFar" class="clouds far">{cloudsFar.map((_, i) => <use href={`#A-cf${i}`}></use>)}</g>
       <g id="L-cloudsNear" class="clouds">{cloudsNear.map((_, i) => <use href={`#A-cn${i}`}></use>)}</g>
-      <g id="L-xstars" class="xstars">{moreStars.map((s) => <circle cx={s.x} cy={s.y} r={s.r} opacity={s.o}></circle>)}</g>
 
       <g id="L-sea">
-        <path class="far2" d={farRidge2} filter="url(#wob)"></path>
-        <path class="far1" d={farRidge1} filter="url(#wob)"></path>
+        <path class="far2" d={farRidge2}></path>
+        <path class="far1" d={farRidge1}></path>
         <rect class="sea0" x="-120" y={HORIZON} width="1840" height="560"></rect>
-        <g filter="url(#dry)">{seaBands.map((b) => <path class={b.cls} d={b.d}></path>)}</g>
-        <g class="tones" filter="url(#wobS)">
-          {toneStrokes.map((s) => <path class={s.c} d={s.d} stroke-width={s.w} opacity={s.o}></path>)}
-        </g>
-        <path class="foam" d={foamD} filter="url(#wob)"></path>
+        {seaBands.map((b) => <path class={b.cls} d={b.d}></path>)}
+        {seaStreaks.map((d, k) => <path class="dry dry-sea" d={d} stroke-width={k ? 1.4 : 0.7}></path>)}
+        <g class="tones">{tonePaths.map((s) => <path class={s.k[0]} d={s.d} stroke-width={s.k[1]} stroke-opacity={s.k[2]}></path>)}</g>
+        <path class="foam" d={foamD}></path>
       </g>
-      <g id="L-glitA" class="glitter">{glitter.filter((_, i) => i % 2 === 0).map((s) => <path d={s.d} stroke-width={s.w} opacity={s.o}></path>)}</g>
-      <g id="L-glitB" class="glitter">{glitter.filter((_, i) => i % 2 === 1).map((s) => <path d={s.d} stroke-width={s.w} opacity={s.o}></path>)}</g>
+      {glitPaths.map((half, k) => <g id={k === 0 ? "L-glitA" : "L-glitB"} class="glitter">{half.map((s) => <path d={s.d} stroke-width={s.k[0]} stroke-opacity={s.k[1]}></path>)}</g>)}
       <g id="L-swell" class="swell">{swellLines.map((d, i) => <path d={d} stroke-width={3 + i * 3}></path>)}</g>
       <g id="L-wash" class="wash">
         <path class="wash-film" d={washFilmD}></path>
@@ -533,83 +754,52 @@ const VB = { viewBox: "0 0 1600 1000", preserveAspectRatio: "xMidYMid slice", fo
       </g>
       <g id="L-sheen"><path class="sheen" d={sheenD}></path></g>
       {
-        [0, 1].map((k) => (
+        wavePaths.map((half, k) => (
           <g id={k === 0 ? "L-wavesA" : "L-wavesB"} class="waves">
-            {waves[k].map((s) => <path d={s.d} stroke-width={s.w} opacity={s.o}></path>)}
-            <path class="lace" d={k === 0 ? foamLine1 : foamLine2} stroke-dasharray={k === 0 ? "46 18 90 30 24 40" : "70 34 28 22 120 46"} filter="url(#wobS)"></path>
+            {half.map((s) => <path d={s.d} stroke-width={s.k[0]} stroke-opacity={s.k[1]}></path>)}
+            <path class="lace" d={k === 0 ? foamLine1 : foamLine2} stroke-dasharray={k === 0 ? "46 18 90 30 24 40" : "70 34 28 22 120 46"}></path>
           </g>
         ))
       }
 
       <g id="L-hills">
-        <path class="refl" d={`M1090 ${HORIZON + 5}L1720 ${HORIZON + 5}L1720 ${HORIZON + 44}Q1500 ${HORIZON + 50} 1300 ${HORIZON + 30}Q1170 ${HORIZON + 20} 1090 ${HORIZON + 5}Z`} filter="url(#wob)"></path>
-        <g filter="url(#dry)"><path class="h-md" d={hillLD}></path></g>
-        <g filter="url(#wobS)">{blobsL.map((b) => <circle class={b.c} cx={b.x} cy={b.y} r={b.r}></circle>)}</g>
-        <g filter="url(#dry)"><path class="h-md" d={hillRD}></path></g>
-        <g filter="url(#wobS)">{blobsR.map((b) => <circle class={b.c} cx={b.x} cy={b.y} r={b.r}></circle>)}</g>
-        <g class="houses">
-          {allHouses.map((h) => (
-            <g transform={`translate(${h.x} ${h.y})`}>
-              <rect class="wall" x="0" y="0" width={h.w} height="9"></rect>
-              <path class={h.c} d={`M-2 0L${h.w / 2} -7L${h.w + 2} 0Z`}></path>
-            </g>
-          ))}
-        </g>
+        <path class="refl" d={bake(`M1090 ${HORIZON + 5}L1720 ${HORIZON + 5}L1720 ${HORIZON + 44}Q1500 ${HORIZON + 50} 1300 ${HORIZON + 30}Q1170 ${HORIZON + 20} 1090 ${HORIZON + 5}Z`, WOB, 30, true)}></path>
+        <path class="h-md" d={hillLD}></path>
+        {hillStreaks[0].map((d, k) => <path class="dry dry-hill" d={d} stroke-width={k ? 1.6 : 0.8}></path>)}
+        {blobRuns(blobsL).map((b) => <path class={b.c} d={b.d}></path>)}
+        <path class="h-md" d={hillRD}></path>
+        {hillStreaks[1].map((d, k) => <path class="dry dry-hill" d={d} stroke-width={k ? 1.6 : 0.8}></path>)}
+        {blobRuns(blobsR).map((b) => <path class={b.c} d={b.d}></path>)}
+        <path class="wall" d={houseWalls}></path>
+        {houseRoofs.map(([c, d]) => <path class={c} d={d}></path>)}
       </g>
       <g id="L-land">
-        <path class="wet" d={wetD} filter="url(#wob)"></path>
-        <g filter="url(#dry)"><path class="sand" d={sandD}></path></g>
-        <g class="sand-strokes" filter="url(#wob)">{sandStrokes.map((s) => <path class={s.c} d={s.d} stroke-width={s.w}></path>)}</g>
-        <g>{speckles.map((s) => <circle class={s.c} cx={s.x} cy={s.y} r={s.r}></circle>)}</g>
-        <g class="shells">{shells.map((s) => <path transform={`translate(${s.x} ${s.y}) scale(${s.s})`} d="M0 0q9 -14 18 0q-9 6 -18 0Z"></path>)}</g>
-        <g class="starfish" transform="translate(1384 652) rotate(14) scale(1.5)" filter="url(#wobS)">
-          <path d="M4.5 -5.5L17 -5L7 3L10.5 15L0 8L-10.5 15L-7 3L-17 -5L-4.5 -5.5ZM-4.6 -5.2L0 -17L4.6 -5.2Z"></path>
+        <path class="wet" d={wetD}></path>
+        <path class="sand" d={sandD}></path>
+        {sandStreaks.map((d, k) => <path class="dry dry-sand" d={d} stroke-width={k ? 2.1 : 0.9}></path>)}
+        <g class="sand-strokes">{sandStrokePaths.map((s) => <path class={s.k[0]} d={s.d} stroke-width={s.k[1]}></path>)}</g>
+        <g class="speckles">{specklePaths.map((s) => <path class={s.k[0]} d={s.d} stroke-width={f(Number(s.k[1]) * 2)}></path>)}</g>
+        <path class="shells" d={shellsD}></path>
+        <g class="starfish" transform="translate(1384 652) rotate(14) scale(1.5)">
+          <path d={wS("M4.5 -5.5L17 -5L7 3L10.5 15L0 8L-10.5 15L-7 3L-17 -5L-4.5 -5.5ZM-4.6 -5.2L0 -17L4.6 -5.2Z", 5)}></path>
         </g>
       </g>
 
-      <g id="L-veg">
-        <g filter="url(#dry)"><path class="dune" d={duneD}></path></g>
-        <g class="palms" filter="url(#wobS)">
-          {palms.map((p) => (
-            <g>
-              <path class="trunk" d={p.trunk}></path>
-              <g class="rings">{p.rings.map((d) => <path d={d}></path>)}</g>
-            </g>
-          ))}
-        </g>
+      <g id="L-dune"><path class="dune" d={duneD}></path>{duneStreaks.map((d, k) => <path class="dry dry-dune" d={d} stroke-width={k ? 1.4 : 0.7}></path>)}</g>
+      <g id="L-palms" class="palms">
+        {palms.map((p) => <path class="trunk" d={wS(p.trunk, 12)}></path>)}
+        <path class="rings" d={palms.map((p) => p.rings.join("")).join("")}></path>
       </g>
-      {
-        [0, 1].map((k) => (
-          <g id={k === 0 ? "L-grassA" : "L-grassB"} class="blades">
-            {grass[k].map((b) => (
-              <>
-                <path class={b.c} d={b.d} stroke-width={b.w}></path>
-                {b.seed && <ellipse class="seedhead" cx={b.seed.x} cy={b.seed.y} rx="2.6" ry="7" transform={`rotate(${b.seed.rot} ${b.seed.x} ${b.seed.y})`}></ellipse>}
-              </>
-            ))}
-          </g>
-        ))
-      }
-      {
-        [0, 1].map((k) => (
-          <g id={k === 0 ? "L-fgA" : "L-fgB"} class="blades">
-            {fg[k].map((b) => (
-              <>
-                <path class={b.c} d={b.d} stroke-width={f(b.w * 1.5)}></path>
-                {b.seed && <ellipse class="seedhead" cx={b.seed.x} cy={b.seed.y} rx="3.4" ry="10" transform={`rotate(${b.seed.rot} ${b.seed.x} ${b.seed.y})`}></ellipse>}
-              </>
-            ))}
-          </g>
-        ))
-      }
-      <g id="L-wetBlots" class="wetsand" filter="url(#wob)">{wetBlots.map((b) => <ellipse cx={b.x} cy={b.y} rx={b.rx} ry={b.ry}></ellipse>)}</g>
+      {grassPaths.map((g, k) => <g id={k === 0 ? "L-grassA" : "L-grassB"} class="blades">{g.blades.map((b) => <path class={b.k[0]} d={b.d} stroke-width={b.k[1]}></path>)}<path class="seedhead" d={g.seeds}></path></g>)}
+      {fgPaths.map((g, k) => <g id={k === 0 ? "L-fgA" : "L-fgB"} class="blades">{g.blades.map((b) => <path class={b.k[0]} d={b.d} stroke-width={b.k[1]}></path>)}<path class="seedhead" d={g.seeds}></path></g>)}
+      <g id="L-wetBlots"><path class="wetsand" d={wetBlotsD}></path></g>
       <g id="L-wetFull">
         <path class="wetsand" d={wetFullD}></path>
-        <g class="puddles">{puddles.map((u) => <ellipse cx={u.x} cy={u.y} rx={u.rx} ry={u.ry}></ellipse>)}</g>
-        <g class="puddle-hi">{puddles.map((u) => <path d={`M${f(u.x - u.rx * 0.5)} ${f(u.y - u.ry * 0.25)}h${f(u.rx * 0.6)}`}></path>)}</g>
+        <path class="puddles" d={puddlesD}></path>
+        <path class="puddle-hi" d={puddleHiD}></path>
       </g>
 
-      <!-- art that moves: drawn once here, shown as small sprites (or in the no-JS fallback layer) -->
+      <!-- art that moves: drawn once here, shown as small sprites (or in the no-JS picture) -->
       <g id="A-sail" class="sail" transform="translate(420 -62)"><path d="M572 314l0 -22l13 22Z"></path><path d="M570 314l-9 0l9 -15Z"></path><path class="hullf" d="M556 315h32l-4 5h-24Z"></path></g>
       <g id="A-pennant" transform={`translate(700 ${HORIZON + 40}) scale(.85)`}><path class="pennant" d="M22 -46l13 6l-13 5Z"></path></g>
       <g id="A-kite" class="kite">
@@ -620,102 +810,123 @@ const VB = { viewBox: "0 0 1600 1000", preserveAspectRatio: "xMidYMid slice", fo
         <path class="kite-spray" d="M10 1q6 -5 10 -1M12 3q7 -2 11 2"></path>
       </g>
       <g id="A-boat" class="boat" transform={`translate(700 ${HORIZON + 40}) scale(.85)`}>
-        <g class="boat-refl"><path d="M-40 22h74M-28 30h52M-14 38h30"></path></g>
-        <g filter="url(#wobS)">
-          <path class="hull" d="M-46 -7Q-36 16 -4 16H26Q42 14 50 -10Z"></path>
-          <path class="hull-stripe" d="M-44 -3Q-20 2 47 -5L50 -10L-46 -7Z"></path>
-          <rect class="cabin" x="-10" y="-25" width="24" height="17" rx="2"></rect>
-          <rect class="cabin-win" x="-5" y="-21" width="6" height="6"></rect>
-          <rect class="cabin-win" x="4" y="-21" width="6" height="6"></rect>
-          <path class="mast" d="M22 -9V-46"></path>
-        </g>
+        <path class="boat-refl" d="M-40 22h74M-28 30h52M-14 38h30"></path>
+        <path class="hull" d={wS("M-46 -7Q-36 16 -4 16H26Q42 14 50 -10Z", 8)}></path>
+        <path class="hull-stripe" d={wS("M-44 -3Q-20 2 47 -5L50 -10L-46 -7Z", 8)}></path>
+        <path class="cabin" d={wS(rectD(-10, -25, 24, 17, 2), 8)}></path>
+        <path class="cabin-win" d={wS(rectD(-5, -21, 6, 6) + rectD(4, -21, 6, 6), 8)}></path>
+        <path class="mast" d={wS("M22 -9V-46", 8)}></path>
         <rect class="lamp" x="-5" y="-21" width="6" height="6"></rect>
         <circle class="lamp" cx="22" cy="-47" r="2.6"></circle>
       </g>
       {
         palms.map((p, i) => (
-          <g id={`A-crown${i}`} class="crown" filter="url(#wobS)">
-            {p.fronds.map((fr) => <path class={fr.c} d={fr.d}></path>)}
-            <circle class="coco" cx={p.tx - 6} cy={p.ty + 8} r="7"></circle>
-            <circle class="coco" cx={p.tx + 7} cy={p.ty + 11} r="6.4"></circle>
+          <g id={`A-crown${i}`} class="crown">
+            {p.fronds.map((fr) => <path class={fr.c} d={wS(fr.d, 14)}></path>)}
+            <path class="coco" d={blob(p.tx - 6, p.ty + 8, 7, WOBS) + blob(p.tx + 7, p.ty + 11, 6.4, WOBS)}></path>
           </g>
         ))
       }
     </defs>
   </svg>
 
+  <!-- The scene, bottom → top. Three depth bands (far / mid / near) are the only things the pointer parallax moves.
+       Static art sits in "strips" (viewport-wide SVGs cropped to the rows they cover) that are contiguous in z-order, so each
+       run of them shares one texture; whatever animates is a small sprite or a strip no taller than its content. -->
   <div class="jb-scene" aria-hidden="true" data-shore={JSON.stringify(SHORE)}>
-    <svg class="jb-layer i-sky" data-d="0.15" {...VB}><use href="#L-sky"></use></svg>
-    <svg class="jb-layer jb-nojs" {...VB}><use href="#L-sunNojs"></use></svg>
-    <svg class="jb-layer i-sky jb-xstars" data-d="0.15" {...VB}><use href="#L-xstars"></use></svg>
-    <div class="jb-stage jb-st-sky" data-d="0.15">
-      {twinklers.map((t) => <i class="jb-twk" style={`left:${t.x}px;top:${t.y}px;width:${t.s}px;height:${t.s}px;animation-delay:${t.delay}s`}></i>)}
-      <i class="jb-shoot"></i>
-    </div>
-    <!-- the sun and the moon ride a real arc (sunrise → sunset → sunrise); the sea layer hides them below the horizon -->
-    <div class="jb-stage jb-st-lum i-sky" data-d="0.15">
-      <i class="jb-glow"></i>
-      <div class="jb-sun">
-        <i class="jb-halo"></i>
-        <i class="jb-rays"></i>
-        <svg class="jb-sun-disc" viewBox="-50 -50 100 100" focusable="false"><use href="#A-sun"></use></svg>
-      </div>
-      <div class="jb-moon">
-        <i class="jb-halo jb-halo-moon"></i>
-        <svg viewBox="-38 -38 76 76" focusable="false"><use href="#A-moon"></use></svg>
-      </div>
-    </div>
-    <svg class="jb-layer jb-nojs" {...VB}><use href="#L-cloudsFar"></use><use href="#L-cloudsNear"></use></svg>
-    <div class="jb-stage i-cloud" data-d="0.22">
-      <i class="jb-deck jb-deck-back" style={`-webkit-mask-image:${deckBack};mask-image:${deckBack}`}></i>
-      {allClouds.filter((c) => c.tier === "far").map((c) => <svg class="jb-spr jb-cloud clouds far" data-tier="far" data-v="0.4" {...cloudBox(c)} focusable="false"><use href={`#A-${c.key}`}></use></svg>)}
-    </div>
-    <div class="jb-stage i-cloud" data-d="0.3">
-      {allClouds.filter((c) => c.tier !== "far").map((c) => <svg class={`jb-spr jb-cloud clouds ${c.tier}`} data-tier={c.tier} data-cy={c.cy} data-v={c.tier === "extra" ? "0.8" : "1"} {...cloudBox(c)} focusable="false"><use href={`#A-${c.key}`}></use></svg>)}
-      <i class="jb-deck jb-deck-front" style={`-webkit-mask-image:${deckFront};mask-image:${deckFront}`}></i>
-      <i class="jb-deck jb-deck-hi jb-not-lite" style={`-webkit-mask-image:${deckHi};mask-image:${deckHi}`}></i>
-    </div>
-    <svg class="jb-layer i-sea i-wipe" data-d="0.45" {...VB}><use href="#L-sea"></use></svg>
-    <svg class="jb-layer i-land jb-veiled" data-d="0.45" {...VB}><use href="#L-hills"></use></svg>
-    <svg class="jb-layer i-sea jb-glit-a" data-d="0.45" {...VB}><use href="#L-glitA"></use></svg>
-    <svg class="jb-layer i-sea jb-glit-b" data-d="0.45" {...VB}><use href="#L-glitB"></use></svg>
-    <svg class="jb-layer i-sea jb-swell jb-not-lite" data-d="0.45" {...VB}><use href="#L-swell"></use></svg>
-    <svg class="jb-layer i-sea jb-shimmer-a" data-d="0.45" {...VB}><use href="#L-wavesA"></use></svg>
-    <svg class="jb-layer i-sea jb-shimmer-b" data-d="0.45" {...VB}><use href="#L-wavesB"></use></svg>
-    <div class="jb-stage i-sea" data-d="0.45">
-      <div class="jb-sparks">{sparks.map((k) => <i class="jb-spark" style={`left:${k.x}px;top:${k.y}px;width:${k.s}px;height:${k.s}px;animation-delay:${k.delay}s;animation-duration:${k.dur}s`}></i>)}</div>
-      {whitecaps.map((w) => <i class="jb-cap" style={`left:${w.x}px;top:${w.y}px;width:${w.w}px;animation-delay:${w.delay}s;animation-duration:${w.dur}s`}></i>)}
-      <svg class="jb-bolt" viewBox="0 0 60 130" focusable="false"><path d="M34 0L22 38L33 42L14 84L25 88L8 130"></path></svg>
-      <div class="jb-sail-go" {...{ style: box(966, 222, 54, 44).style }}>
-        <svg class="jb-spr jb-sail-bob" viewBox={box(966, 222, 54, 44).viewBox} focusable="false"><use href="#A-sail"></use></svg>
-      </div>
-      <div class="jb-kite-go" style={`left:0;top:${HORIZON + 34}px`}>
-        <svg class="jb-kite" viewBox="-64 -84 96 96" focusable="false"><use href="#A-kite"></use></svg>
-      </div>
-      <div class="jb-boat-wrap" style={box(640, HORIZON - 12, 120, 100).style}>
-        <div class="jb-boat-bob">
-          <svg class="jb-spr" viewBox={box(640, HORIZON - 12, 120, 100).viewBox} focusable="false"><use href="#A-boat"></use></svg>
-          <svg class="jb-pennant" viewBox="718.7 234.9 14 11" focusable="false"><use href="#A-pennant"></use></svg>
+    <!-- no script: the whole painting as one still picture -->
+    <svg class="jb-layer jb-nojs" {...VB}>
+      <use href="#L-sky"></use><use href="#L-sunNojs"></use><use href="#L-cloudsFar"></use><use href="#L-cloudsNear"></use>
+      <use href="#L-sea"></use><use href="#L-hills"></use><use href="#L-glitA"></use><use href="#L-glitB"></use><use href="#L-wavesA"></use><use href="#L-wavesB"></use>
+      <use href="#A-sail"></use><use href="#A-boat"></use><use href="#A-pennant"></use>
+      <use href="#L-land"></use><use href="#L-dune"></use><use href="#L-palms"></use>
+      {palms.map((_, i) => <use href={`#A-crown${i}`}></use>)}
+      <use href="#L-grassA"></use><use href="#L-grassB"></use>
+    </svg>
+
+    <!-- ░ far: sky, stars, sun & moon, clouds ░ -->
+    <div class="jb-band jb-band-far" data-d="0.18">
+      <svg class="jb-strip i-sky" {...strip(-40, 258)}><use href="#L-sky"></use></svg>
+      <!-- the sun and the moon ride a real arc (sunrise → sunset → sunrise); the sea strip hides them below the horizon -->
+      <div class="jb-stage jb-st-lum i-sky">
+        <i class="jb-glow"></i>
+        <div class="jb-st-sky">
+          {twinklers.map((t) => <i class="jb-twk" style={`left:${t.x}px;top:${t.y}px;width:${t.s}px;height:${t.s}px;animation-delay:${t.delay}s`}></i>)}
+          <i class="jb-shoot"></i>
+        </div>
+        <div class="jb-sun">
+          <i class="jb-halo"></i>
+          <i class="jb-rays"></i>
+          <svg class="jb-sun-disc" viewBox="-50 -50 100 100" focusable="false"><use href="#A-sun"></use></svg>
+        </div>
+        <div class="jb-moon">
+          <i class="jb-halo jb-halo-moon"></i>
+          <svg viewBox="-38 -38 76 76" focusable="false"><use href="#A-moon"></use></svg>
         </div>
       </div>
-      {ripplesSea.map((r) => <i class="jb-rip" style={`left:${r.x}px;top:${r.y}px;width:${f(r.rx * 2)}px;height:${f(r.rx * 0.6)}px;animation-delay:${r.delay}s`}></i>)}
+      <div class="jb-stage i-cloud">
+        <i class="jb-deck jb-deck-back" style={`-webkit-mask-image:${deckBack};mask-image:${deckBack}`}></i>
+        {allClouds.filter((c) => c.tier === "far").map((c) => <svg class="jb-spr jb-cloud clouds far" data-tier="far" data-v="0.4" {...cloudBox(c)} focusable="false"><use href={`#A-${c.key}`}></use></svg>)}
+        {allClouds.filter((c) => c.tier !== "far").map((c) => <svg class={`jb-spr jb-cloud clouds ${c.tier}`} data-tier={c.tier} data-cy={c.cy} data-v={c.tier === "extra" ? "0.8" : "1"} {...cloudBox(c)} focusable="false"><use href={`#A-${c.key}`}></use></svg>)}
+        <i class="jb-deck jb-deck-front" style={`-webkit-mask-image:${deckFront};mask-image:${deckFront}`}></i>
+        <i class="jb-deck jb-deck-hi jb-not-lite" style={`-webkit-mask-image:${deckHi};mask-image:${deckHi}`}></i>
+      </div>
     </div>
-    <svg class="jb-layer i-land jb-veiled" data-d="0.45" {...VB}><use href="#L-land"></use></svg>
-    <svg class="jb-layer jb-wet-l jb-wet-blots" data-d="0.45" {...VB}><use href="#L-wetBlots"></use></svg>
-    <svg class="jb-layer jb-wet-l jb-wet-full" data-d="0.45" {...VB}><use href="#L-wetFull"></use></svg>
-    <div class="jb-stage jb-st-mist" data-d="0.4">
-      {mists.map((m) => <i class="jb-mist" data-v={m.v} style={`top:${m.y}px;height:${m.h}px;--mo:${m.o}`}></i>)}
-      <i class="jb-heat"></i>
-    </div>
-    <svg class="jb-layer jb-sheen-l jb-sheen-a" data-d="0.45" {...VB}><use href="#L-sheen"></use></svg>
-    <svg class="jb-layer jb-wash-l jb-wash-a" data-d="0.45" {...VB}><use href="#L-wash"></use></svg>
-    <svg class="jb-layer jb-sheen-l jb-sheen-b jb-not-lite" data-d="0.45" {...VB}><use href="#L-sheen"></use></svg>
-    <svg class="jb-layer jb-wash-l jb-wash-b jb-not-lite" data-d="0.45" {...VB}><use href="#L-wash"></use></svg>
-    <svg class="jb-layer jb-wash-l jb-wash-c jb-not-lite" data-d="0.45" {...VB}><use href="#L-wash"></use></svg>
-    <div class="jb-stage jb-st-shade jb-not-lite" data-d="0.45">
-      {cloudShadows.map((c) => <i class="jb-cshade" data-v={c.v} style={`left:${c.x}px;top:${c.y}px;width:${c.w}px;height:${c.h}px`}></i>)}
-    </div>
-    <div class="jb-stage jb-st-shore i-land" data-d="0.45">
+
+    <!-- ░ mid: the sea, the morros, the sand and everything that happens on them ░ -->
+    <div class="jb-band jb-band-mid" data-d="0.45">
+      <!-- static run: base sea, then the hills above it (and below everything that moves on the water) -->
+      <svg class="jb-strip i-sea i-wipe" {...strip(170, 670)}><use href="#L-sea"></use></svg>
+      <svg class="jb-strip i-land" {...strip(90, 300)}><use href="#L-hills"></use></svg>
+      <div class="jb-stage jb-st-win">
+        {windows.map((w) => <i class="jb-win" style={`left:${w.x}px;top:${w.y}px`}></i>)}
+      </div>
+      <!-- the light path: two small glitter sprites that follow the sun (or the moon) along the horizon -->
+      <div class="jb-stage i-sea">
+        <div class="jb-glits" style={`left:${SUN_X - 210}px;top:${HORIZON}px;width:420px;height:275px`}>
+          <svg class="jb-spr jb-glit-a" viewBox={`${SUN_X - 210} ${HORIZON} 420 275`} focusable="false"><use href="#L-glitA"></use></svg>
+          <svg class="jb-spr jb-glit-b" viewBox={`${SUN_X - 210} ${HORIZON} 420 275`} focusable="false"><use href="#L-glitB"></use></svg>
+        </div>
+      </div>
+      <svg class="jb-strip jb-hzo i-sea jb-swell jb-not-lite" {...strip(230, 505)}><use href="#L-swell"></use></svg>
+      <svg class="jb-strip jb-hzo i-sea jb-shimmer-a" {...strip(230, 595)}><use href="#L-wavesA"></use></svg>
+      <svg class="jb-strip jb-hzo i-sea jb-shimmer-b" {...strip(230, 595)}><use href="#L-wavesB"></use></svg>
+      <div class="jb-stage i-sea">
+        <div class="jb-sparks">{sparks.map((k) => <i class="jb-spark" style={`left:${k.x}px;top:${k.y}px;width:${k.s}px;height:${k.s}px;animation-delay:${k.delay}s;animation-duration:${k.dur}s`}></i>)}</div>
+        {whitecaps.map((w) => <i class="jb-cap" style={`left:${w.x}px;top:${w.y}px;width:${w.w}px;animation-delay:${w.delay}s;animation-duration:${w.dur}s`}></i>)}
+        <svg class="jb-bolt" viewBox="0 0 60 130" focusable="false"><path d="M34 0L22 38L33 42L14 84L25 88L8 130"></path></svg>
+        <div class="jb-sail-go" {...{ style: box(966, 222, 54, 44).style }}>
+          <svg class="jb-spr jb-sail-bob" viewBox={box(966, 222, 54, 44).viewBox} focusable="false"><use href="#A-sail"></use></svg>
+        </div>
+        <div class="jb-kite-go" style={`left:0;top:${HORIZON + 34}px`}>
+          <svg class="jb-kite" viewBox="-64 -84 96 96" focusable="false"><use href="#A-kite"></use></svg>
+        </div>
+        <div class="jb-boat-wrap" style={box(640, HORIZON - 12, 120, 100).style}>
+          <div class="jb-boat-bob">
+            <svg class="jb-spr" viewBox={box(640, HORIZON - 12, 120, 100).viewBox} focusable="false"><use href="#A-boat"></use></svg>
+            <svg class="jb-pennant" viewBox="718.7 234.9 14 11" focusable="false"><use href="#A-pennant"></use></svg>
+          </div>
+        </div>
+        {ripplesSea.map((r) => <i class="jb-rip" style={`left:${r.x}px;top:${r.y}px;width:${f(r.rx * 2)}px;height:${f(r.rx * 0.6)}px;animation-delay:${r.delay}s`}></i>)}
+      </div>
+      <!-- static run: the beach (it covers whatever the sea-surface effects push past the waterline) -->
+      <svg class="jb-strip i-land" {...strip(440, 1045)}><use href="#L-land"></use></svg>
+      <svg class="jb-strip jb-wet-l jb-wet-blots" {...strip(440, 1045)}><use href="#L-wetBlots"></use></svg>
+      <svg class="jb-strip jb-wet-l jb-wet-full" {...strip(440, 1045)}><use href="#L-wetFull"></use></svg>
+      <div class="jb-stage jb-st-mist">
+        {mists.map((m) => <i class="jb-mist" data-v={m.v} style={`top:${m.y}px;height:${m.h}px;--mo:${m.o}`}></i>)}
+        <i class="jb-heat"></i>
+      </div>
+      <!-- the wave: strips no taller than the swash zone, scaled about the horizon -->
+      <svg class="jb-strip jb-hzo jb-sheen-l jb-sheen-a" {...strip(455, 645)}><use href="#L-sheen"></use></svg>
+      <svg class="jb-strip jb-hzo jb-wash-l jb-wash-a" {...strip(415, 612)}><use href="#L-wash"></use></svg>
+      <svg class="jb-strip jb-hzo jb-sheen-l jb-sheen-b jb-not-lite" {...strip(455, 645)}><use href="#L-sheen"></use></svg>
+      <svg class="jb-strip jb-hzo jb-wash-l jb-wash-b jb-not-lite" {...strip(415, 612)}><use href="#L-wash"></use></svg>
+      <svg class="jb-strip jb-hzo jb-wash-l jb-wash-c jb-not-lite" {...strip(415, 612)}><use href="#L-wash"></use></svg>
+      <div class="jb-stage jb-st-shade jb-not-lite">
+        {cloudShadows.map((c) => <i class="jb-cshade" data-v={c.v} style={`left:${c.x}px;top:${c.y}px;width:${c.w}px;height:${c.h}px`}></i>)}
+      </div>
+    <div class="jb-stage jb-st-shore i-land">
       <i class="jb-spray"></i>
       {bubbles.map((b) => <i class="jb-bub" style={`left:${b.x}px;top:${b.y}px;width:${b.s}px;height:${b.s}px;animation-delay:${b.delay}s`}></i>)}
       {bioPts.map((b) => <i class="jb-bio" style={`left:${b.x}px;top:${b.y}px;width:${b.s}px;height:${b.s}px;animation-delay:${b.delay}s;animation-duration:${b.dur}s`}></i>)}
@@ -806,29 +1017,29 @@ const VB = { viewBox: "0 0 1600 1000", preserveAspectRatio: "xMidYMid slice", fo
         </svg>
       </div>
     </div>
-    <svg class="jb-layer i-veg jb-veiled" data-d="0.8" {...VB}><use href="#L-veg"></use></svg>
-    <svg class="jb-layer jb-nojs jb-veiled" {...VB}>
-      <use href="#A-sail"></use><use href="#A-boat"></use><use href="#A-pennant"></use>
-      {palms.map((_, i) => <use href={`#A-crown${i}`}></use>)}
-    </svg>
-    <div class="jb-stage i-veg" data-d="0.8">
-      {palms.map((p, i) => <svg class={`jb-spr jb-crown jb-crown-${i}`} {...crownBox(p)} focusable="false"><use href={`#A-crown${i}`}></use></svg>)}
     </div>
-    <svg class="jb-layer i-grass jb-veiled jb-sway-a" data-d="0.8" {...VB}><use href="#L-grassA"></use></svg>
-    <svg class="jb-layer i-grass i-late jb-veiled jb-sway-b" data-d="0.8" {...VB}><use href="#L-grassB"></use></svg>
-    <div class="jb-stage jb-st-win" data-d="0.45">
-      {windows.map((w) => <i class="jb-win" style={`left:${w.x}px;top:${w.y}px`}></i>)}
-    </div>
-    <div class="jb-stage jb-st-fly" data-d="0.8">
-      {fireflies.map((k) => <i class={`jb-ff jb-ff-${k.k}`} style={`left:${k.x}px;top:${k.y}px;animation-delay:${k.delay}s;animation-duration:${k.dur}s`}></i>)}
-    </div>
-    <div class="jb-stage jb-st-air" data-d="0.6">
-      {[0, 1, 2, 3].map(() => (
-        <svg class="jb-bird" viewBox="-16 -12 32 22" focusable="false">
-          <path class="wing-a" d="M-13 -1q6 -10 13 0q7 -10 13 0"></path>
-          <path class="wing-b" d="M-13 -5q7 3 13 4q6 -1 13 -4"></path>
-        </svg>
-      ))}
+
+    <!-- ░ near: the dune, the palms, the restinga grass in the corners, and whatever flies past the camera ░ -->
+    <div class="jb-band jb-band-near" data-d="0.8">
+      <svg class="jb-strip i-veg" {...strip(850, 1045)}><use href="#L-dune"></use></svg>
+      <div class="jb-stage i-veg">
+        <svg class="jb-spr" {...box(1455, 440, 205, 605)} focusable="false"><use href="#L-palms"></use></svg>
+        {palms.map((p, i) => <svg class={`jb-spr jb-crown jb-crown-${i}`} {...crownBox(p)} focusable="false"><use href={`#A-crown${i}`}></use></svg>)}
+      </div>
+      <div class="jb-stage">
+        {GRASS_BOX.map((b, k) => <svg class={`jb-spr jb-grass i-grass ${k ? "i-late jb-sway-b" : "jb-sway-a"}`} viewBox={b.viewBox} style={`${b.style};--top:${b.top}`} focusable="false"><use href={k ? "#L-grassB" : "#L-grassA"}></use></svg>)}
+      </div>
+      <div class="jb-stage jb-st-fly">
+        {fireflies.map((k) => <i class={`jb-ff jb-ff-${k.k}`} style={`left:${k.x}px;top:${k.y}px;animation-delay:${k.delay}s;animation-duration:${k.dur}s`}></i>)}
+      </div>
+      <div class="jb-stage jb-st-air">
+        {[0, 1, 2, 3].map(() => (
+          <svg class="jb-bird" viewBox="-16 -12 32 22" focusable="false">
+            <path class="wing-a" d="M-13 -1q6 -10 13 0q7 -10 13 0"></path>
+            <path class="wing-b" d="M-13 -5q7 3 13 4q6 -1 13 -4"></path>
+          </svg>
+        ))}
+      </div>
     </div>
     <div class="jb-rainbox">
       <i class="jb-rainfall jb-rain-far jb-not-lite"></i>
@@ -868,46 +1079,46 @@ const VB = { viewBox: "0 0 1600 1000", preserveAspectRatio: "xMidYMid slice", fo
         <span class="jb-art">
           <svg class="jb-idle" viewBox="0 0 400 230" aria-hidden="true" focusable="false">
             <path class="o-shadow" d="M10 204L398 184L392 176L18 196Z"></path>
-            <g filter="url(#wobS)">
-              <path class="o-cream" d={towelD}></path>
-              <g clip-path="url(#towelClip)">{towelStripes.map((s) => <path class={s.c} d={s.d}></path>)}</g>
-              <path class="o-fringe" d={fringe.join("")}></path>
-              <path class="o-fold" d={flapD}></path>
+            <g>
+              <path class="o-cream" d={towelW}></path>
+              <g clip-path="url(#towelClip)">{towelStripes.map((s) => <path class={s.c} d={wS(s.d)}></path>)}</g>
+              <path class="o-fringe" d={wS(fringe.join(""))}></path>
+              <path class="o-fold" d={wS(flapD)}></path>
             </g>
-            <g class="o-pb"><g transform="translate(118 84) rotate(-13)" filter="url(#wobS)">
-              <path class="o-shadow" d="M4 70h100l6 8h-100Z"></path>
-              <rect class="o-pages" x="3" y="5" width="104" height="72" rx="3"></rect>
-              <rect class="o-navy" x="0" y="0" width="104" height="70" rx="3"></rect>
-              <rect class="o-cream" x="12" y="12" width="50" height="16"></rect>
-              <circle class="o-gold" cx="78" cy="45" r="14"></circle>
-              <path class="o-line lt" d="M12 40h40M12 50h28"></path>
-              <path class="o-pages" d="M104 3V34L66 0H101Q104 0 104 3Z"></path>
-              <path class="o-line" d="M80 8l18 16M88 7l11 10"></path>
-              <path class="o-mark" d="M84 66v18l5 -5l5 5v-18Z"></path>
+            <g class="o-pb"><g transform="translate(118 84) rotate(-13)">
+              <path class="o-shadow" d={wS("M4 70h100l6 8h-100Z")}></path>
+              <path class="o-pages" d={wS(rectD(3, 5, 104, 72, 3))}></path>
+              <path class="o-navy" d={wS(rectD(0, 0, 104, 70, 3))}></path>
+              <path class="o-cream" d={wS(rectD(12, 12, 50, 16))}></path>
+              <path class="o-gold" d={wS(ellD(78, 45, 14))}></path>
+              <path class="o-line lt" d={wS("M12 40h40M12 50h28")}></path>
+              <path class="o-pages" d={wS("M104 3V34L66 0H101Q104 0 104 3Z")}></path>
+              <path class="o-line" d={wS("M80 8l18 16M88 7l11 10")}></path>
+              <path class="o-mark" d={wS("M84 66v18l5 -5l5 5v-18Z")}></path>
             </g></g>
-            <g class="o-cover" filter="url(#wobS)">
-              <path class="o-fold" d="M92 50L250 43L258 126Q182 152 104 148Z"></path>
-              <path class="o-cover-line" d="M100 120Q180 128 254 104M98 92Q176 98 252 78"></path>
-              <path class="o-fringe" d="M104 148l-2 9M124 150l-1 9M146 150l0 9M168 148l1 9M190 145l2 9M212 141l2 9M234 135l3 9M254 128l4 8"></path>
+            <g class="o-cover">
+              <path class="o-fold" d={wS("M92 50L250 43L258 126Q182 152 104 148Z")}></path>
+              <path class="o-cover-line" d={wS("M100 120Q180 128 254 104M98 92Q176 98 252 78")}></path>
+              <path class="o-fringe" d={wS("M104 148l-2 9M124 150l-1 9M146 150l0 9M168 148l1 9M190 145l2 9M212 141l2 9M234 135l3 9M254 128l4 8")}></path>
             </g>
             <g transform="translate(262 124) rotate(8)"><g class="o-shades">
               <path d="M0 0h62" fill="none"></path>
               <rect x="-2" y="-2" width="27" height="19" rx="8"></rect>
               <rect x="37" y="-2" width="27" height="19" rx="8"></rect>
             </g></g>
-            <g transform="translate(262 92) rotate(5)"><g class="o-blanket" filter="url(#wobS)">
-              <rect class="o-navy" x="0" y="8" width="98" height="56" rx="7"></rect>
-              <rect class="o-teal" x="2" y="0" width="94" height="52" rx="7"></rect>
-              <path class="o-cream" d="M2 14h94v9h-94ZM2 32h94v5h-94Z"></path>
-              <path class="o-line" d="M6 54q43 5 88 0"></path>
+            <g transform="translate(262 92) rotate(5)"><g class="o-blanket">
+              <path class="o-navy" d={wS(rectD(0, 8, 98, 56, 7))}></path>
+              <path class="o-teal" d={wS(rectD(2, 0, 94, 52, 7))}></path>
+              <path class="o-cream" d={wS("M2 14h94v9h-94ZM2 32h94v5h-94Z")}></path>
+              <path class="o-line" d={wS("M6 54q43 5 88 0")}></path>
             </g></g>
             <ellipse class="o-shadow" cx="40" cy="52" rx="24" ry="5"></ellipse>
-            <g class="o-lantern" transform="translate(20 0)" filter="url(#wobS)">
-              <path class="o-lan-wire" d="M8 16Q17 -6 26 16"></path>
-              <rect class="o-dark" x="5" y="14" width="24" height="7" rx="2"></rect>
-              <rect class="o-glass" x="8" y="21" width="18" height="24" rx="3"></rect>
-              <rect class="o-lan-lit" x="8" y="21" width="18" height="24" rx="3"></rect>
-              <rect class="o-dark" x="4" y="45" width="26" height="8" rx="2"></rect>
+            <g class="o-lantern" transform="translate(20 0)">
+              <path class="o-lan-wire" d={wS("M8 16Q17 -6 26 16")}></path>
+              <path class="o-dark" d={wS(rectD(5, 14, 24, 7, 2))}></path>
+              <path class="o-glass" d={wS(rectD(8, 21, 18, 24, 3))}></path>
+              <path class="o-lan-lit" d={wS(rectD(8, 21, 18, 24, 3))}></path>
+              <path class="o-dark" d={wS(rectD(4, 45, 26, 8, 2))}></path>
             </g>
           </svg>
           <i class="jb-lamp-glow"></i>
@@ -923,28 +1134,28 @@ const VB = { viewBox: "0 0 1600 1000", preserveAspectRatio: "xMidYMid slice", fo
           <svg class="jb-idle" viewBox="0 0 380 400" aria-hidden="true" focusable="false">
             <ellipse class="o-shadow o-sh o-sh-umb" style="--sk:1.5" cx="215" cy="378" rx="150" ry="20"></ellipse>
             <path class="o-pole" d="M196 186L215 374"></path>
-            <g transform="translate(150 322) rotate(-9)" filter="url(#wobS)">
-              <rect class="o-white" x="0" y="0" width="84" height="56" rx="3"></rect>
-              <rect class="o-teal" x="58" y="7" width="19" height="22"></rect>
-              <path class="o-line" d="M9 14h36M9 25h30M9 36h40M9 46h24"></path>
+            <g transform="translate(150 322) rotate(-9)">
+              <path class="o-white" d={wS(rectD(0, 0, 84, 56, 3))}></path>
+              <path class="o-teal" d={wS(rectD(58, 7, 19, 22))}></path>
+              <path class="o-line" d={wS("M9 14h36M9 25h30M9 36h40M9 46h24")}></path>
             </g>
             <g transform="translate(188 200) rotate(-8) scale(1.45)">
-              <g class="o-can-open" filter="url(#wobS)">
-                <path class="o-under" d="M-120 0q120 26 240 0q-120 -18 -240 0Z"></path>
+              <g class="o-can-open">
+                <path class="o-under" d={wS("M-120 0q120 26 240 0q-120 -18 -240 0Z")}></path>
                 {[0, 1, 2, 3, 4, 5].map((i) => {
                   const x0 = -120 + i * 40;
                   const x1 = x0 + 40;
-                  return <path class={i % 2 ? "o-cream" : i === 2 ? "o-gold" : "o-coral"} d={`M0 -92Q${f(x0 * 0.98)} -74 ${x0} 0q20 13 40 0Q${f(x1 * 0.98)} -74 0 -92Z`}></path>;
+                  return <path class={i % 2 ? "o-cream" : i === 2 ? "o-gold" : "o-coral"} d={wS(`M0 -92Q${f(x0 * 0.98)} -74 ${x0} 0q20 13 40 0Q${f(x1 * 0.98)} -74 0 -92Z`)}></path>;
                 })}
-                <circle class="o-teal" cx="0" cy="-95" r="5.5"></circle>
+                <path class="o-teal" d={wS(ellD(0, -95, 5.5))}></path>
               </g>
             </g>
-            <g class="o-can-shut" filter="url(#wobS)">
-              <path class="o-coral" d="M184 60Q166 150 195 252L211 250Q214 150 184 60Z"></path>
-              <path class="o-cream" d="M184 60Q181 150 199 251L205 250.500Q198 150 184 60Z"></path>
-              <path class="o-gold" d="M184 60Q204 150 208 250L211 250Q214 150 184 60Z"></path>
-              <path class="o-strap" d="M190 204l21 -3"></path>
-              <circle class="o-teal" cx="184" cy="57" r="7"></circle>
+            <g class="o-can-shut">
+              <path class="o-coral" d={wS("M184 60Q166 150 195 252L211 250Q214 150 184 60Z")}></path>
+              <path class="o-cream" d={wS("M184 60Q181 150 199 251L205 250.500Q198 150 184 60Z")}></path>
+              <path class="o-gold" d={wS("M184 60Q204 150 208 250L211 250Q214 150 184 60Z")}></path>
+              <path class="o-strap" d={wS("M190 204l21 -3")}></path>
+              <path class="o-teal" d={wS(ellD(184, 57, 7))}></path>
             </g>
           </svg>
           {[[17.3, 235.6], [103.5, 223.6], [189.6, 214], [275.7, 199.4], [361.9, 187.3]].map(([x, y], k) => <i class="jb-drip" style={`left:${f((x / 380) * 100)}%;top:${f((y / 400) * 100)}%;animation-delay:${f(-k * 0.47)}s`}></i>)}
@@ -972,27 +1183,27 @@ const VB = { viewBox: "0 0 1600 1000", preserveAspectRatio: "xMidYMid slice", fo
         <span class="jb-art">
           <svg class="jb-idle" viewBox="0 0 230 230" aria-hidden="true" focusable="false">
             <ellipse class="o-shadow o-sh" style="--sk:0.5" cx="126" cy="208" rx="108" ry="14"></ellipse>
-            <g class="o-cool-open" filter="url(#wobS)">
-              <path class="o-white" d="M42 96L192 96L210 30L60 22Z"></path>
-              <path class="o-teal" d="M50 70L198 72L202 56L54 52Z"></path>
-              <path class="o-dark" d="M28 112L202 112L190 92L42 92Z"></path>
-              <path class="o-green" d="M70 112V58Q70 50 75 46V26H87V46Q92 50 92 58V112Z"></path>
-              <rect class="o-gold" x="74" y="22" width="14" height="7" rx="2"></rect>
-              <path class="o-amber" d="M102 112V70Q102 62 106 58V42H116V58Q120 62 120 70V112Z"></path>
-              <ellipse class="o-gold" cx="158" cy="98" rx="24" ry="30"></ellipse>
-              <path class="o-line dk" d="M142 84l32 24M174 84l-32 24M150 74l22 18M166 74l-22 18"></path>
-              <path class="o-green" d="M158 70Q150 40 136 34Q152 40 157 56Q156 30 150 18Q164 32 162 56Q168 38 182 32Q170 46 166 70Z"></path>
+            <g class="o-cool-open">
+              <path class="o-white" d={wS("M42 96L192 96L210 30L60 22Z")}></path>
+              <path class="o-teal" d={wS("M50 70L198 72L202 56L54 52Z")}></path>
+              <path class="o-dark" d={wS("M28 112L202 112L190 92L42 92Z")}></path>
+              <path class="o-green" d={wS("M70 112V58Q70 50 75 46V26H87V46Q92 50 92 58V112Z")}></path>
+              <path class="o-gold" d={wS(rectD(74, 22, 14, 7, 2))}></path>
+              <path class="o-amber" d={wS("M102 112V70Q102 62 106 58V42H116V58Q120 62 120 70V112Z")}></path>
+              <path class="o-gold" d={wS(ellD(158, 98, 24, 30))}></path>
+              <path class="o-line dk" d={wS("M142 84l32 24M174 84l-32 24M150 74l22 18M166 74l-22 18")}></path>
+              <path class="o-green" d={wS("M158 70Q150 40 136 34Q152 40 157 56Q156 30 150 18Q164 32 162 56Q168 38 182 32Q170 46 166 70Z")}></path>
             </g>
-            <g filter="url(#wobS)">
-              <path class="o-coral" d="M28 112H202L192 204Q191 210 184 210H46Q39 210 38 204Z"></path>
-              <path class="o-cream" d="M31.5 140H198.5L196.4 160H33.6Z"></path>
+            <g>
+              <path class="o-coral" d={wS("M28 112H202L192 204Q191 210 184 210H46Q39 210 38 204Z")}></path>
+              <path class="o-cream" d={wS("M31.5 140H198.5L196.4 160H33.6Z")}></path>
               <g class="o-cool-lid">
-                <path class="o-white" d="M20 118H210L205 84Q204 76 196 76H34Q26 76 25 84Z"></path>
-                <path class="o-teal" d="M23 98H207L205.800 90H24.200Z"></path>
-                <path class="o-line" d="M22 114H208"></path>
+                <path class="o-white" d={wS("M20 118H210L205 84Q204 76 196 76H34Q26 76 25 84Z")}></path>
+                <path class="o-teal" d={wS("M23 98H207L205.800 90H24.200Z")}></path>
+                <path class="o-line" d={wS("M22 114H208")}></path>
               </g>
-              <rect class="o-white" x="100" y="108" width="30" height="16" rx="3"></rect>
-              <path class="o-handle" d="M20 124Q10 150 24 172M210 124Q220 150 206 172"></path>
+              <path class="o-white" d={wS(rectD(100, 108, 30, 16, 3))}></path>
+              <path class="o-handle" d={wS("M20 124Q10 150 24 172M210 124Q220 150 206 172")}></path>
             </g>
           </svg>
           <i class="jb-sweat"></i>
@@ -1198,8 +1409,8 @@ const VB = { viewBox: "0 0 1600 1000", preserveAspectRatio: "xMidYMid slice", fo
       {[["work", S.work.label], ["about", S.about.label], ["stack", S.stack.label], ["contact", S.contact.label]].map(([id, label]) => <button type="button" data-go={id}>{label}</button>)}
     </nav>
 
-    <svg class="jb-fg jb-sway-a jb-veiled" viewBox="0 0 1600 260" preserveAspectRatio="xMidYMax slice" aria-hidden="true" focusable="false"><use href="#L-fgA"></use></svg>
-    <svg class="jb-fg jb-fg-late jb-sway-b jb-veiled" viewBox="0 0 1600 260" preserveAspectRatio="xMidYMax slice" aria-hidden="true" focusable="false"><use href="#L-fgB"></use></svg>
+    <svg class="jb-fg jb-sway-a" viewBox="-40 0 330 260" preserveAspectRatio="xMinYMax slice" aria-hidden="true" focusable="false"><use href="#L-fgA"></use></svg>
+    <svg class="jb-fg jb-fg-late jb-sway-b" viewBox="1310 0 330 260" preserveAspectRatio="xMaxYMax slice" aria-hidden="true" focusable="false"><use href="#L-fgB"></use></svg>
   </main>
 
 <style is:global>
@@ -1214,6 +1425,7 @@ const VB = { viewBox: "0 0 1600 1000", preserveAspectRatio: "xMidYMid slice", fo
     --mono: "Geist Mono", ui-monospace, monospace;
     --hand: "Caveat", "Bradley Hand", cursive;
     --spring: cubic-bezier(0.3, 1.5, 0.5, 1);
+    --press: cubic-bezier(0.23, 1, 0.32, 1); /* press feedback: in at once (:active), out on the element's own transition */
 
     /* gouache box — "day" */
     --sky-0: #2f9fe0; --sky-1: #6cc3ee; --sky-2: #b5e6ee; --sky-3: #ffeec9;
@@ -1222,16 +1434,12 @@ const VB = { viewBox: "0 0 1600 1000", preserveAspectRatio: "xMidYMid slice", fo
     --far-1: #7fb4c4; --far-2: #a9d0dc;
     --sea-0: #0b7fa6; --sea-1: #0e9db6; --sea-2: #1fbfc0; --sea-3: #5fdccb; --sea-4: #a9eeda; --foam: #fffdf4; --glitter: #fff6cf;
     --veil: #ffffff;
-    --hill: #4fa45e; --hill-dk: #2e7d56; --hill-lt: #8fce62;
-    --sand: #f8d49a; --sand-lt: #ffe8bd; --sand-dk: #ecba78; --wet: #dcab70; --dune: #f3c98a;
-    --g1: #3f9657; --g2: #7dbd55; --g3: #24694a; --straw: #e0b958;
+    /* (the land's paint — hills, sand, grass, houses… — is declared in the frontmatter: LAND_PAINT, with its per-hour veiled variants) */
     --on-sky: #1d1a14; --id-back: rgb(255 250 235 / 0.42); --id-plate: rgb(255 251 240 / 0.62);
     /* sprite paint: the script multiplies these by the current veil so loose objects match the veiled layers */
     --v-cream: #fdf3da; --v-white: #fffdf4; --v-coral: #f0583a; --v-teal: #0fa3b8; --v-gold: #ffc93c; --v-green: #2fa36b; --v-navy: #1d4e89;
     --v-amber: #c9772b; --v-glass: #b6ebe0; --v-cork: #b98654; --v-pages: #efe3c4; --v-fold: #e9d7ae; --v-pole: #fff6e0; --v-under: #b63a27;
     --v-skin-a: #e9ae7e; --v-skin-b: #9c6646; --v-orange: #ff8a2a;
-    /* fixed land paint (the veil filter tints it; lite bakes the veil into these instead — see LAND in the script) */
-    --p-wall: #fbf3df; --p-roof-a: #d95a35; --p-roof-b: #b2452a; --p-speck-dk: #d29f5e; --p-speck-lt: #fff3d6; --p-starfish: #f0583a; --p-shell: #fff6e4; --p-trunk: #96704a; --p-ring: #6c5138; --p-seed: #c99c45;
     --v-dark: #4a3a2a; --v-char: #3a3a3a; --v-brown: #6c5138; --v-shade: #9a7440; --v-crab: #e0502f; --v-hill: #4fa45e; --v-hill-dk: #2e7d56; --v-hill-lt: #8fce62;
   }
   [data-tod="dawn"] {
@@ -1241,7 +1449,7 @@ const VB = { viewBox: "0 0 1600 1000", preserveAspectRatio: "xMidYMid slice", fo
     --far-1: #7a7dab; --far-2: #a498bb;
     --sea-0: #2c5688; --sea-1: #4a7ba3; --sea-2: #8aa6bb; --sea-3: #e0b3b2; --sea-4: #f7cfbd; --foam: #fde6da; --glitter: #ffd5b8;
     --veil: #d4aebb;
-    --on-sky: #fff6e4; --id-back: rgb(30 30 80 / 0.34); --id-plate: rgb(8 12 34 / 0.5);
+    --on-sky: #fff6e4; --id-back: rgb(30 30 80 / 0.34); --id-plate: rgb(8 12 34 / 0.5); --id-solid: #0b1024;
   }
   [data-tod="morning"] {
     --sky-0: #6cb6e2; --sky-1: #b4dcea; --sky-2: #fbe2c8; --sky-3: #ffc3a0;
@@ -1266,7 +1474,7 @@ const VB = { viewBox: "0 0 1600 1000", preserveAspectRatio: "xMidYMid slice", fo
     --far-1: #4f5688; --far-2: #6b6c9c;
     --sea-0: #273a6c; --sea-1: #3d5788; --sea-2: #7c6c9c; --sea-3: #e6957f; --sea-4: #f6b494; --foam: #f8dbd0; --glitter: #ffb98c;
     --veil: #ac8ab4;
-    --on-sky: #fff6e4; --id-back: rgb(24 20 56 / 0.38); --id-plate: rgb(8 12 34 / 0.5);
+    --on-sky: #fff6e4; --id-back: rgb(24 20 56 / 0.38); --id-plate: rgb(8 12 34 / 0.5); --id-solid: #0b1024;
   }
   [data-tod="night"] {
     --sky-0: #0b1230; --sky-1: #131f49; --sky-2: #1f3060; --sky-3: #33507e;
@@ -1275,7 +1483,7 @@ const VB = { viewBox: "0 0 1600 1000", preserveAspectRatio: "xMidYMid slice", fo
     --far-1: #172347; --far-2: #1f2d55;
     --sea-0: #0e2146; --sea-1: #15305a; --sea-2: #1d456c; --sea-3: #2c6a88; --sea-4: #4a8da4; --foam: #a6bdd0; --glitter: #dfe6f5;
     --veil: #4c5f96;
-    --on-sky: #fff6e4; --id-back: rgb(6 10 30 / 0.4); --id-plate: rgb(8 12 34 / 0.5);
+    --on-sky: #fff6e4; --id-back: rgb(6 10 30 / 0.4); --id-plate: rgb(8 12 34 / 0.5); --id-solid: #0b1024;
   }
 
   html { background: #f3cf95; }
@@ -1290,23 +1498,23 @@ const VB = { viewBox: "0 0 1600 1000", preserveAspectRatio: "xMidYMid slice", fo
   .st-sky0 { stop-color: var(--sky-0); } .st-sky1 { stop-color: var(--sky-1); }
   .st-sky2 { stop-color: var(--sky-2); } .st-sky3 { stop-color: var(--sky-3); }
   .st-halo { stop-color: var(--halo); }
-  .veil-flood { flood-color: var(--veil); }
   .sky-strokes path { fill: none; stroke: var(--cloud-hi); stroke-linecap: round; }
-  .stars { fill: #fff; opacity: calc(var(--stars) * (0.25 + 0.75 * var(--clear, 1))); }
+  .stars path { fill: none; stroke: #fff; stroke-linecap: round; stroke-opacity: calc(var(--stars) * (0.25 + 0.75 * var(--clear, 1)) * var(--o)); } /* dots: zero-length round-capped strokes */
+  .xstars path { stroke-opacity: calc(var(--stars) * var(--clear, 0.5) * var(--o)); }
   .sun { fill: var(--sun); }
   .moon-dark { fill: #b9c4e6; opacity: 0.2; } .moon-lit { fill: #fdf8e3; } .moon-mare { fill: #e3dcc0; opacity: 0.75; }
   .kite-line { fill: none; stroke: var(--v-dark); stroke-width: 0.8; opacity: 0.7; } .kite-wing { fill: var(--v-coral); } .kite-body { fill: var(--v-dark); }
   .kite-board { fill: none; stroke: var(--v-gold); stroke-width: 2.6; stroke-linecap: round; } .kite-spray { fill: none; stroke: var(--foam); stroke-width: 1.6; stroke-linecap: round; }
-  .wetsand { fill: #8f6f4a; } .puddles { fill: var(--sky-2); opacity: 0.5; } .puddle-hi path { fill: none; stroke: #fff; stroke-width: 2.5; stroke-linecap: round; opacity: 0.55; }
-  .c-shade { fill: var(--cloud-shade); } .c-body { fill: var(--cloud); } .c-hi { fill: var(--cloud-hi); opacity: 0.85; }
+  .wetsand { fill: #8f6f4a; } .puddles { fill: var(--sky-2); fill-opacity: 0.5; } .puddle-hi { fill: none; stroke: #fff; stroke-width: 2.5; stroke-linecap: round; stroke-opacity: 0.55; }
+  .c-shade { fill: var(--cloud-shade); } .c-body { fill: var(--cloud); } .c-hi { fill: var(--cloud-hi); fill-opacity: 0.85; }
   .far1 { fill: var(--far-1); } .far2 { fill: var(--far-2); }
   .sea0 { fill: var(--sea-0); } .sea1 { fill: var(--sea-1); } .sea2 { fill: var(--sea-2); } .sea3 { fill: var(--sea-3); } .sea4 { fill: var(--sea-4); }
   .foam { fill: var(--foam); }
   .tones path { fill: none; stroke-linecap: round; } .t-dk { stroke: var(--sea-0); } .t-lt { stroke: var(--sea-4); }
   .glitter path { fill: none; stroke: var(--glitter); stroke-linecap: round; }
   .waves path { fill: none; stroke: var(--foam); stroke-linecap: round; }
-  .waves .lace { stroke-width: 4; opacity: 0.85; }
-  .refl { fill: var(--hill-dk); opacity: 0.3; }
+  .waves .lace { stroke-width: 4; stroke-opacity: 0.85; }
+  .refl { fill: var(--hill-dk); fill-opacity: 0.3; }
   .h-md { fill: var(--hill); } .h-dk { fill: var(--hill-dk); } .h-lt { fill: var(--hill-lt); }
   .wall { fill: var(--p-wall); } .roof-a { fill: var(--p-roof-a); } .roof-b { fill: var(--p-roof-b); }
   .sail path { fill: var(--v-cream); } .sail .hullf { fill: var(--v-char); }
@@ -1315,21 +1523,21 @@ const VB = { viewBox: "0 0 1600 1000", preserveAspectRatio: "xMidYMid slice", fo
   .pennant { fill: var(--v-gold); }
   .lamp { fill: #ffd977; opacity: var(--lights); }
   .crown .h-md { fill: var(--v-hill); } .crown .h-dk { fill: var(--v-hill-dk); } .crown .h-lt { fill: var(--v-hill-lt); } .crown .coco { fill: var(--v-brown); }
-  .xstars { fill: #fff; }
-  .swell path { fill: none; stroke: var(--sea-4); stroke-linecap: round; opacity: 0.4; }
-  .wash-film { fill: var(--sea-4); opacity: 0.6; } .wash-foam { fill: var(--foam); }
-  .wash-lace { fill: none; stroke: var(--foam); stroke-width: 3.4; stroke-linecap: round; opacity: 0.8; }
-  .sheen { fill: #8a6230; opacity: 0.5; }
-  .boat-refl path { fill: none; stroke: var(--sea-0); stroke-width: 4; stroke-linecap: round; opacity: 0.45; }
+  /* (static art never uses `opacity`: inside a strip every element with it would be a compositing group of its own; fill-/stroke-opacity paint the same) */
+  .swell path { fill: none; stroke: var(--sea-4); stroke-linecap: round; stroke-opacity: 0.4; }
+  .wash-film { fill: var(--sea-4); fill-opacity: 0.6; } .wash-foam { fill: var(--foam); }
+  .wash-lace { fill: none; stroke: var(--foam); stroke-width: 3.4; stroke-linecap: round; stroke-opacity: 0.8; }
+  .sheen { fill: #8a6230; fill-opacity: 0.5; }
+  .boat-refl { fill: none; stroke: var(--sea-0); stroke-width: 4; stroke-linecap: round; stroke-opacity: 0.45; }
   .wet { fill: var(--wet); } .sand { fill: var(--sand); } .dune { fill: var(--dune); }
-  .sand-strokes path { fill: none; stroke-linecap: round; opacity: 0.5; }
+  .dry { fill: none; stroke-linecap: round; stroke-opacity: 0.8; } .dry-sea { stroke: var(--sea-0); } .dry-sand { stroke: var(--wet); } .dry-dune { stroke: var(--sand); } .dry-hill { stroke: var(--sky-3); } /* the coat beneath, showing through */
+  .sand-strokes path { fill: none; stroke-linecap: round; stroke-opacity: 0.5; }
   .sand-strokes .s-lt { stroke: var(--sand-lt); } .sand-strokes .s-dk { stroke: var(--sand-dk); }
-  circle.s-dk { fill: var(--p-speck-dk); opacity: 0.7; } circle.s-lt { fill: var(--p-speck-lt); opacity: 0.9; }
-  .starfish { fill: var(--p-starfish); } .shells { fill: var(--p-shell); stroke: var(--p-speck-dk); stroke-width: 1.2; }
-  .trunk { fill: var(--p-trunk); } .rings path { fill: none; stroke: var(--p-ring); stroke-width: 1.8; opacity: 0.6; }
-  .blades path { fill: none; stroke-linecap: round; }
+  .speckles path { fill: none; stroke-linecap: round; } .speckles .s-dk { stroke: var(--p-speck-dk); stroke-opacity: 0.7; } .speckles .s-lt { stroke: var(--p-speck-lt); stroke-opacity: 0.9; }
+  .starfish { fill: var(--p-starfish); } .shells { fill: var(--p-shell); stroke: var(--p-speck-dk); stroke-width: 1.5; }
+  .trunk { fill: var(--p-trunk); } .rings { fill: none; stroke: var(--p-ring); stroke-width: 1.8; stroke-opacity: 0.6; }
+  .blades path { fill: none; stroke-linecap: round; } .blades .seedhead { fill: var(--p-seed); }
   .blades .g1 { stroke: var(--g1); } .blades .g2 { stroke: var(--g2); } .blades .g3 { stroke: var(--g3); } .blades .straw { stroke: var(--straw); }
-  .seedhead { fill: var(--p-seed); }
   /* object paint */
   .o-cream { fill: var(--v-cream); } .o-white { fill: var(--v-white); } .o-coral { fill: var(--v-coral); } .o-teal { fill: var(--v-teal); } .o-gold { fill: var(--v-gold); }
   .o-green { fill: var(--v-green); } .o-navy { fill: var(--v-navy); } .o-amber { fill: var(--v-amber); } .o-dark { fill: var(--v-dark); } .o-cork { fill: var(--v-cork); }
@@ -1354,19 +1562,27 @@ const VB = { viewBox: "0 0 1600 1000", preserveAspectRatio: "xMidYMid slice", fo
   html.js .jb-scene { position: fixed; height: 100svh; }
   .jb-layer { position: absolute; inset: -24px; width: calc(100% + 48px); height: calc(100% + 48px); display: block; }
   html.js .jb-nojs { display: none; }
-  .jb-xstars { opacity: calc(var(--stars) * var(--clear, 0.5)); }
+  /* depth bands: the three things the pointer parallax moves (each as one element; promoted only where the parallax can run) */
+  .jb-band { position: absolute; inset: 0 0 auto; height: 0; pointer-events: none; } /* (no box of its own: a promoted band is only as big as what is painted in it) */
+  /* strips: painting rows --y0 … --y0 + --yh, as wide as the screen (+ the 24px parallax margin); same mapping as the stages */
+  .jb-strip { display: none; }
+  html.js .jb-strip { display: block; position: absolute; left: -24px; width: calc(100% + 48px); top: calc(var(--oy, 0px) + var(--y0) * var(--fs, 1) * 1px); height: calc(var(--yh) * var(--fs, 1) * 1px); }
+  .jb-hzo { transform-origin: 50% calc((235 - var(--y0)) * var(--fs, 1) * 1px); } /* sea-surface strips breathe about the horizon */
   .jb-sheen-l, .jb-wash-l { opacity: 0; }
-  .jb-glit-a, .jb-glit-b, .jb-swell, .jb-shimmer-a, .jb-shimmer-b, .jb-wash-l, .jb-sheen-l { transform-origin: 50% var(--hz, 25%); }
-  .jb-wash-a { --amp: calc(0.094 * var(--amp-k, 1)); } .jb-wash-b { --amp: calc(0.05 * var(--amp-k, 1)); } .jb-wash-c { --amp: calc(0.075 * var(--amp-k, 1)); display: none; }
-  [data-storm] .jb-wash-c { display: block; }
+  .jb-wash-a { --amp: calc(0.094 * var(--amp-k, 1)); } .jb-wash-b { --amp: calc(0.05 * var(--amp-k, 1)); } .jb-wash-c { --amp: calc(0.075 * var(--amp-k, 1)); }
+  html:not([data-storm]) .jb-wash-c { display: none; }
 
-  /* stages: a 1600×1000 board laid exactly over the painting; sprites are placed in painting units */
+  /* stages: the origin of a 1600×1000 board laid exactly over the painting; sprites are placed in painting units
+     (the board itself has no size: an empty box would still stretch the texture it is painted into) */
   .jb-stage { display: none; }
-  html.js .jb-stage { display: block; position: absolute; left: 0; top: 0; width: 1600px; height: 1000px; transform-origin: 0 0; transform: translate(var(--ox, 0px), var(--oy, 0px)) scale(var(--fs, 1)); pointer-events: none; }
+  html.js .jb-stage { display: block; position: absolute; left: 0; top: 0; width: 0; height: 0; transform-origin: 0 0; transform: translate(var(--ox, 0px), var(--oy, 0px)) scale(var(--fs, 1)); pointer-events: none; }
   .jb-stage > * { position: absolute; }
   .jb-spr { display: block; overflow: hidden; }
   .jb-cloud { opacity: 0; transition: opacity 2.6s ease; }
-  .jb-st-sky { opacity: calc(var(--stars) * var(--clear, 1)); }
+  .jb-cloud.is-gone { display: none; } /* a cloud that has left costs nothing (the script parks it 3s after it fades) */
+  .jb-st-sky { left: 0; top: 0; opacity: calc(var(--stars) * var(--clear, 1)); }
+  .jb-st-sky > * { position: absolute; }
+  html:not([data-stars]) .jb-st-sky, html:not([data-rays]) .jb-rays, html:not([data-glit]) .jb-glits, html:not([data-glit]) .jb-sparks, html:not([data-tint]) .jb-tint, html:not([data-deck]) .jb-deck { display: none; }
   /* sun, moon, and the glow they leave on the horizon: placed by the script along the day's arc */
   .jb-sun, .jb-moon { left: 0; top: 0; width: 0; height: 0; }
   .jb-sun > *, .jb-moon > * { position: absolute; left: 0; top: 0; translate: -50% -50%; }
@@ -1380,33 +1596,37 @@ const VB = { viewBox: "0 0 1600 1000", preserveAspectRatio: "xMidYMid slice", fo
     background: radial-gradient(closest-side, color-mix(in srgb, var(--sun) 80%, transparent), color-mix(in srgb, var(--halo) 40%, transparent) 45%, transparent); }
   .jb-shoot { width: 110px; height: 2px; border-radius: 2px; background: linear-gradient(90deg, #fff, transparent); rotate: -24deg; opacity: 0; }
   /* the overcast deck: three lumpy bands (CSS masks, so the palette paints them) rolled along by the wind */
-  .jb-deck { left: -800px; width: 3200px; top: -70px; opacity: var(--deck, 0); transition: opacity 0.4s linear; -webkit-mask-size: 800px 100%; mask-size: 800px 100%; -webkit-mask-repeat: repeat-x; mask-repeat: repeat-x; }
+  .jb-deck { left: -800px; width: 2480px; top: -70px; opacity: var(--deck, 0); transition: opacity 0.4s linear; -webkit-mask-size: 800px 100%; mask-size: 800px 100%; -webkit-mask-repeat: repeat-x; mask-repeat: repeat-x; }
   .jb-deck-back { height: 262px; background: linear-gradient(var(--cloud-shade), color-mix(in srgb, var(--cloud-shade) 72%, var(--sky-0))); }
   .jb-deck-front { height: 205px; background: linear-gradient(color-mix(in srgb, var(--cloud) 40%, var(--cloud-shade)), color-mix(in srgb, var(--cloud) 72%, var(--cloud-shade))); }
   .jb-deck-hi { height: 140px; top: -40px; background: color-mix(in srgb, var(--cloud-hi) 70%, var(--cloud-shade)); opacity: calc(var(--deck, 0) * 0.55); }
   .jb-flash { position: absolute; inset: 0; opacity: 0; pointer-events: none; background: linear-gradient(rgb(226 234 255 / 0.95), rgb(226 234 255 / 0.5) 34%, rgb(226 234 255 / 0.16) 70%); }
   .jb-bolt { left: 0; top: 104px; width: 62px; height: 140px; opacity: 0; overflow: visible; }
+  .jb-bolt:not(.is-zap), .jb-flash:not(.is-zap) { visibility: hidden; }
   .jb-bolt path { fill: none; stroke: #f6f8ff; stroke-width: 2.4; stroke-linejoin: round; stroke-linecap: round; }
   .jb-sparks { left: 0; top: 0; width: 0; height: 0; opacity: var(--glit, 1); }
   .jb-spark { position: absolute; margin: -4px 0 0 -4px; background: #fff; clip-path: polygon(50% 0, 60% 40%, 100% 50%, 60% 60%, 50% 100%, 40% 60%, 0 50%, 40% 40%); opacity: 0.85; }
-  .jb-glit-a use, .jb-glit-b use { transform-origin: 870px 235px; transform: translateX(var(--lum-dx, 0px)) scaleX(var(--glit-w, 1)); opacity: var(--glit, 1); }
+  .jb-glits { transform-origin: 210px 0; transform: translateX(var(--lum-dx, 0px)) scaleX(var(--glit-w, 1)); }
+  .jb-glits > svg { position: absolute; inset: 0; width: 100%; height: 100%; }
+  .jb-glits use { opacity: var(--glit, 1); }
   .jb-cap { display: none; height: 3px; border-radius: 2px; background: var(--foam); opacity: 0; }
   [data-caps] .jb-cap { display: block; opacity: 0.6; }
   [data-storm] .jb-cap { height: 4.5px; scale: 1.7 1; }
-  .jb-sail-go, .jb-kite-go { transition: opacity 3s ease; }
+  /* (whatever fades out also goes `visibility: hidden` once it has: an invisible sprite must not keep a texture) */
+  .jb-sail-go, [data-kite] .jb-kite-go { transition: opacity 3s ease; }
   .jb-sail-go > svg { width: 100%; height: 100%; }
-  [data-storm] .jb-sail-go, [data-noboats] .jb-sail-go { opacity: 0; }
-  .jb-kite-go { width: 0; height: 0; opacity: 0; }
-  [data-kite] .jb-kite-go { opacity: 1; }
+  [data-storm] .jb-sail-go, [data-noboats] .jb-sail-go { opacity: 0; visibility: hidden; transition: opacity 3s ease, visibility 0s 3s; }
+  .jb-kite-go { width: 0; height: 0; opacity: 0; visibility: hidden; transition: opacity 3s ease, visibility 0s 3s; }
+  [data-kite] .jb-kite-go { opacity: 1; visibility: visible; }
   .jb-kite { position: absolute; left: -45px; top: -59px; width: 67px; height: 67px; overflow: visible; transform-origin: 66% 88%; }
   .jb-boat-wrap { transition: translate 9s cubic-bezier(0.3, 0, 0.3, 1), opacity 3s ease 1s; }
-  [data-storm] .jb-boat-wrap { translate: -760px 0; opacity: 0; transition: translate 9s cubic-bezier(0.6, 0, 0.9, 0.6), opacity 3s ease 5s; }
+  [data-storm] .jb-boat-wrap { translate: -760px 0; opacity: 0; visibility: hidden; transition: translate 9s cubic-bezier(0.6, 0, 0.9, 0.6), opacity 3s ease 5s, visibility 0s 9s; }
   .jb-boat-bob { position: absolute; inset: 0; } .jb-boat-bob > .jb-spr { width: 100%; height: 100%; }
   .jb-pennant { position: absolute; left: 65.6%; top: 11.9%; width: 11.7%; height: 11%; transform-origin: 0 50%; scale: var(--wdir, 1) 1; }
   [data-fog] .jb-boat-wrap, [data-fog] .jb-sail-go { filter: grayscale(1) brightness(0.62) opacity(0.75); }
   /* rain lands: dark blotches first, then the whole beach, then puddles; it dries much slower than it wets */
-  .jb-wet-l { display: none; mix-blend-mode: multiply; }
-  [data-wet] .jb-wet-l { display: block; }
+  .jb-wet-l { mix-blend-mode: multiply; }
+  html:not([data-wet]) .jb-wet-l { display: none; }
   .jb-wet-blots { opacity: var(--wet-a, 0); } .jb-wet-full { opacity: var(--wet-b, 0); }
   .jb-mist { display: none; left: -900px; width: 3400px; opacity: calc(var(--fog, 0) * var(--mo, 1));
     background: radial-gradient(closest-side, var(--mist-c, #e6ecef), transparent) 0 0 / 900px 100% repeat-x, radial-gradient(closest-side, var(--mist-c, #e6ecef), transparent) 300px 20% / 450px 70% repeat-x, linear-gradient(transparent, color-mix(in srgb, var(--mist-c, #e6ecef) 62%, transparent) 40% 62%, transparent); }
@@ -1422,8 +1642,8 @@ const VB = { viewBox: "0 0 1600 1000", preserveAspectRatio: "xMidYMid slice", fo
   [data-rain] .jb-splash { display: block; }
   .jb-wisp { display: none; left: 0; height: 7px; border-radius: 50%; background: linear-gradient(90deg, transparent, rgb(255 250 232 / 0.95), transparent); box-shadow: 0 4px 5px -1px rgb(150 100 40 / 0.28); opacity: 0; }
   [data-windy] .jb-wisp { display: block; }
-  .jb-gull { left: 0; top: 0; width: 46px; height: 40px; margin: -36px 0 0 -23px; opacity: 0; transition: opacity 0.5s; }
-  .jb-gull.is-out { opacity: 1; }
+  .jb-gull { left: 0; top: 0; width: 46px; height: 40px; margin: -36px 0 0 -23px; opacity: 0; visibility: hidden; transition: opacity 0.5s, visibility 0s 0.5s; }
+  .jb-gull.is-out { opacity: 1; visibility: visible; transition: opacity 0.5s; }
   .jb-gull svg { width: 100%; height: 100%; overflow: visible; }
   .gull-body { fill: var(--v-white); } .gull-wing { fill: #8d99a6; } .gull-beak { fill: var(--v-gold); } .gull-eye { fill: var(--ink); }
   .gull-leg { fill: none; stroke: var(--v-amber); stroke-width: 1.8; stroke-linecap: round; }
@@ -1441,9 +1661,9 @@ const VB = { viewBox: "0 0 1600 1000", preserveAspectRatio: "xMidYMid slice", fo
   .jb-bio { display: none; border-radius: 50%; background: #9ff3e6; box-shadow: 0 0 9px 3px rgb(120 240 225 / 0.7); opacity: 0.8; }
   [data-night] .jb-bio { display: block; }
   .jb-bub { border-radius: 50%; border: 1.5px solid var(--foam); background: rgb(255 255 255 / 0.5); opacity: 0; }
-  .jb-crab { left: 0; top: 0; width: 54px; height: 35px; margin: -18px 0 0 -27px; opacity: 0; }
+  .jb-crab { left: 0; top: 0; width: 54px; height: 35px; margin: -18px 0 0 -27px; opacity: 0; visibility: hidden; }
   .jb-crab svg { width: 100%; height: 100%; transform-origin: 50% 100%; transition: transform 0.22s var(--spring); }
-  .jb-crab.is-out { opacity: 1; }
+  .jb-crab.is-out { opacity: 1; visibility: visible; }
   .jb-crab.is-hid svg { transform: translateY(40%) scaleY(0.05); transition: transform 0.12s ease-in; }
   .crab-body, .crab-pinch { fill: var(--v-crab); } .crab-eye { fill: var(--ink); }
   .crab-legs path, .crab-claw, .crab-eyes { fill: none; stroke: var(--v-crab); stroke-width: 2.6; stroke-linecap: round; stroke-linejoin: round; }
@@ -1451,8 +1671,11 @@ const VB = { viewBox: "0 0 1600 1000", preserveAspectRatio: "xMidYMid slice", fo
   .jb-bird { left: 0; top: 0; width: 36px; height: 25px; margin: -12px 0 0 -18px; opacity: 0; }
   .jb-bird path { fill: none; stroke: var(--ink); stroke-width: 2.2; stroke-linecap: round; stroke-linejoin: round; opacity: 0.72; }
   .jb-bird .wing-b { opacity: 0; }
+  .jb-bird:not(.is-flying) { visibility: hidden; }
   [data-night] .jb-bird path { stroke: #0a1026; }
   .jb-crown { transform-origin: 50% 52%; }
+  /* the corner grass sways about the bottom edge of the screen (--vb, in painting units), as the full-screen layers it replaces did */
+  .jb-grass { transform-origin: 50% calc((var(--vb, 1024) - var(--top)) * 1px); }
   /* rain: a few big tiled streak layers, skewed by the wind (the skew slants both the streaks and their fall) */
   .jb-rainbox { display: none; position: absolute; inset: -300px -260px 0; pointer-events: none; transform: skewX(var(--rain-a, -10deg)); }
   [data-rain] .jb-rainbox { display: block; }
@@ -1463,11 +1686,14 @@ const VB = { viewBox: "0 0 1600 1000", preserveAspectRatio: "xMidYMid slice", fo
   .jb-rain-first { opacity: var(--r-first, 0); background: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='330' height='360'><g stroke='%23f6fbff' stroke-width='2.2' stroke-linecap='round' opacity='.8'><path d='M40 20v30M210 150v32M300 60v28M120 280v30'/></g></svg>"); }
   .jb-tint { position: absolute; inset: 0; background: var(--tint-c, #7f8c99); opacity: var(--tint, 0); transition: opacity 0.4s linear; pointer-events: none; }
   .jb-dimmer { position: absolute; inset: 0; background: #1c2f4a; opacity: 0; pointer-events: none; }
-  .jb-veiled { filter: url(#veil); }
-  .jb-grain { position: absolute; inset: 0; pointer-events: none; mix-blend-mode: multiply; opacity: 0.4;
-    background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='240' height='240'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='2' stitchTiles='stitch'/><feColorMatrix values='0 0 0 0 0.35  0 0 0 0 0.28  0 0 0 0 0.16  0 0 0 0.9 -0.25'/></filter><rect width='240' height='240' filter='url(%23n)'/></svg>"); }
+  /* paper grain. It used to be a warm brown multiplied over the scene (a blend mode = one more full-screen surface); plain black at
+     the matching strength darkens the same way to within 1% per channel, and shares a texture with the other overlays */
+  .jb-grain { position: absolute; inset: 0; pointer-events: none; opacity: 0.4;
+    background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='240' height='240'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='2' stitchTiles='stitch'/><feColorMatrix values='0 0 0 0 0  0 0 0 0 0  0 0 0 0 0  0 0 0 0.66 -0.183'/></filter><rect width='240' height='240' filter='url(%23n)'/></svg>"); }
   .jb-fg { display: none; }
-  html.js .jb-fg { display: block; position: fixed; left: -2%; bottom: -6px; width: 104%; height: 24svh; z-index: 3; pointer-events: none; transform-origin: 50% 100%; }
+  /* the foreground blades hang off the bottom corners of the screen: one small box per corner, at the scale a 104%-wide × 24svh "slice" would have */
+  html.js .jb-fg { --u: max(calc(104vw / 1600), calc(24svh / 260)); display: block; position: fixed; left: calc(50% - 840 * var(--u)); bottom: -6px; width: calc(330 * var(--u)); height: 24svh; z-index: 3; pointer-events: none; transform-origin: 50% 100%; }
+  html.js .jb-fg-late { left: auto; right: calc(50% - 840 * var(--u)); }
 
   /* ── identity: set straight on the sky; palette-aware ink + a soft haze, and a cream chip for the small print ── */
   .jb-world { position: relative; z-index: 1; padding: 60svh 16px 96px; }
@@ -1499,8 +1725,7 @@ const VB = { viewBox: "0 0 1600 1000", preserveAspectRatio: "xMidYMid slice", fo
   .jb-lang span { opacity: 0.5; }
   html[data-og] .jb-lang, html[data-og] .jb-preview, html[data-og] .jb-hint { display: none !important; }
   .jb-hello { position: relative; display: block; padding: 11px 18px; background: var(--cream); color: var(--ink); border: 1.5px solid var(--ink); border-radius: 16px; font: 500 16px/1 var(--serif); font-variation-settings: "SOFT" 100; text-decoration: none; box-shadow: 0 0 0 3px var(--cream), 0 0 0 4.5px var(--ink); transition: transform 0.2s var(--spring), opacity 0.2s, visibility 0.2s; }
-  .jb-hello:hover { transform: translateY(-2px) rotate(-1.5deg); }
-  .jb-hello:active { transform: translateY(1px); }
+  .jb-hello:active { transform: scale(0.97); transition: transform 0.14s var(--press); }
 
   /* ── the four objects ── */
   .jb-objs { z-index: 2; }
@@ -1509,8 +1734,7 @@ const VB = { viewBox: "0 0 1600 1000", preserveAspectRatio: "xMidYMid slice", fo
   .jb-obj:focus-visible { outline: 3px solid #fffdf4; outline-offset: 5px; box-shadow: 0 0 0 11px rgb(35 32 26 / 0.85); border-radius: 18px; }
   .jb-art { display: block; position: relative; transform-origin: 50% 90%; transition: transform 0.4s var(--spring); }
   .jb-art svg { display: block; width: 100%; height: auto; overflow: visible; }
-  .jb-obj:hover .jb-art, .jb-obj:focus-visible .jb-art, .jb-obj[aria-expanded="true"] .jb-art { transform: translateY(-9px) rotate(-2.2deg) scale(1.045); }
-  .jb-obj:active .jb-art { transform: translateY(1px) scale(0.98); }
+  .jb-obj:focus-visible .jb-art, .jb-obj[aria-expanded="true"] .jb-art { transform: translateY(-9px) rotate(-2.2deg) scale(1.045); }
   .jb-idle, .jb-ride { transform-origin: 50% 92%; }
   .jb-tag small { font: 500 0.78em/1 var(--hand); color: #a3391f; }
   .o-mark { fill: var(--v-coral); }
@@ -1546,8 +1770,8 @@ const VB = { viewBox: "0 0 1600 1000", preserveAspectRatio: "xMidYMid slice", fo
   .bt-paddle { fill: var(--v-gold); stroke: var(--v-dark); stroke-width: 0.8; } .bt-paddle.alt { fill: var(--v-white); }
   .bt-ball-c { fill: var(--v-orange); }
   .jb-bt-pool { left: -180px; top: -44px; width: 360px; height: 96px; border-radius: 50%; background: radial-gradient(closest-side, rgb(255 206 120 / 0.5), transparent); opacity: calc(var(--lights, 0) * 0.6); }
-  .jb-bt-pl { width: 60px; height: 72px; opacity: 0; transition: opacity 0.7s ease; }
-  [data-bt="play"] .jb-bt-pl { opacity: 1; }
+  .jb-bt-pl { width: 60px; height: 72px; opacity: 0; visibility: hidden; transition: opacity 0.7s ease, visibility 0s 0.7s; }
+  [data-bt="play"] .jb-bt-pl { opacity: 1; visibility: visible; transition: opacity 0.7s ease; }
   .jb-bt-pl svg { display: block; width: 100%; height: 100%; overflow: visible; }
   .jb-bt-sh { position: absolute; left: 17px; top: 61px; width: 26px; height: 6px; border-radius: 50%; background: var(--v-shade); opacity: var(--sh-o, 0.3); transform: translateX(calc(var(--sh-x, 0.5) * var(--shd, 1) * 15px)) scaleX(calc(var(--sh-l, 1) * var(--sh-l, 1))); }
   .jb-bt-pl-b .jb-bt-sh { --shd: -1; }
@@ -1555,17 +1779,18 @@ const VB = { viewBox: "0 0 1600 1000", preserveAspectRatio: "xMidYMid slice", fo
   path.bt-skin-b { fill: none; stroke: var(--v-skin-b); } circle.bt-skin-b { fill: var(--v-skin-b); }
   .bt-leg, .bt-limb { stroke-width: 3.4; stroke-linecap: round; } .bt-hair { fill: var(--v-dark); }
   .bt-leg, .bt-arm, .bt-body { transform-origin: 0 0; }
-  .jb-bt-ball { width: 7px; height: 7px; margin: -3.5px 0 0 -3.5px; border-radius: 50%; background: var(--v-orange); box-shadow: inset -1.5px -1.5px 0 rgb(80 30 0 / 0.22); opacity: 0; transition: opacity 0.4s ease; }
-  .jb-bt-bsh { width: 10px; height: 3.4px; margin: -1.7px 0 0 -5px; border-radius: 50%; background: var(--v-shade); opacity: 0; transition: opacity 0.4s ease; }
-  [data-bt="play"] .jb-bt-ball.is-on { opacity: 1; } [data-bt="play"] .jb-bt-bsh.is-on { opacity: 0.45; }
+  .jb-bt-ball { width: 7px; height: 7px; margin: -3.5px 0 0 -3.5px; border-radius: 50%; background: var(--v-orange); box-shadow: inset -1.5px -1.5px 0 rgb(80 30 0 / 0.22); opacity: 0; visibility: hidden; transition: opacity 0.4s ease, visibility 0s 0.4s; }
+  .jb-bt-bsh { width: 10px; height: 3.4px; margin: -1.7px 0 0 -5px; border-radius: 50%; background: var(--v-shade); opacity: 0; visibility: hidden; transition: opacity 0.4s ease, visibility 0s 0.4s; }
+  [data-bt="play"] .jb-bt-ball.is-on { opacity: 1; visibility: visible; transition: opacity 0.4s ease; } [data-bt="play"] .jb-bt-bsh.is-on { opacity: 0.45; visibility: visible; transition: opacity 0.4s ease; }
   .jb-bt-pok, .jb-bt-puff { width: 14px; height: 14px; margin: -7px 0 0 -7px; border-radius: 50%; opacity: 0; }
+  .jb-bt-pok:not(.is-go), .jb-bt-puff:not(.is-go) { visibility: hidden; }
   .jb-bt-pok { border: 1.6px solid #fffdf4; } .jb-bt-puff { height: 8px; margin-top: -6px; background: radial-gradient(closest-side, rgb(255 236 196 / 0.95), rgb(236 186 120 / 0.5) 60%, transparent); }
 
   .jb-flap { position: absolute; left: 77.5%; top: 13.04%; width: 20% !important; transform-origin: 48% 45%; }
   .jb-tag { position: absolute; left: 50%; top: calc(100% - 4px); transform: translateX(-50%) rotate(-3deg); padding: 1px 13px 4px; background: var(--cream); color: var(--ink); border: 1.5px solid var(--ink); border-radius: 11px 11px 11px 3px; font: 700 27px/1.05 var(--hand); white-space: nowrap; box-shadow: 0 3px 0 -1px rgb(60 40 10 / 0.25), 0 0 calc(var(--lights, 0) * 20px) calc(var(--lights, 0) * 3px) rgb(255 226 150 / calc(var(--lights, 0) * 0.55)); transition: transform 0.35s var(--spring), background-color 0.2s, opacity 0.3s ease 0.2s; }
   .jb-tag::after { content: ""; position: absolute; left: 12px; right: 12px; bottom: 4px; height: 2.5px; border-radius: 2px; background: var(--v-coral, #f0583a); background: #d8452a; transform: scaleX(0); transform-origin: 0 50%; transition: transform 0.3s cubic-bezier(0.5, 0, 0.2, 1); }
-  .jb-obj:hover .jb-tag::after, .jb-obj:focus-visible .jb-tag::after, .jb-obj[aria-expanded="true"] .jb-tag::after { transform: scaleX(1); }
-  .jb-obj:hover .jb-tag, .jb-obj:focus-visible .jb-tag { transform: translateX(-50%) rotate(-1deg) translateY(2px); }
+  .jb-obj:focus-visible .jb-tag::after, .jb-obj[aria-expanded="true"] .jb-tag::after { transform: scaleX(1); }
+  .jb-obj:focus-visible .jb-tag { transform: translateX(-50%) rotate(-1deg) translateY(2px); }
   .jb-obj[aria-expanded="true"] .jb-tag { background: #ffe9a8; }
   .jb-o-about .jb-tag { left: 46%; top: calc(100% - 2px); }
   .jb-o-work .jb-tag { top: calc(100% - 30px); left: 42%; }
@@ -1596,7 +1821,7 @@ const VB = { viewBox: "0 0 1600 1000", preserveAspectRatio: "xMidYMid slice", fo
   .jb-ball { border-radius: 50%; }
   .jb-ball .jb-art svg + svg { position: absolute; inset: 0; }
   .jb-ball .jb-ball-art { transform-origin: 50% 47.2%; }
-  .jb-ball:hover .jb-art, .jb-ball:focus-visible .jb-art { transform: translateY(-4px) scale(1.05); }
+  .jb-ball:focus-visible .jb-art { transform: translateY(-4px) scale(1.05); }
 
   /* ── the panel: one sheet of paper that springs out of whatever was picked up ── */
   .jb-panel { position: relative; z-index: 6; max-width: 720px; margin: 0 auto; outline: none; }
@@ -1679,8 +1904,29 @@ const VB = { viewBox: "0 0 1600 1000", preserveAspectRatio: "xMidYMid slice", fo
   .jb-address a { font-size: 15px; text-decoration: none; overflow-wrap: anywhere; padding: 8px 0; } .jb-address a:hover { text-decoration: underline; }
   .jb-copy { display: none; }
   html.js .jb-copy { all: unset; box-sizing: border-box; cursor: pointer; padding: 6px 11px 7px; border: 1.5px solid var(--ink); border-radius: 999px; background: #fff; font: 500 11.5px/1 var(--mono); transition: transform 0.2s var(--spring), background-color 0.15s; }
-  html.js .jb-copy:hover { background: #ffe9a8; transform: rotate(-2deg) scale(1.04); }
+  html.js .jb-copy:active { transform: scale(0.97); transition: transform 0.14s var(--press); }
   html.js .jb-copy.ok { background: #c9f1e6; }
+
+  /* ── hover is decoration, and only for pointers that can hover: a tap must never leave a thing stuck in its lifted state.
+        (:focus-visible and [aria-expanded] keep the same looks, ungated, above.) Press feedback comes after, so it wins. ── */
+  @media (hover: hover) and (pointer: fine) {
+    .jb-hello:hover { transform: translateY(-2px) rotate(-1.5deg); }
+    .jb-obj:hover .jb-art { transform: translateY(-9px) rotate(-2.2deg) scale(1.045); }
+    .jb-obj:hover .jb-tag::after { transform: scaleX(1); }
+    .jb-obj:hover .jb-tag { transform: translateX(-50%) rotate(-1deg) translateY(2px); }
+    .jb-ball:hover .jb-art { transform: translateY(-4px) scale(1.05); }
+    html.js .jb-copy:hover { background: #ffe9a8; transform: rotate(-2deg) scale(1.04); }
+    html.js .jb-close:hover { background: #ffd3c6; transform: rotate(90deg) scale(1.06); }
+    html.js .jb-copy:hover:active { transform: rotate(-2deg) scale(0.97); } html.js .jb-close:hover:active { transform: rotate(90deg) scale(0.97); }
+    html.js .jb-mark:hover { transform: translateY(3px); }
+    html.js .jb-mark:hover:active { transform: translateY(3px) scale(0.97); } html.js .jb-mark[aria-selected="true"]:hover { transform: translateY(-5px); }
+    html.js .jb-turn:hover { transform: scale(1.34); } html.js .jb-turn:hover:active { transform: scale(1.3); }
+    html.js .jb-dock button:hover { transform: translateY(-3px); background: #fff3cf; } html.js .jb-dock button:hover:active { transform: translateY(-1px) scale(0.97); }
+    .jb-hello:hover:active { transform: scale(0.97); }
+  }
+  /* press: every thing on the sand answers the finger at once (the release rides the art's own spring) */
+  .jb-obj:active .jb-art { transform: translateY(1px) scale(0.97); transition: transform 0.14s var(--press); }
+  .jb-obj[aria-expanded="true"]:active .jb-art { transform: translateY(-8px) rotate(-2.2deg) scale(1.01); }
 
   @media (min-width: 720px) {
     .jb-id { top: 26px; left: 36px; right: 36px; }
@@ -1705,7 +1951,7 @@ const VB = { viewBox: "0 0 1600 1000", preserveAspectRatio: "xMidYMid slice", fo
   html.js .jb-sec[hidden] { display: none; }
   html.js .jb-sec h2 { padding-right: 44px; }
   html.js .jb-close { all: unset; box-sizing: border-box; position: absolute; z-index: 4; top: 14px; right: 14px; width: 40px; height: 40px; display: grid; place-items: center; cursor: pointer; border: 1.5px solid var(--ink); border-radius: 50%; background: #fff; font: 500 15px/1 var(--sans); transition: transform 0.25s var(--spring), background-color 0.15s; }
-  html.js .jb-close:hover { background: #ffd3c6; transform: rotate(90deg) scale(1.06); }
+  html.js .jb-close:active { transform: scale(0.97); transition: transform 0.14s var(--press); }
   html.js .jb-s-contact .jb-stamps { margin-right: 44px; }
   html.js .jb-s-contact { background: linear-gradient(90deg, transparent 0, transparent 100%), repeating-linear-gradient(135deg, #f0583a 0 12px, transparent 12px 24px, #1d6fb8 24px 36px, transparent 36px 48px) top / 100% 7px no-repeat; }
   html.js[data-panel] .jb-hello, html.js[data-panel] .jb-lang { opacity: 0; visibility: hidden; }
@@ -1730,8 +1976,8 @@ const VB = { viewBox: "0 0 1600 1000", preserveAspectRatio: "xMidYMid slice", fo
     /* bookmark tabs: one per role, sticking out of the top edge; the open one is pulled out further */
     html.js .jb-marks { display: flex; position: absolute; z-index: -1; left: 34px; right: 74px; top: -47px; height: 62px; gap: 5px; align-items: flex-start; transition: opacity 0.2s ease, translate 0.35s var(--spring); }
     html.js .jb-mark { all: unset; box-sizing: border-box; flex: 0 1 auto; min-width: 0; max-width: 200px; height: 62px; padding: 6px 13px 0; cursor: pointer; display: grid; align-content: start; gap: 1px; background: var(--c); color: var(--ink); border: 1.5px solid var(--ink); border-bottom: 0; border-radius: 9px 9px 0 0; box-shadow: inset 0 -14px 10px -8px rgb(50 30 5 / 0.25); transform: translateY(9px); transition: transform 0.3s var(--spring); }
-    html.js .jb-mark:hover { transform: translateY(3px); }
     html.js .jb-mark[aria-selected="true"] { transform: translateY(-5px); }
+    html.js .jb-mark:active { transform: translateY(9px) scale(0.97); transition: transform 0.14s var(--press); } html.js .jb-mark[aria-selected="true"]:active { transform: translateY(-5px) scale(0.97); }
     html.js .jb-mark:focus-visible { outline: 2.5px solid #fffdf4; outline-offset: 1px; box-shadow: 0 0 0 5px var(--ink); }
     .jb-mark-c { font: 620 13px/1.2 var(--sans); letter-spacing: -0.01em; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
     .jb-mark-y { font: 400 10px/1.1 var(--mono); white-space: nowrap; }
@@ -1785,8 +2031,8 @@ const VB = { viewBox: "0 0 1600 1000", preserveAspectRatio: "xMidYMid slice", fo
     html.js .jb-next { right: 0; transform-origin: 100% 100%; border-radius: 6px 0 8px 0; background: linear-gradient(to top left, #b9ad8d 0 48.5%, var(--ink) 48.5% 51%, #f1e9d2 51%); box-shadow: -3px -3px 7px -2px rgb(50 30 5 / 0.3); }
     html.js .jb-prev { left: 0; transform-origin: 0 100%; border-radius: 0 6px 0 8px; background: linear-gradient(to top right, #b9ad8d 0 48.5%, var(--ink) 48.5% 51%, #f1e9d2 51%); box-shadow: 3px -3px 7px -2px rgb(50 30 5 / 0.3); }
     html.js .jb-turn span { position: absolute; top: 6px; } html.js .jb-next span { left: 11px; } html.js .jb-prev span { right: 11px; }
-    html.js .jb-turn:hover, html.js .jb-turn:focus-visible { transform: scale(1.34); }
-    html.js .jb-turn:active { transform: scale(1.18); }
+    html.js .jb-turn:focus-visible { transform: scale(1.34); }
+    html.js .jb-turn:active { transform: scale(0.97); transition: transform 0.14s var(--press); }
     html.js .jb-turn:disabled { display: none; }
     html.js .jb-pageno { display: block; position: absolute; z-index: 4; left: 25%; bottom: 17px; margin: 0; translate: -50% 0; font: 400 11px/1 var(--mono); color: #5a5447; }
     html.js .jb-pageno b { font-weight: 600; color: var(--ink); }
@@ -1805,7 +2051,7 @@ const VB = { viewBox: "0 0 1600 1000", preserveAspectRatio: "xMidYMid slice", fo
     html.js[data-panel] .jb-dock { visibility: visible; opacity: 1; translate: 0 0; transition-delay: 0.25s; }
     html.js .jb-dock button { all: unset; box-sizing: border-box; cursor: pointer; padding: 1px 12px 5px; background: var(--cream); color: var(--ink); border: 1.5px solid var(--ink); border-radius: 11px 11px 11px 3px; font: 700 22px/1.05 var(--hand); box-shadow: 0 3px 0 -1px rgb(60 40 10 / 0.3); transition: transform 0.25s var(--spring), background-color 0.15s; }
     html.js .jb-dock button:nth-child(odd) { rotate: -2deg; } html.js .jb-dock button:nth-child(even) { rotate: 1.5deg; }
-    html.js .jb-dock button:hover { transform: translateY(-3px); background: #fff3cf; }
+    html.js .jb-dock button:active { transform: scale(0.97); transition: transform 0.14s var(--press); }
     html.js .jb-dock button[aria-current="true"] { background: #ffe08a; }
     html.js .jb-dock button:focus-visible { outline: 3px solid #fffdf4; outline-offset: 2px; box-shadow: 0 0 0 7px rgb(35 32 26 / 0.85); }
   }
@@ -1833,6 +2079,7 @@ const VB = { viewBox: "0 0 1600 1000", preserveAspectRatio: "xMidYMid slice", fo
     html.js .jb-marks::-webkit-scrollbar { display: none; }
     html.js .jb-mark { all: unset; box-sizing: border-box; flex: none; cursor: pointer; display: grid; gap: 2px; min-height: 46px; padding: 14px 13px 8px; border: 1.5px solid var(--ink); border-radius: 12px; background: linear-gradient(var(--c) 0 7px, var(--ink) 7px 8.5px, #fff 8.5px); overflow: hidden; transition: transform 0.25s var(--spring); }
     html.js .jb-mark[aria-selected="true"] { background: var(--c); transform: rotate(-1.2deg); box-shadow: 0 3px 0 -1px rgb(60 40 10 / 0.3); }
+    html.js .jb-mark:active { transform: scale(0.97); transition: transform 0.14s var(--press); } html.js .jb-mark[aria-selected="true"]:active { transform: rotate(-1.2deg) scale(0.97); }
     .jb-mark-c { font: 600 14px/1.15 var(--sans); letter-spacing: -0.01em; white-space: nowrap; } .jb-mark-y { font: 400 10.5px/1 var(--mono); white-space: nowrap; }
     html.js .jb-leaves { flex: 1; min-height: 0; overflow-y: auto; overscroll-behavior: contain; padding: 0 20px 96px; touch-action: pan-y; }
     html.js .jb-spread { margin: 0; padding: 14px 0 0; border: 0; } html.js .jb-spread[hidden] { display: none; }
@@ -1854,16 +2101,12 @@ const VB = { viewBox: "0 0 1600 1000", preserveAspectRatio: "xMidYMid slice", fo
      full-screen surfaces, and every animated full-screen layer is its own ~12 MB texture at 3× (plus one more for whatever
      is painted above it). That got tabs killed on low-memory phones. Lite keeps the painting and the concept and cuts
      the cost: no filters (the veil is baked into the land paint by the script), one wave, a handful of small sprites. */
-  html.is-lite .jb-paintbox [filter], html.is-lite .jb-scene [filter], html.is-lite .jb-world [filter] { filter: none !important; }
-  html.is-lite .jb-veiled { filter: none !important; }
   html.is-lite .jb-scene *, html.is-lite .jb-world * { mix-blend-mode: normal !important; }
-  html.is-lite .jb-layer, html.is-lite .jb-fg, html.is-lite .jb-cloud, html.is-lite .jb-bird, html.is-lite .jb-art, html.is-lite .jb-idle, html.is-lite .jb-ride, html.is-lite .jb-flap { will-change: auto !important; }
   /* gone: the grain, the second/third wave, swell, cloud shadows, extra rain, gull, crab, kite, heat haze, fireflies, bioluminescence, bubbles, half of the small repeats */
   html.is-lite .jb-grain, html.is-lite .jb-not-lite, html.is-lite .jb-crab, html.is-lite .jb-gull, html.is-lite .jb-bird ~ .jb-bird, html.is-lite .jb-kite-go, html.is-lite .jb-heat, html.is-lite .jb-ff, html.is-lite .jb-bio, html.is-lite .jb-bub, html.is-lite .jb-rain-first,
-  html.is-lite .jb-cloud.extra:nth-child(n + 6), html.is-lite .jb-twk:nth-child(2n), html.is-lite .jb-splash:nth-child(2n), html.is-lite .jb-rip:nth-child(2n), html.is-lite .jb-cap:nth-child(2n), html.is-lite .jb-wisp:nth-child(2n), html.is-lite .jb-mist:nth-child(3),
-  html.is-lite:not([data-deck]) .jb-deck, html.is-lite .jb-cloud.is-gone { display: none !important; }
+  html.is-lite .jb-cloud.extra:nth-child(n + 10), html.is-lite .jb-twk:nth-child(2n), html.is-lite .jb-splash:nth-child(2n), html.is-lite .jb-rip:nth-child(2n), html.is-lite .jb-cap:nth-child(2n), html.is-lite .jb-wisp:nth-child(2n), html.is-lite .jb-mist:nth-child(3) { display: none !important; }
   /* still: everything that would animate a full-screen layer, or sit between two of them */
-  html.is-lite .jb-glit-a, html.is-lite .jb-glit-b, html.is-lite .jb-shimmer-a, html.is-lite .jb-shimmer-b, html.is-lite .jb-sway-a.jb-layer, html.is-lite .jb-sway-b.jb-layer, html.is-lite .jb-crown, html.is-lite .jb-rays, html.is-lite .jb-spark, html.is-lite .jb-mist, html.is-lite .jb-spray,
+  html.is-lite .jb-glit-a, html.is-lite .jb-glit-b, html.is-lite .jb-shimmer-a, html.is-lite .jb-shimmer-b, html.is-lite .jb-grass, html.is-lite .jb-crown, html.is-lite .jb-rays, html.is-lite .jb-spark, html.is-lite .jb-mist, html.is-lite .jb-spray,
   html.is-lite .i-sky, html.is-lite .i-cloud, html.is-lite .i-sea, html.is-lite .i-land, html.is-lite .i-veg { animation: none !important; }
   html.is-lite.jb-intro .jb-scene { animation: jb-in-fade 0.5s ease-out backwards; }
   /* rain: one streak layer, no bigger than the screen plus one fall (the script keeps the slant small) */
@@ -1872,7 +2115,6 @@ const VB = { viewBox: "0 0 1600 1000", preserveAspectRatio: "xMidYMid slice", fo
   /* (while a sheet covers the beach on a phone the script pauses every scene animation and stops its clock: see holdScene) */
   /* no script, no class: keep at least the software filters away from small/touch screens */
   @media (max-width: 1100px), (pointer: coarse) {
-    html:not(.js) .jb-paintbox [filter], html:not(.js) .jb-veiled { filter: none !important; }
     html:not(.js) .jb-grain { display: none; }
   }
 
@@ -1887,7 +2129,11 @@ const VB = { viewBox: "0 0 1600 1000", preserveAspectRatio: "xMidYMid slice", fo
   /* ── life ── (all motion is opt-in; nothing here runs under reduced motion) */
   @media (prefers-reduced-motion: no-preference) {
     html.is-asleep .jb-scene *, html.is-asleep .jb-world * { animation-play-state: paused !important; }
-    .jb-layer, .jb-fg, .jb-cloud, .jb-bird, .jb-crab, .jb-art, .jb-idle, .jb-ride, .jb-flap { will-change: transform; }
+    /* the only standing promotion: the three depth bands, and only where the pointer parallax can run (everything else is
+       promoted by its own running animation, for as long as it runs) */
+    @media (hover: hover) and (pointer: fine) { html:not(.is-lite) .jb-band { will-change: transform; } }
+    /* something lies open over the beach: the widest ambient loops rest (the waves, the boats and the rally carry on) */
+    html[data-hush] :is(.jb-glit-a, .jb-glit-b, .jb-shimmer-a, .jb-shimmer-b, .jb-swell, .jb-heat, .jb-mist, .jb-rays, .jb-spark) { animation-play-state: paused; }
 
     .jb-shimmer-a { animation: jb-shimmer 5.2s ease-in-out infinite alternate; }
     .jb-shimmer-b { animation: jb-shimmer 6.4s ease-in-out infinite alternate-reverse; }
@@ -2071,10 +2317,27 @@ const VB = { viewBox: "0 0 1600 1000", preserveAspectRatio: "xMidYMid slice", fo
     @keyframes jb-in-drop { from { opacity: 0; translate: 0 -90px; rotate: -7deg; } }
     @keyframes jb-in-tag { from { opacity: 0; scale: 0.4; } }
   }
+  /* ── less transparency / more contrast: the small print sits on solid paper with a drawn edge, nothing is blended ── */
+  @media (prefers-reduced-transparency: reduce), (prefers-contrast: more) {
+    .jb-meta { background: var(--id-solid, #fffbf0); box-shadow: inset 0 0 0 1.5px currentColor; }
+    .jb-place, .jb-lang a { opacity: 1; } .jb-live::before { opacity: 0.7; }
+    .jb-tag, html.js .jb-dock button { background: #fffdf4; box-shadow: 0 3px 0 -1px var(--ink); }
+    html.js .jb-paper, html.js .jb-book { box-shadow: 0 0 0 1.5px var(--ink), 0 8px 0 -2px var(--ink); }
+    html.js .jb-paper::before, html.js .jb-leaves::after, .jb-grain { display: none; }
+    .jb-grab i { background: var(--ink); }
+  }
+  @media (prefers-contrast: more) {
+    .jb-meta, .jb-tag, .jb-hello, html.js .jb-dock button, html.js .jb-close, html.js .jb-copy { border-width: 2px; }
+    .jb-meta { box-shadow: inset 0 0 0 2px currentColor; }
+    .jb-period, .jb-ruler text, .jb-colophon, .jb-where, .jb-address li > span, .jb-facts span, html.js .jb-pageno { color: var(--ink); fill: var(--ink); }
+    .jb-eyebrow, .jb-built, .jb-folio { color: #0b4f45; }
+  }
   @media (prefers-reduced-motion: reduce) {
     .jb-art, .jb-tag, .jb-tag::after, .jb-hello, .jb-close, .jb-mark, .jb-marks, .jb-turn, .jb-dock, .jb-dock button, .o-pb, .bt-rest, .jb-bt-pl, .jb-bt-ball, .jb-bt-bsh, .jb-meta, .jb-copy, .jb-print, .jb-id, .jb-cloud, .jb-deck, .jb-rainfall, .jb-tint, .jb-win, .jb-gull, .jb-boat-wrap, .jb-sail-go, .jb-kite-go,
     .o-sh, .o-can-open, .o-can-shut, .o-cover, .o-shades, .o-blanket, .o-cool-open, .o-cool-lid { transition: none !important; }
     .jb-o-about .jb-idle { rotate: var(--umb-lean, 0deg); }
+    /* press feedback without movement: a dip in opacity */
+    .jb-obj:active .jb-art, .jb-hello:active, .jb-copy:active, .jb-close:active, .jb-mark:active, .jb-turn:active, .jb-dock button:active { opacity: 0.7; }
     .jb-wisp { opacity: 0.5; transform: translateX(500px); } .jb-wisp:nth-child(odd) { transform: translateX(900px); }
   }
 </style>
@@ -2127,7 +2390,7 @@ const VB = { viewBox: "0 0 1600 1000", preserveAspectRatio: "xMidYMid slice", fo
     st.setProperty("--fs", fit.s.toFixed(4));
     st.setProperty("--ox", `${fit.ox.toFixed(1)}px`);
     st.setProperty("--oy", `${fit.oy.toFixed(1)}px`);
-    st.setProperty("--hz", `${((H - 1000 * fit.s) / 2 + HORIZON * fit.s).toFixed(1)}px`);
+    st.setProperty("--vb", ((H - 24 - fit.oy) / fit.s).toFixed(1)); // painting-y of the bottom edge of the scene (the grass sways about it)
     // a portrait screen only sees the middle of the painting: the things gather there, a little smaller
     const k = fit.portrait ? clamp(fit.width / 800, 0.62, 0.76) : clamp(fit.width / 1500, 0.78, 1);
     st.setProperty("--k", k.toFixed(3));
@@ -2178,18 +2441,19 @@ const VB = { viewBox: "0 0 1600 1000", preserveAspectRatio: "xMidYMid slice", fo
   let held = false; // lite phones: a sheet covers the beach, so the scene stops entirely (see holdScene)
   let loop = 0; // only the newest loop keeps going
   let brisk = false;
-  /** A task calls this while it needs smooth motion (a bird in flight, the ball rolling). Without it, lite only ticks ~10×/s. */
+  /** A task calls this while it needs smooth motion (a bird in flight, the ball rolling, a rally). Without it the clock idles:
+   *  ~25 ticks a second (lite: ~10), plenty for clouds and sails that creep a fraction of a pixel at a time — and no main-thread frame in between. */
   const hurry = () => (brisk = true);
   function frame(now: number, id: number) {
     if (!running || id !== loop) return;
     const next = () => requestAnimationFrame((t) => frame(t, id));
     if (LITE && now - last < 30) return void next(); // lite: ~30fps at most, even on a 120Hz screen
-    const dt = Math.min(LITE ? 0.15 : 0.05, (now - last) / 1000);
+    const dt = Math.min(LITE ? 0.15 : 0.08, (now - last) / 1000);
     last = now;
     brisk = false;
     for (const t of tasks) t(dt, now);
-    // lite, and nothing quick is happening: no need for a main-thread frame at every vsync just to nudge a cloud
-    if (LITE && !brisk) window.setTimeout(next, 90);
+    // nothing quick is happening: no need for a main-thread frame at every vsync just to nudge a cloud
+    if (!brisk) window.setTimeout(next, LITE ? 90 : 25);
     else next();
   }
   function syncRunning() {
@@ -2239,6 +2503,14 @@ const VB = { viewBox: "0 0 1600 1000", preserveAspectRatio: "xMidYMid slice", fo
     });
   }
   document.addEventListener("visibilitychange", syncRunning);
+  // back from a hidden tab: whatever changed meanwhile is simply there (no blend to sit through, no burst of palette steps)
+  let snapNext = false;
+  document.addEventListener("visibilitychange", () => {
+    if (document.hidden) return;
+    snapNext = true;
+    tick();
+    snapNext = false;
+  });
   calm.addEventListener("change", syncRunning);
 
   /* ───────────── palette: six gouache boxes keyed along the day, blended in JS (stepped, never per-frame) ───────────── */
@@ -2247,20 +2519,10 @@ const VB = { viewBox: "0 0 1600 1000", preserveAspectRatio: "xMidYMid slice", fo
   type Pal = { c: number[][]; n: number[] };
   const COLS = ["--sky-0", "--sky-1", "--sky-2", "--sky-3", "--cloud", "--cloud-shade", "--cloud-hi", "--sun", "--halo", "--far-1", "--far-2", "--sea-0", "--sea-1", "--sea-2", "--sea-3", "--sea-4", "--foam", "--glitter", "--veil"];
   const NUMS = ["--stars", "--lights"];
-  // lite has no veil filter: the veiled layers' own paint is multiplied by the veil instead (same maths as the filter's feBlend)
-  const LAND = ["--hill", "--hill-dk", "--hill-lt", "--sand", "--sand-lt", "--sand-dk", "--wet", "--dune", "--g1", "--g2", "--g3", "--straw", "--p-wall", "--p-roof-a", "--p-roof-b", "--p-speck-dk", "--p-speck-lt", "--p-starfish", "--p-shell", "--p-trunk", "--p-ring", "--p-seed"];
-  const veiledEls = qa<HTMLElement | SVGElement>(".jb-veiled");
+  // the veil (the hour's colour cast over the land) is not a filter: the land's own paint is multiplied by it, channel by channel,
+  // once per palette step and on the root only — the same maths as an feBlend "multiply", with nothing to rasterise twice
+  const LAND = ["--hill", "--hill-dk", "--hill-lt", "--sand", "--sand-lt", "--sand-dk", "--wet", "--dune", "--g1", "--g2", "--g3", "--straw", "--p-wall", "--p-roof-a", "--p-roof-b", "--p-speck-dk", "--p-speck-lt", "--p-starfish", "--p-shell", "--p-trunk", "--p-ring", "--p-seed"]; // = LAND_PAINT in the frontmatter
   let landBase: number[][] = [];
-  let landKey = "";
-  function paintLand(veil: number[]) {
-    const key = LITE ? veil.map((v) => Math.round(v)).join() : "";
-    if (key === landKey) return;
-    landKey = key;
-    LAND.forEach((k, i) => {
-      const v = LITE ? rgb(landBase[i].map((c, ch) => (c * veil[ch]) / 255)) : "";
-      for (const el of veiledEls) v ? el.style.setProperty(k, v) : el.style.removeProperty(k);
-    });
-  }
   const VEILED = ["--v-cream", "--v-white", "--v-coral", "--v-teal", "--v-gold", "--v-green", "--v-navy", "--v-amber", "--v-glass", "--v-cork", "--v-pages", "--v-fold", "--v-pole", "--v-under", "--v-dark", "--v-char", "--v-brown", "--v-shade", "--v-crab", "--v-hill", "--v-hill-dk", "--v-hill-lt", "--v-skin-a", "--v-skin-b", "--v-orange"];
   const hex = (h: string) => {
     const v = h.trim().replace("#", "");
@@ -2474,7 +2736,7 @@ const VB = { viewBox: "0 0 1600 1000", preserveAspectRatio: "xMidYMid slice", fo
   function applyState(prev: SceneState | null, next: SceneState) {
     state = next;
     Object.assign(goal, goalFor(next));
-    const snap = !prev || calm.matches || !running || LITE; // lite: each palette step restyles the whole painting, so it changes in one
+    const snap = !prev || calm.matches || !running || LITE || snapNext; // lite: each palette step restyles the whole painting, so it changes in one
     const hurry = prev && prev.temp === null && !prev.preview ? 0.3 : 1; // the first real reading after a clock-only first paint arrives briskly
     for (const k of KEYS) {
       if (snap) {
@@ -2512,6 +2774,7 @@ const VB = { viewBox: "0 0 1600 1000", preserveAspectRatio: "xMidYMid slice", fo
   let rateAcc = 0;
   tasks.push((dt) => {
     if (!moving) return;
+    hurry();
     let busy = false;
     for (const k of KEYS) {
       if (env[k] === goal[k]) continue;
@@ -2564,13 +2827,13 @@ const VB = { viewBox: "0 0 1600 1000", preserveAspectRatio: "xMidYMid slice", fo
     const k = fit.portrait ? " scale(0.72)" : "";
     if (sunEl) sunEl.style.transform = at(sx, sy) + k;
     if (moonEl) moonEl.style.transform = at(mx, my) + k;
-    if (glowEl) glowEl.style.transform = at(sx, HORIZON);
+    if (glowEl) glowEl.style.transform = at(sx, HORIZON, true); // (2D: the glow and the light path only move with the hour, they need no texture of their own)
     lum.sunUp = day ? 1 : 0;
     lum.x = day ? sx : mx;
     lum.y = day ? sy : my;
     lum.elev = Math.max(0, day ? se : me);
     lum.side = Math.cos(Math.PI * clamp(day ? ts : env.cyc - 1, 0, 1)); // +1 = low in the east (right), −1 = low in the west (left)
-    if (sparksEl) sparksEl.style.transform = at(lum.x);
+    if (sparksEl) sparksEl.style.transform = at(lum.x, 0, true);
   }
 
   /* ───────────── render: env → palette + CSS variables + flags (called in steps, or once when snapping) ───────────── */
@@ -2595,9 +2858,8 @@ const VB = { viewBox: "0 0 1600 1000", preserveAspectRatio: "xMidYMid slice", fo
     const theme = rgb(cols[0]).replace(/ /g, ", "); // the browser chrome continues the top of the sky
     if (themeMeta && themeMeta.content !== theme) themeMeta.content = theme;
     const veil = cols[18];
-    setVar("--veil-b", ((0.2126 * veil[0] + 0.7152 * veil[1] + 0.0722 * veil[2]) / 255).toFixed(3));
     VEILED.forEach((k, i) => setVar(k, rgb(veiledBase[i].map((v, ch) => (v * veil[ch]) / 255))));
-    paintLand(veil);
+    LAND.forEach((k, i) => setVar(k, rgb(landBase[i].map((v, ch) => (v * veil[ch]) / 255))));
     const stars = base.n[0];
     const lights = clamp(Math.max(base.n[1], e.dark * 1.7 - 0.1), 0, 1);
     const night = lights > 0.75 && base.n[0] > 0.6;
@@ -2641,6 +2903,7 @@ const VB = { viewBox: "0 0 1600 1000", preserveAspectRatio: "xMidYMid slice", fo
     setVar("--on-sky", darkSky ? "#fff6e4" : "#1d1a14");
     setVar("--id-back", darkSky ? "rgb(10 14 40 / 0.42)" : "rgb(255 250 235 / 0.5)");
     setVar("--id-plate", darkSky ? "rgb(8 12 34 / 0.52)" : "rgb(255 251 240 / 0.64)");
+    setVar("--id-solid", darkSky ? "#0b1024" : "#fffbf0"); // the chip's paper when the visitor asks for less transparency / more contrast
     // beach tennis: a rally in dry daylight under an open sky; otherwise the rackets wait by the net (or the court is left to the rain)
     btWant = e.rFirst > 0.04 || e.wet > 0.5 ? "wet" : e.deck < 0.5 && e.fog < 0.45 && e.storm < 0.1 && e.cyc > 0.085 && e.cyc < 0.965 ? "play" : "rest";
     const shut = e.cyc > 1.035 || e.cyc < 0.085;
@@ -2652,6 +2915,11 @@ const VB = { viewBox: "0 0 1600 1000", preserveAspectRatio: "xMidYMid slice", fo
     flag("wet", e.wet > 0.004);
     flag("mist", e.fog > 0.01 || e.cyc > 1.88 || e.cyc < 0.17);
     flag("deck", e.deck > 0.004);
+    // …and what is switched off entirely while it would be invisible (so it holds no texture and runs no animation)
+    flag("stars", stars > 0.01);
+    flag("rays", sunny > 0.02 && lum.elev > 0.01);
+    flag("glit", e.glit > 0.01 && lum.elev > 0.002);
+    flag("tint", e.fog * 0.2 + dark * 0.3 > 0.002);
     flag("fog", e.fog > 0.6);
     flag("tuck", e.rMid > 0.18);
     flag("lid", e.rMid > 0.28);
@@ -2745,6 +3013,7 @@ const VB = { viewBox: "0 0 1600 1000", preserveAspectRatio: "xMidYMid slice", fo
     if (!dt) return;
     const dir = env.windX < 0 ? -1 : 1;
     const speed = env.windX * (4 + env.wind * 52) + dir * env.storm * 14;
+    if (Math.abs(speed) > 30 || clouds.some((c) => c.enter > 1 || (!c.on && c.lv > 0 && !c.el.classList.contains("is-gone")))) hurry(); // a brisk wind, or a cloud sweeping in or out: every frame
     let cross = 0;
     for (const c of clouds) {
       if (!c.on && c.lv === 0 && c.el.style.opacity === "0") c.lv = 1; // leaving: hurry downwind while it fades
@@ -2778,7 +3047,7 @@ const VB = { viewBox: "0 0 1600 1000", preserveAspectRatio: "xMidYMid slice", fo
         d.x = (((d.x + speed * d.v * dt) % 800) + 800) % 800;
         d.el.style.transform = `translate3d(${d.x.toFixed(1)}px,0,0)`;
       }
-    if (!LITE && env.deck < 0.9)
+    if (!LITE && env.deck < 0.9 && !openId)
       for (const s of shades) {
         s.x += speed * 1.5 * s.v * dt;
         const pos = s.left + s.x;
@@ -2788,21 +3057,28 @@ const VB = { viewBox: "0 0 1600 1000", preserveAspectRatio: "xMidYMid slice", fo
       }
     // the sun dims exactly while a cumulus crosses it (and the whole beach with it, a touch)
     lum.cross += (cross - lum.cross) * Math.min(1, dt * 1.6);
-    const vis = lum.sunUp ? clamp(0.12 + env.sun, 0, 1) * (1 - 0.55 * lum.cross) : 0;
-    if (sunEl) sunEl.style.opacity = vis.toFixed(2);
-    if (moonEl) moonEl.style.opacity = (lum.sunUp ? 0 : clamp(0.1 + env.sun, 0, 1) * (1 - 0.5 * lum.cross)).toFixed(2);
-    if (dimmer) dimmer.style.opacity = (lum.cross * env.sun * 0.13).toFixed(3);
+    fade(sunEl, lum.sunUp ? clamp(0.12 + env.sun, 0, 1) * (1 - 0.55 * lum.cross) : 0);
+    fade(moonEl, lum.sunUp ? 0 : clamp(0.1 + env.sun, 0, 1) * (1 - 0.5 * lum.cross));
+    fade(dimmer, lum.cross * env.sun * 0.13, 3);
   });
+  /** Opacity, written only when it changes; at zero the element is hidden outright so it keeps no texture. */
+  function fade(el: HTMLElement | null, o: number, digits = 2) {
+    if (!el) return;
+    const v = o.toFixed(digits);
+    if (el.style.opacity === v) return;
+    el.style.opacity = v;
+    el.style.visibility = Number(v) > 0 ? "" : "hidden";
+  }
   // without motion the scene still tells the truth: sun/moon visibility is set once per state
   function stillLum() {
-    if (sunEl) sunEl.style.opacity = (lum.sunUp ? clamp(0.12 + env.sun, 0, 1) : 0).toFixed(2);
-    if (moonEl) moonEl.style.opacity = (lum.sunUp ? 0 : clamp(0.1 + env.sun, 0, 1)).toFixed(2);
+    fade(sunEl, lum.sunUp ? clamp(0.12 + env.sun, 0, 1) : 0);
+    fade(moonEl, lum.sunUp ? 0 : clamp(0.1 + env.sun, 0, 1));
   }
 
   /* ───────────── sky & shore life ───────────── */
   const lifeNow = () => (state ? PHASES[state.phase].life * env.birds : 0);
-  type Bird = { el: SVGSVGElement; on: boolean; auto: boolean; t: number; dur: number; p: number[][]; size: number };
-  const birds: Bird[] = qa<SVGSVGElement>(".jb-bird").map((el) => ({ el, on: false, auto: false, t: 0, dur: 1, p: [], size: 1 }));
+  type Bird = { el: SVGSVGElement; on: boolean; dur: number; p: number[][]; size: number };
+  const birds: Bird[] = qa<SVGSVGElement>(".jb-bird").map((el) => ({ el, on: false, dur: 1, p: [], size: 1 }));
   // where a bird is, and how it banks, `t` of the way along its curve
   function birdAt(b: Bird, t: number): string {
     const u = 1 - t;
@@ -2824,38 +3100,19 @@ const VB = { viewBox: "0 0 1600 1000", preserveAspectRatio: "xMidYMid slice", fo
     b.p = [[xs[0], y0], [xs[1], y0 + rand(-100, 80)], [xs[2], y1 + rand(-80, 100)], [xs[3], y1]];
     b.size = near ? near.size * rand(0.8, 1) : rand(0.6, 1.2);
     b.dur = (near ? near.dur : rand(13, 21)) * (fit.portrait ? 0.6 : 1);
-    b.t = -delay / b.dur;
     b.on = true;
-    b.auto = LITE;
     b.el.style.animationDelay = `${-rand(0, 2)}s`;
     b.el.classList.add("is-flying");
-    if (b.auto) {
-      // lite: the whole flight is handed to the compositor as one animation, so a bird in the air costs the main thread nothing
-      const N = 16;
-      const flight = b.el.animate(Array.from({ length: N + 1 }, (_, k) => ({ transform: birdAt(b, k / N), opacity: 1 })), { duration: b.dur * 1000, delay: delay * 1000 });
-      flight.onfinish = flight.oncancel = () => {
-        b.on = false;
-        b.el.classList.remove("is-flying");
-      };
-    }
+    // the whole flight is handed to the compositor as one animation (the curve sampled finely enough to read as a curve),
+    // so a bird in the air costs the main thread nothing
+    const N = LITE ? 16 : 40;
+    const flight = b.el.animate(Array.from({ length: N + 1 }, (_, k) => ({ transform: birdAt(b, k / N), opacity: 1 })), { duration: b.dur * 1000, delay: delay * 1000 });
+    flight.onfinish = flight.oncancel = () => {
+      b.on = false;
+      b.el.classList.remove("is-flying");
+    };
     return b;
   }
-  tasks.push((dt) => {
-    for (const b of birds) {
-      if (!b.on || b.auto) continue;
-      hurry();
-      b.t += dt / b.dur;
-      if (b.t >= 1) {
-        b.on = false;
-        b.el.style.opacity = "0";
-        b.el.classList.remove("is-flying");
-        continue;
-      }
-      if (b.t < 0) continue;
-      b.el.style.opacity = "1";
-      b.el.style.transform = birdAt(b, b.t);
-    }
-  });
   sometimes(6, 13, () => {
     const life = lifeNow();
     if (Math.random() > life) return;
@@ -2882,6 +3139,7 @@ const VB = { viewBox: "0 0 1600 1000", preserveAspectRatio: "xMidYMid slice", fo
       sailGo.style.transform = `translate3d(${sail.x.toFixed(1)}px,0,0)`;
     }
     if (kiteGo && kiteArt && !LITE && root.hasAttribute("data-kite")) {
+      hurry();
       kite.x += kite.dir * (26 + env.wind * 40) * dt;
       if (kite.x > fit.left + fit.width * 0.92) kite.dir = -1;
       else if (kite.x < fit.left + fit.width * 0.3) kite.dir = 1;
@@ -2900,6 +3158,7 @@ const VB = { viewBox: "0 0 1600 1000", preserveAspectRatio: "xMidYMid slice", fo
       el.classList.remove("is-zap");
       void el.getBoundingClientRect();
       el.classList.add("is-zap");
+      el.onanimationend = () => el.classList.remove("is-zap"); // hidden again (no texture) until the next strike
     }
   }
   sometimes(12, 30, () => env.storm > 0.7 && zap(), 5);
@@ -2932,6 +3191,7 @@ const VB = { viewBox: "0 0 1600 1000", preserveAspectRatio: "xMidYMid slice", fo
     }, 9);
     tasks.push((dt) => {
       if (g.mode === "gone") return;
+      hurry();
       g.t += dt;
       if (g.mode === "land" || g.mode === "leave") {
         const k = clamp(g.t / 1.5, 0, 1);
@@ -2996,6 +3256,7 @@ const VB = { viewBox: "0 0 1600 1000", preserveAspectRatio: "xMidYMid slice", fo
         crab.classList.remove("is-hid");
         return;
       }
+      hurry();
       const close = Math.hypot(pointer.x - (fit.ox + c.x * fit.s), pointer.y - (fit.oy + c.y * fit.s)) < 120;
       if (close && c.mode !== "hide") {
         c.mode = "hide";
@@ -3115,6 +3376,7 @@ const VB = { viewBox: "0 0 1600 1000", preserveAspectRatio: "xMidYMid slice", fo
       el.classList.remove("is-go");
       void el.getBoundingClientRect();
       el.classList.add("is-go");
+      el.onanimationend = () => el.classList.remove("is-go");
     };
     const showBall = (on: boolean) => {
       ball.on = on;
@@ -3230,6 +3492,7 @@ const VB = { viewBox: "0 0 1600 1000", preserveAspectRatio: "xMidYMid slice", fo
         showBall(false);
         P.forEach((p) => (p.tx = -p.face * 36));
       }
+      hurry();
       clock += dt;
       for (const p of P) {
         const v = clamp((p.tx - p.x) * 5.5, -96, 96);
@@ -3305,7 +3568,7 @@ const VB = { viewBox: "0 0 1600 1000", preserveAspectRatio: "xMidYMid slice", fo
     window.setInterval(() => !document.hidden && next(), 6500);
   }
 
-  /* ───────────── gentle pointer parallax, written straight onto each layer ───────────── */
+  /* ───────────── gentle pointer parallax: three depth bands (far / mid / near) and the things on the sand, which ride with the mid band ───────────── */
   const deep = qa<HTMLElement | SVGElement>("[data-d]").map((el) => ({ el, d: Number(el.dataset.d) || 0 }));
   {
     let tx = 0, ty = 0, x = 0, y = 0, raf = 0;
@@ -3359,10 +3622,28 @@ const VB = { viewBox: "0 0 1600 1000", preserveAspectRatio: "xMidYMid slice", fo
     (live2.get(el) || []).forEach((a) => a.cancel());
     live2.set(el, []);
   };
+  // interruptible: a sheet caught mid-flight carries on from where it IS (its computed transform and opacity, about the same
+  // origin), never from the first keyframe — so switching things quickly cannot make it jump
+  const inFlight = (el: HTMLElement) => (live2.get(el) || []).some((a) => a.playState === "running");
+  const nowOf = (el: HTMLElement): Keyframe => {
+    const cs = getComputedStyle(el);
+    return { transform: cs.transform, opacity: Number(cs.opacity) };
+  };
+  const lidAngle = () => {
+    const m = lid ? new DOMMatrixReadOnly(getComputedStyle(lid).transform) : null;
+    return m ? (Math.atan2(-m.m13, m.m11) * 180) / Math.PI : 0; // rotateY(θ): m11 = cos θ, m13 = −sin θ
+  };
   secs.forEach((s) => {
     s.hidden = true;
     Array.from(s.children).forEach((c, i) => (c as HTMLElement).style.setProperty("--n", String(i)));
   });
+  // while something lies open the widest ambient loops rest (html[data-hush]) — never during the entrance, whose fades live on the same elements
+  let hushTimer = 0;
+  function hush(on: boolean) {
+    window.clearTimeout(hushTimer);
+    if (on) hushTimer = window.setTimeout(() => root.setAttribute("data-hush", ""), Math.max(0, 1800 - performance.now()));
+    else root.removeAttribute("data-hush");
+  }
   const btnFor = (id: string | null) => openers.find((b) => b.dataset.open === id) ?? null;
   const hostOf = (id: string | null) => (id === "work" ? book : id ? panel : null);
 
@@ -3573,6 +3854,7 @@ const VB = { viewBox: "0 0 1600 1000", preserveAspectRatio: "xMidYMid slice", fo
   }
   function tuckGhost(oldBtn: HTMLElement | null) {
     if (!panel || calm.matches || sheetMq.matches) return; // phones: the sheet simply slides up again with the new section
+    const from = inFlight(panel) ? nowOf(panel) : { transform: "none", opacity: 1 }; // (the clone does not inherit a running animation: start it where the sheet is)
     const g = panel.cloneNode(true) as HTMLElement;
     g.removeAttribute("id");
     qa("[id]", g).forEach((n) => n.removeAttribute("id"));
@@ -3581,19 +3863,23 @@ const VB = { viewBox: "0 0 1600 1000", preserveAspectRatio: "xMidYMid slice", fo
     g.style.zIndex = "19";
     panel.after(g);
     const to = tucked(g, oldBtn);
-    const a = g.animate([{ transform: "none", opacity: 1 }, { ...to, opacity: sheetMq.matches ? 1 : 0.2 }], { duration: 220, easing: OUT, fill: "forwards" });
+    const a = g.animate([from, { ...to, opacity: sheetMq.matches ? 1 : 0.2 }], { duration: 220, easing: OUT, fill: "forwards" });
     a.onfinish = a.oncancel = () => g.remove();
   }
   // the cover: a leaf of its own. While it swings across the gutter the left half of the book does not exist yet.
   const HALF = "inset(-70px -70px -70px 50%)";
   const FULL = "inset(-70px -70px -70px -70px)";
-  function coverAnims(opening: boolean, delay: number, duration: number): Animation[] {
+  // `from`: the cover's angle if it was caught mid-swing (0 = shut, −180 = open); the swing then covers only what is left, in proportion
+  function coverAnims(opening: boolean, delay: number, duration: number, from = opening ? 0 : -180): Animation[] {
     if (!lid || !board) return [];
-    const t: KeyframeAnimationOptions = { duration, delay, fill: "both" };
-    const swing = opening
-      ? [{ transform: "rotateY(0deg)", easing: "cubic-bezier(.5,0,.9,.6)" }, { transform: "rotateY(-90deg)", offset: 0.5, easing: "cubic-bezier(.1,.5,.3,1)" }, { transform: "rotateY(-180deg)" }]
-      : [{ transform: "rotateY(-180deg)", easing: "cubic-bezier(.5,0,.9,.6)" }, { transform: "rotateY(-90deg)", offset: 0.5, easing: "cubic-bezier(.1,.5,.3,1)" }, { transform: "rotateY(0deg)" }];
-    const clip = opening ? [{ clipPath: HALF, easing: "steps(1, end)" }, { clipPath: FULL, offset: 0.5 }, { clipPath: FULL }] : [{ clipPath: FULL, easing: "steps(1, end)" }, { clipPath: HALF, offset: 0.5 }, { clipPath: HALF }];
+    const to = opening ? -180 : 0;
+    const left = Math.abs(to - from) / 180;
+    const t: KeyframeAnimationOptions = { duration: Math.max(120, duration * left), delay, fill: "both" };
+    const [before, after] = opening ? [HALF, FULL] : [FULL, HALF]; // the left half of the book exists only while the cover is past the gutter
+    if (opening ? from <= -90 : from >= -90) return [lid.animate([{ transform: `rotateY(${from}deg)`, easing: "cubic-bezier(.1,.5,.3,1)" }, { transform: `rotateY(${to}deg)` }], t), board.animate([{ clipPath: after }, { clipPath: after }], t)];
+    const mid = Math.abs(-90 - from) / Math.abs(to - from);
+    const swing = [{ transform: `rotateY(${from}deg)`, easing: "cubic-bezier(.5,0,.9,.6)" }, { transform: "rotateY(-90deg)", offset: mid, easing: "cubic-bezier(.1,.5,.3,1)" }, { transform: `rotateY(${to}deg)` }];
+    const clip = [{ clipPath: before, easing: "steps(1, end)" }, { clipPath: after, offset: mid }, { clipPath: after }];
     return [lid.animate(swing, t), board.animate(clip, t)];
   }
   // phones: which section the cream sheet holds. Done on pointerdown already, so it is laid out and painted before the slide starts.
@@ -3623,13 +3909,15 @@ const VB = { viewBox: "0 0 1600 1000", preserveAspectRatio: "xMidYMid slice", fo
     else endTurn();
   }
   function animateOut(el: HTMLElement, btn: HTMLElement | null) {
+    const cur = nowOf(el); // wherever it is: at rest, dragged part-way down, or still on its way in
+    const swinging = el === book && el.classList.contains("jb-opening");
+    const angle = swinging ? lidAngle() : -180;
     stopAnims(el);
     if (calm.matches) return finishHide(el);
     el.classList.add("is-leaving");
-    const cur = el.style.transform || "none";
     el.style.transform = "";
     const shrink = (delay: number) => {
-      const a = el.animate([{ transform: cur, opacity: 1 }, tucked(el, btn)], { duration: sheetMq.matches ? 220 : 210, delay, easing: sheetMq.matches ? "cubic-bezier(.4,0,1,1)" : OUT, fill: "both" });
+      const a = el.animate([cur, tucked(el, btn)], { duration: sheetMq.matches ? 220 : 210, delay, easing: sheetMq.matches ? "cubic-bezier(.4,0,1,1)" : OUT, fill: "both" });
       a.onfinish = () => {
         finishHide(el);
         stopAnims(el);
@@ -3640,7 +3928,8 @@ const VB = { viewBox: "0 0 1600 1000", preserveAspectRatio: "xMidYMid slice", fo
       endTurn();
       el.classList.remove("jb-opening");
       el.classList.add("jb-closing");
-      live2.set(el, [...coverAnims(false, 0, 300), shrink(250)]);
+      const cover = coverAnims(false, 0, 300, angle);
+      live2.set(el, [...cover, shrink(Math.max(0, Number(cover[0]?.effect?.getTiming().duration ?? 300) - 50))]);
     } else live2.set(el, [shrink(0)]);
   }
   function openPanel(id: string, focus = true) {
@@ -3656,6 +3945,8 @@ const VB = { viewBox: "0 0 1600 1000", preserveAspectRatio: "xMidYMid slice", fo
       if (oldHost === host) tuckGhost(oldBtn);
       else if (oldHost) animateOut(oldHost, oldBtn);
     }
+    const resume = inFlight(host) ? nowOf(host) : null; // caught while leaving: it turns round from where it is (same origin)
+    const lidFrom = resume && host === book && host.classList.contains("jb-closing") ? lidAngle() : 0;
     stopAnims(host);
     host.classList.remove("is-leaving", "jb-closing", "jb-opening");
     host.style.transform = "";
@@ -3670,6 +3961,7 @@ const VB = { viewBox: "0 0 1600 1000", preserveAspectRatio: "xMidYMid slice", fo
     host.inert = false;
     host.classList.add("is-open");
     holdScene(true);
+    hush(true);
     root.dataset.panel = id;
     btn?.setAttribute("aria-expanded", "true");
     dockBtns.forEach((d) => (d.dataset.go === id ? d.setAttribute("aria-current", "true") : d.removeAttribute("aria-current")));
@@ -3683,9 +3975,9 @@ const VB = { viewBox: "0 0 1600 1000", preserveAspectRatio: "xMidYMid slice", fo
       // the paperback grows out of the towel, then its cover swings open
       show(active, false);
       host.classList.add("jb-opening");
-      const from = tucked(host, btn);
+      const from = resume ?? tucked(host, btn);
       const grow = host.animate([from, { opacity: 1, offset: 0.4 }, { transform: "none", opacity: 1 }], { duration: 400, easing: SPRING });
-      const cover = coverAnims(true, 170, 600);
+      const cover = coverAnims(true, resume ? 0 : 170, 600, lidFrom);
       live2.set(host, [grow, ...cover]);
       if (cover[0])
         cover[0].onfinish = () => {
@@ -3697,10 +3989,10 @@ const VB = { viewBox: "0 0 1600 1000", preserveAspectRatio: "xMidYMid slice", fo
     } else if (sheetMq.matches) {
       // phones: the sheet is already laid out and painted below the screen — a plain slide up, transform only, no overshoot
       if (host === book) show(active, false);
-      live2.set(host, [host.animate([{ transform: "translateY(100%)" }, { transform: "none" }], { duration: 300, easing: "cubic-bezier(.2,.8,.2,1)" })]);
+      live2.set(host, [host.animate([resume ? { transform: resume.transform } : { transform: "translateY(100%)" }, { transform: "none" }], { duration: 300, easing: "cubic-bezier(.2,.8,.2,1)" })]);
     } else {
       if (host === book) show(active);
-      const from = tucked(host, btn);
+      const from = resume ?? tucked(host, btn);
       live2.set(host, [host.animate([from, { opacity: 1, offset: 0.4 }, { transform: "none", opacity: 1 }], { duration: 340, easing: SPRING })]);
     }
     if (focus) (host === book ? marks[active] ?? host : host).focus({ preventScroll: true });
@@ -3713,6 +4005,7 @@ const VB = { viewBox: "0 0 1600 1000", preserveAspectRatio: "xMidYMid slice", fo
     const hadFocus = host.contains(document.activeElement) || dockBtns.includes(document.activeElement as HTMLButtonElement);
     btn?.setAttribute("aria-expanded", "false");
     openId = null;
+    hush(false);
     delete root.dataset.panel;
     history.replaceState(null, "", `${location.pathname}${location.search}`);
     if (returnFocus && hadFocus) btn?.focus({ preventScroll: true });
