@@ -1,3 +1,4 @@
+import habitatDev from "./scripts/habitat-dev.mjs";
 import mdx from "@astrojs/mdx";
 import react from "@astrojs/react";
 import tailwind from "@astrojs/tailwind";
@@ -15,5 +16,5 @@ export default defineConfig({
     defaultLocale: "en",
     locales: ["en", "pt-br"],
   },
-  integrations: [tailwind(), mdx(), react(), sitemap()],
+  integrations: [habitatDev(), tailwind(), mdx(), react(), sitemap()],
 });

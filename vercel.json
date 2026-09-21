@@ -1,0 +1,7 @@
+{
+  "functions": {
+    "api/habitat.ts": {
+      "maxDuration": 15
+    }
+  }
+}

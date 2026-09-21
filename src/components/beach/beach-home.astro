@@ -4,6 +4,7 @@
 // Perf rule: filtered paint lives in static layers that rasterise once; everything
 // that moves is a small unfiltered sprite (or a whole layer) animated by transform/opacity.
 // Rendered inside beach-layout.astro (which owns <head>, the fonts and the first-paint script).
+import HabitatBoard from "./habitat-board.astro";
 import { getProfile, getStack, getExperiences } from "../../lib/beach-data";
 import { getLocaleHref } from "../../lib/i18n";
 import { type BeachLang, STRINGS } from "./strings";
@@ -428,8 +429,8 @@ const btBulbs = Array.from({ length: 9 }, (_, i) => {
 const btRestBall = btP(34, 0.55);
 const btPuddle = btP(-58, 0.15);
 const btPlayers = [
-  { k: "a", shirt: "o-coral", shorts: "o-navy", skin: "bt-skin-a", cap: true },
-  { k: "b", shirt: "o-teal", shorts: "o-white", skin: "bt-skin-b", cap: false },
+  { k: "a", person: "donald", shirt: "bt-port-royale", shorts: "o-char", skin: "bt-skin-a" },
+  { k: "b", person: "wife", shirt: "bt-pink", shorts: "bt-pink", skin: "bt-skin-b" },
 ];
 
 const VB = { viewBox: "0 0 1600 1000", preserveAspectRatio: "xMidYMid slice", focusable: "false" } as const;
@@ -744,7 +745,7 @@ const VB = { viewBox: "0 0 1600 1000", preserveAspectRatio: "xMidYMid slice", fo
       {splashes.map((p) => <i class="jb-splash" style={`left:${p.x}px;top:${p.y}px;--s:${p.s};animation-delay:${p.delay}s;animation-duration:${p.dur}s`}></i>)}
       {wisps.map((w) => <i class="jb-wisp" style={`top:${w.y}px;width:${w.w}px;animation-delay:${w.delay}s;animation-duration:${w.dur}s`}></i>)}
       <!-- beach tennis, further along the sand: scenery, not navigation (placed and driven by the script) -->
-      <div class="jb-court" data-bt="rest" data-m={BT.m}>
+      <div class="jb-court" data-bt="rest" data-m={BT.m} data-baseline={BT.L}>
         <i class="jb-bt-pool"></i>
         <svg class="jb-bt-static" viewBox="-190 -110 380 160" focusable="false">
           <ellipse class="bt-puddle" cx={f(btPuddle[0])} cy={f(btPuddle[1])} rx="50" ry="7.5"></ellipse>
@@ -771,22 +772,46 @@ const VB = { viewBox: "0 0 1600 1000", preserveAspectRatio: "xMidYMid slice", fo
         </svg>
         {
           btPlayers.map((pl, i) => (
-            <div class={`jb-bt-pl jb-bt-pl-${pl.k}`} style={`transform:translate3d(${i ? 55 : -115}px,${f(BT.m * (i ? 85 : -85) - 64)}px,0)${i ? " scaleX(-1)" : ""}`}>
+            <div class={`jb-bt-pl jb-bt-pl-${pl.k}`} data-person={pl.person} style={`transform:translate3d(${i ? 55 : -115}px,${f(BT.m * (i ? 85 : -85) - 64)}px,0)${i ? " scaleX(-1)" : ""}`}>
               <i class="jb-bt-sh"></i>
               <svg viewBox="-30 -64 60 72" focusable="false">
                 <path class={`bt-leg bt-leg-a ${pl.skin}`} d="M-1 -19L-4 -1"></path>
                 <path class={`bt-leg bt-leg-b ${pl.skin}`} d="M1.500 -19L4.500 -1"></path>
                 <g class="bt-body">
+                  {pl.person === "wife" && <path class="bt-hair-light" d="M-5 -45Q-7 -37 -9 -33Q-13 -27 -8 -23Q-5 -25 -4 -29Q-2 -24 2 -25Q8 -24 10 -28Q6 -34 7 -42Q7 -50 0 -50Q-4 -50 -5 -45Z"></path>}
                   <path class={`bt-limb ${pl.skin}`} d="M-3 -33L-8.500 -25"></path>
-                  <path class={pl.shorts} d="M-5.500 -25h11l1.200 9h-5.200l-1.500 -4.500l-1.500 4.500h-5.200Z"></path>
+                  {pl.person === "wife" ? (
+                    <g>
+                      <path class="bt-skirt" d="M-5.5 -25H5.5L9 -15Q4 -13.8 0 -14.5Q-4 -13.8 -9 -15Z"></path>
+                      <path class="bt-skirt-pleats" d="M-3 -23l-1.5 7M0 -23v7.5M3 -23l1.5 7"></path>
+                    </g>
+                  ) : <path class={pl.shorts} d="M-5.500 -25h11l1.200 9h-5.200l-1.500 -4.500l-1.500 4.500h-5.200Z"></path>}
                   <path class={pl.shirt} d="M-5.500 -24Q-7 -34 -2.500 -37H3.500Q7.500 -34 5.500 -24Z"></path>
-                  {!pl.cap && <path class="bt-hair" d="M-4 -46q-7 1 -8 9q3 -3 6 -3Z"></path>}
-                  <circle class={`bt-head ${pl.skin}`} cx="1" cy="-42.500" r="5.200"></circle>
-                  {pl.cap ? <path class="o-gold" d="M-4.300 -44a5.300 5.300 0 0 1 10.600 0h4.600v1.900H-4.300Z"></path> : <path class="bt-hair" d="M-4.300 -43.500a5.300 5.300 0 0 1 10.600 -.5q-5 -3 -10.600 .5Z"></path>}
+                  <circle class={`bt-head ${pl.skin}`} cx="1" cy="-42.500" r="5.700"></circle>
+                  {pl.person === "donald" ? (
+                    <g>
+                      <path class="bt-hair-dark" d="M-4.5 -41.5L-5.2 -46Q-6 -49 -3.7 -49.5Q-4 -52 -1 -51Q1 -54 3 -51.5Q6 -52.5 7.2 -49Q8 -46 6 -43L5.5 -46Q3 -44.5 1.8 -47Q0 -44.7 -2 -47L-3.8 -45Z"></path>
+                      <path class="bt-hair-dark" d="M-4.4 -41.5Q-3.4 -38.7 -1.3 -38.7L0 -39.7Q1 -39 2 -39.7L3.3 -38.7Q5.6 -39.6 6.3 -41.7L5.5 -38.1Q1 -33.8 -3.8 -38.1Z"></path>
+                      <path class="bt-face-line" d="M-0.6 -39.8Q1 -40.7 2.8 -39.8"></path>
+                      <path class="bt-smile" d="M-0.9 -38.4Q1 -37.4 3 -38.5"></path>
+                      <path class="bt-face-line" d="M-2.5 -43.3h1.2M3 -43.3h1.2"></path>
+                    </g>
+                  ) : (
+                    <g>
+                      <path class="bt-hair-light" d="M-4.6 -41.8Q-6.5 -48 0 -50Q7 -51 7.6 -44L6.8 -37Q9 -33 6.8 -29L4.8 -32Q6 -36 4.8 -41.5L3.3 -46.6Q0 -43.6 -3.4 -44L-4 -36Q-3 -32 -5.7 -29L-7 -32Q-4.5 -36 -4.6 -41.8Z"></path>
+                      <path class="bt-hair-highlight" d="M-2.7 -47.5Q0 -49 3 -48.5M6 -38Q8 -33 6 -30M-5.5 -36Q-4.5 -32 -6 -30"></path>
+                      <g class="bt-glasses">
+                        <path d="M-4.6 -43.6Q-2.9 -44.5 -0.2 -43.7L-0.6 -41.2Q-2.4 -39.8 -4 -41.2ZM1.4 -43.7Q4 -44.5 6.1 -43.6L5.6 -41.2Q3.6 -39.8 1.8 -41.2Z"></path>
+                        <path d="M-0.2 -42.8Q0.6 -43.5 1.5 -42.8"></path>
+                      </g>
+                      <path class="bt-lips" d="M-0.2 -38.9Q1.2 -38.1 2.7 -39"></path>
+                    </g>
+                  )}
                   <g class="bt-arm">
                     <path class={`bt-limb ${pl.skin}`} d="M3 -33h9.500"></path>
                     <path class="bt-handle" d="M12.500 -33h4.500"></path>
                     <ellipse class={`bt-paddle${i ? " alt" : ""}`} cx="21.500" cy="-33" rx="5.600" ry="4.600"></ellipse>
+                    <path class={`bt-paddle-stripe${i ? " alt" : ""}`} d="M20 -36l3 6"></path>
                   </g>
                 </g>
               </svg>
@@ -866,6 +891,7 @@ const VB = { viewBox: "0 0 1600 1000", preserveAspectRatio: "xMidYMid slice", fo
   </div>
 
   <main class="jb-world">
+    <HabitatBoard lang={lang} />
     <header class="jb-id">
       <h1>{PROFILE.name}</h1>
       <p class="jb-role"><span>{PROFILE.role}</span></p>
@@ -1251,7 +1277,7 @@ const VB = { viewBox: "0 0 1600 1000", preserveAspectRatio: "xMidYMid slice", fo
     /* sprite paint: the script multiplies these by the current veil so loose objects match the veiled layers */
     --v-cream: #fdf3da; --v-white: #fffdf4; --v-coral: #f0583a; --v-teal: #0fa3b8; --v-gold: #ffc93c; --v-green: #2fa36b; --v-navy: #1d4e89;
     --v-amber: #c9772b; --v-glass: #b6ebe0; --v-cork: #b98654; --v-pages: #efe3c4; --v-fold: #e9d7ae; --v-pole: #fff6e0; --v-under: #b63a27;
-    --v-skin-a: #e9ae7e; --v-skin-b: #9c6646; --v-orange: #ff8a2a;
+    --v-skin-a: #e9ae7e; --v-skin-b: #e3ab80; --v-hair-dark: #382e29; --v-hair-light: #967047; --v-hair-highlight: #c79b62; --v-orange: #ff8a2a; --v-port-royale: #502b33; --v-pink: #ed79ad; --v-pink-dark: #ca518d; --v-racket-gray: #a6adb4;
     /* fixed land paint (the veil filter tints it; lite bakes the veil into these instead — see LAND in the script) */
     --p-wall: #fbf3df; --p-roof-a: #d95a35; --p-roof-b: #b2452a; --p-speck-dk: #d29f5e; --p-speck-lt: #fff3d6; --p-starfish: #f0583a; --p-shell: #fff6e4; --p-trunk: #96704a; --p-ring: #6c5138; --p-seed: #c99c45;
     --v-dark: #4a3a2a; --v-char: #3a3a3a; --v-brown: #6c5138; --v-shade: #9a7440; --v-crab: #e0502f; --v-hill: #4fa45e; --v-hill-dk: #2e7d56; --v-hill-lt: #8fce62;
@@ -1574,8 +1600,12 @@ const VB = { viewBox: "0 0 1600 1000", preserveAspectRatio: "xMidYMid slice", fo
   .bt-mesh { fill: var(--v-white); opacity: 0.3; } .bt-mesh-l { fill: none; stroke: var(--v-white); stroke-width: 0.8; opacity: 0.75; } .bt-band { fill: var(--v-coral); }
   .bt-puddle { fill: var(--sky-2); opacity: calc(var(--wet-b, 0) * 1.4); }
   .bt-rest { opacity: 0; transition: opacity 0.8s ease; } [data-bt="rest"] .bt-rest { opacity: 1; }
-  .bt-handle { fill: none; stroke: var(--v-dark); stroke-width: 2.2; stroke-linecap: round; }
-  .bt-paddle { fill: var(--v-gold); stroke: var(--v-dark); stroke-width: 0.8; } .bt-paddle.alt { fill: var(--v-white); }
+  .bt-handle { fill: none; stroke: var(--v-char); stroke-width: 2.2; stroke-linecap: round; }
+  .bt-paddle { fill: var(--v-char); stroke: var(--v-racket-gray); stroke-width: 1.2; } .bt-paddle.alt { stroke: var(--v-pink); }
+  .bt-paddle-stripe { fill: none; stroke: var(--v-racket-gray); stroke-width: 1.6; stroke-linecap: round; } .bt-paddle-stripe.alt { stroke: var(--v-pink); }
+  .bt-port-royale { fill: var(--v-port-royale); } .o-char { fill: var(--v-char); }
+  .bt-pink { fill: var(--v-pink); } .bt-skirt { fill: var(--v-pink-dark); }
+  .bt-skirt-pleats { fill: none; stroke: var(--v-pink); stroke-width: 0.7; stroke-linecap: round; }
   .bt-ball-c { fill: var(--v-orange); }
   .jb-bt-pool { left: -180px; top: -44px; width: 360px; height: 96px; border-radius: 50%; background: radial-gradient(closest-side, rgb(255 206 120 / 0.5), transparent); opacity: calc(var(--lights, 0) * 0.6); }
   .jb-bt-pl { width: 60px; height: 72px; opacity: 0; transition: opacity 0.7s ease; }
@@ -1585,7 +1615,13 @@ const VB = { viewBox: "0 0 1600 1000", preserveAspectRatio: "xMidYMid slice", fo
   .jb-bt-pl-b .jb-bt-sh { --shd: -1; }
   path.bt-skin-a { fill: none; stroke: var(--v-skin-a); } circle.bt-skin-a { fill: var(--v-skin-a); }
   path.bt-skin-b { fill: none; stroke: var(--v-skin-b); } circle.bt-skin-b { fill: var(--v-skin-b); }
-  .bt-leg, .bt-limb { stroke-width: 3.4; stroke-linecap: round; } .bt-hair { fill: var(--v-dark); }
+  .bt-leg, .bt-limb { stroke-width: 3.4; stroke-linecap: round; }
+  .bt-hair-dark { fill: var(--v-hair-dark); } .bt-hair-light { fill: var(--v-hair-light); }
+  .bt-hair-highlight { fill: none; stroke: var(--v-hair-highlight); stroke-width: 0.8; stroke-linecap: round; }
+  .bt-glasses { fill: none; stroke: var(--v-dark); stroke-width: 0.65; stroke-linecap: round; stroke-linejoin: round; }
+  .bt-face-line { fill: none; stroke: var(--v-hair-dark); stroke-width: 0.65; stroke-linecap: round; }
+  .bt-smile { fill: none; stroke: var(--v-cream); stroke-width: 0.7; stroke-linecap: round; }
+  .bt-lips { fill: none; stroke: var(--v-coral); stroke-width: 0.7; stroke-linecap: round; }
   .bt-leg, .bt-arm, .bt-body { transform-origin: 0 0; }
   .jb-bt-ball { width: 7px; height: 7px; margin: -3.5px 0 0 -3.5px; border-radius: 50%; background: var(--v-orange); box-shadow: inset -1.5px -1.5px 0 rgb(80 30 0 / 0.22); opacity: 0; transition: opacity 0.4s ease; }
   .jb-bt-bsh { width: 10px; height: 3.4px; margin: -1.7px 0 0 -5px; border-radius: 50%; background: var(--v-shade); opacity: 0; transition: opacity 0.4s ease; }
@@ -2092,6 +2128,9 @@ const VB = { viewBox: "0 0 1600 1000", preserveAspectRatio: "xMidYMid slice", fo
 </style>
 
 <script>
+  import { reportHabitat, recordHabitat, awardHabitatPoint } from "../../lib/habitat/display";
+  import { LOCAL_TENNIS, parseTennis, chooseShot } from "../../lib/habitat/tennis";
+  import { fallback, parsePlan, allowed, type Action, type Context } from "../../lib/habitat/plan";
   const root = document.documentElement;
   const q = <T extends Element = HTMLElement>(sel: string, p: ParentNode = document) => p.querySelector<T>(sel);
   const qa = <T extends Element = HTMLElement>(sel: string, p: ParentNode = document) => Array.from(p.querySelectorAll<T>(sel));
@@ -2141,7 +2180,7 @@ const VB = { viewBox: "0 0 1600 1000", preserveAspectRatio: "xMidYMid slice", fo
     st.setProperty("--oy", `${fit.oy.toFixed(1)}px`);
     st.setProperty("--hz", `${((H - 1000 * fit.s) / 2 + HORIZON * fit.s).toFixed(1)}px`);
     // a portrait screen only sees the middle of the painting: the things gather there, a little smaller
-    const k = fit.portrait ? clamp(fit.width / 800, 0.62, 0.76) : clamp(fit.width / 1500, 0.78, 1);
+    const k = fit.portrait ? clamp(window.innerWidth / 780, 0.46, 0.64) : clamp(fit.width / 1500, 0.78, 1);
     st.setProperty("--k", k.toFixed(3));
     const bottom = (window.innerHeight - fit.oy) / fit.s; // painting-y of the screen's bottom edge
     for (const el of placed) {
@@ -2152,9 +2191,11 @@ const VB = { viewBox: "0 0 1600 1000", preserveAspectRatio: "xMidYMid slice", fo
       let y = sh ? shoreY(x) + Number(sh) : Number(d.y);
       if (fit.portrait && d.prow) {
         // two rows on the sand: towel + cooler along the bottom, the guarda-sol standing clear above them
-        const row = Math.min(905, bottom - 96 / fit.s);
-        y = d.prow === "bottom" ? row : d.prow === "top" ? row - 230 * k - 44 : row - 190 * k + 14;
-      } else y = Math.min(y, bottom - 84 / fit.s + (el.classList.contains("jb-ball") ? 30 : 0));
+        // Keep the foreground props below a full-width court on portrait screens.
+        const screenY = d.prow === "bottom" ? window.innerHeight - 54 : d.prow === "top" ? window.innerHeight * 0.56 : window.innerHeight - 80;
+        y = (screenY - fit.oy) / fit.s;
+      } else if (fit.portrait && el.classList.contains("jb-o-contact")) y = (window.innerHeight * 0.56 - fit.oy) / fit.s;
+      else y = Math.min(y, bottom - 84 / fit.s + (el.classList.contains("jb-ball") ? 30 : 0));
       el.style.setProperty("--x", x.toFixed(1));
       el.style.setProperty("--y", y.toFixed(1));
     }
@@ -2163,16 +2204,17 @@ const VB = { viewBox: "0 0 1600 1000", preserveAspectRatio: "xMidYMid slice", fo
     let cy = shoreY(cx) + 68;
     let ck = 0.8;
     if (fit.portrait) {
-      // a portrait screen: the court sits in the gap between the bottle's label and the towel
-      cx = fit.left + fit.width * 0.25;
-      const top = shoreY(fit.left + fit.width * 0.27) + 64 + 40;
-      const floor = Math.min(905, bottom - 96 / fit.s) - 262 * k;
-      ck = clamp((floor - top) / 122, 0.42, 0.72);
-      cy = top + 92 * ck;
+      // The court gets its own middle row, rather than shrinking into a leftover gap.
+      cx = fit.left + fit.width * 0.44;
+      ck = fit.width * 0.80 / 380;
+      cy = (window.innerHeight * 0.725 - fit.oy) / fit.s;
     }
     st.setProperty("--bt-x", cx.toFixed(1));
     st.setProperty("--bt-y", cy.toFixed(1));
     st.setProperty("--bt-k", ck.toFixed(3));
+    st.setProperty("--hb-x", (fit.portrait ? fit.left + fit.width * 0.84 : cx + 205).toFixed(1));
+    st.setProperty("--hb-y", (fit.portrait ? Math.min(cy - 8, (window.innerHeight - 54 - 230 * k * fit.s - 86 - fit.oy) / fit.s) : cy - 8).toFixed(1));
+    st.setProperty("--hb-w", (fit.portrait ? 90 / fit.s : 138).toFixed(1));
   }
   measure();
   root.classList.add("jb-ready");
@@ -2274,7 +2316,7 @@ const VB = { viewBox: "0 0 1600 1000", preserveAspectRatio: "xMidYMid slice", fo
       for (const el of veiledEls) v ? el.style.setProperty(k, v) : el.style.removeProperty(k);
     });
   }
-  const VEILED = ["--v-cream", "--v-white", "--v-coral", "--v-teal", "--v-gold", "--v-green", "--v-navy", "--v-amber", "--v-glass", "--v-cork", "--v-pages", "--v-fold", "--v-pole", "--v-under", "--v-dark", "--v-char", "--v-brown", "--v-shade", "--v-crab", "--v-hill", "--v-hill-dk", "--v-hill-lt", "--v-skin-a", "--v-skin-b", "--v-orange"];
+  const VEILED = ["--v-cream", "--v-white", "--v-coral", "--v-teal", "--v-gold", "--v-green", "--v-navy", "--v-amber", "--v-glass", "--v-cork", "--v-pages", "--v-fold", "--v-pole", "--v-under", "--v-dark", "--v-char", "--v-brown", "--v-shade", "--v-crab", "--v-hill", "--v-hill-dk", "--v-hill-lt", "--v-skin-a", "--v-skin-b", "--v-hair-dark", "--v-hair-light", "--v-hair-highlight", "--v-orange", "--v-port-royale", "--v-pink", "--v-pink-dark", "--v-racket-gray"];
   const hex = (h: string) => {
     const v = h.trim().replace("#", "");
     const n = parseInt(v.length === 3 ? v.replace(/(.)/g, "$1$1") : v, 16);
@@ -2927,12 +2969,73 @@ const VB = { viewBox: "0 0 1600 1000", preserveAspectRatio: "xMidYMid slice", fo
     shoot.classList.add("is-go");
   }, 7);
 
+  // The director changes intentions, never positions or the animation clock.
+  let tennisPolicy = LOCAL_TENNIS;
+  const habitat = { action: "rally" as Action, remaining: 0, index: 0, context: "sunny" as Context,
+    plan: fallback("sunny"), requests: 0, requested: new Set<Context>(), fatigue: 0, resting: false };
+  root.dataset.habitatSource = "local";
+  let inviteGull = () => {};
+  let inviteCrab = () => {};
+  const habitatContext = (): Context => root.hasAttribute("data-night") ? "night"
+    : env.rMid > 0.1 || env.storm > 0.1 || btWant === "wet" ? "wet" : env.wind > 0.55 ? "windy" : "sunny";
+  async function requestHabitat(context: Context) {
+    if (habitat.requests >= 2 || habitat.requested.has(context)) return;
+    habitat.requested.add(context);
+    habitat.requests++;
+    try {
+      const response = await fetch(`/api/habitat?context=${context}`, { cache: "no-cache", signal: AbortSignal.timeout(14_000) });
+      if (!response.ok) return;
+      const data = await response.json();
+      if (habitat.context === context) {
+        reportHabitat(data);
+        tennisPolicy = parseTennis(data.tennis?.policy) ?? LOCAL_TENNIS;
+        root.dataset.tennisSource = data.tennis?.source === "typesafe" ? "typesafe" : "local";
+      }
+      const plan = parsePlan(data.plan, context);
+      if (plan && habitat.context === context) {
+        habitat.plan = plan;
+        habitat.index = 0;
+        root.dataset.habitatSource = data.source === "openrouter" ? "openrouter" : "local";
+      }
+    } catch { /* The local plan is already playing. No retries or catch-up calls. */ }
+  }
+  tasks.push((dt) => {
+    // The existing task loop already pauses for intro, hidden tabs and reduced motion.
+    if (LITE) return;
+    const context = habitatContext();
+    if (context !== habitat.context) {
+      habitat.context = context;
+      tennisPolicy = LOCAL_TENNIS;
+      reportHabitat({ source: "local", tennis: { source: "local" } });
+      root.dataset.tennisSource = "local";
+      habitat.plan = fallback(context);
+      habitat.index = 0;
+      habitat.remaining = 0;
+      root.dataset.habitatSource = "local";
+    }
+    if (habitat.requests < 2 && !habitat.requested.has(context)) void requestHabitat(context);
+    // A rest lasts its full duration after the players have retrieved the ball.
+    if (habitat.action === "break" && btWant === "play" && !habitat.resting && habitat.remaining > 0) return;
+    habitat.remaining -= dt;
+    if (habitat.remaining > 0) return;
+    const next = habitat.plan.actions[habitat.index++ % habitat.plan.actions.length];
+    habitat.action = allowed(next, context) ? next : "break";
+    if (habitat.fatigue >= 6 && context !== "wet" && context !== "night") habitat.action = "break";
+    habitat.resting = false;
+    habitat.remaining = habitat.action === "break" ? 18 : 30;
+    if (habitat.action === "break") habitat.fatigue = 0;
+    if (habitat.action === "gull") inviteGull();
+    if (habitat.action === "crab") inviteCrab();
+    root.dataset.habitat = habitat.action;
+    recordHabitat(habitat.action);
+  });
+
   // a gull lands on the sand, hops about, and leaves (dry daylight only)
   const gull = q(".jb-gull");
   if (gull) {
-    const g = { mode: "gone" as "gone" | "land" | "stand" | "hop" | "leave", x: 0, y: 0, x0: 0, y0: 0, t: 0, dir: 1, hops: 0, wait: 0 };
+    const g = { mode: "gone" as "gone" | "land" | "stand" | "hop" | "leave", x: 0, y: 0, x0: 0, y0: 0, t: 0, duration: 1.5, dir: 1, hops: 0, wait: 0 };
     const put = (x: number, y: number) => (gull.style.transform = `translate3d(${x.toFixed(1)}px,${y.toFixed(1)}px,0) scaleX(${g.dir})`);
-    sometimes(24, 46, () => {
+    inviteGull = () => {
       if (g.mode !== "gone" || LITE || lifeNow() < 0.8 || env.wind > 0.7) return;
       g.dir = Math.random() < 0.5 ? 1 : -1;
       g.x = fit.left + fit.width * rand(0.3, 0.68);
@@ -2940,15 +3043,17 @@ const VB = { viewBox: "0 0 1600 1000", preserveAspectRatio: "xMidYMid slice", fo
       g.x0 = g.x - g.dir * 260;
       g.y0 = g.y - 200;
       g.t = 0;
+      g.duration = 1.5;
       g.hops = Math.floor(rand(3, 7));
       g.mode = "land";
       gull.classList.add("is-out", "is-air");
-    }, 9);
+    };
+    sometimes(24, 46, () => inviteGull(), 9);
     tasks.push((dt) => {
       if (g.mode === "gone") return;
       g.t += dt;
       if (g.mode === "land" || g.mode === "leave") {
-        const k = clamp(g.t / 1.5, 0, 1);
+        const k = clamp(g.t / g.duration, 0, 1);
         const u = g.mode === "land" ? 1 - (1 - k) * (1 - k) : 1 - k * k;
         put(g.x0 + (g.x - g.x0) * u, g.y0 + (g.y - g.y0) * u);
         if (k >= 1) {
@@ -2967,10 +3072,11 @@ const VB = { viewBox: "0 0 1600 1000", preserveAspectRatio: "xMidYMid slice", fo
         if (g.hops-- <= 0 || env.rMid > 0.1) {
           g.mode = "leave";
           g.t = 0;
-          g.x0 = g.x + g.dir * 300;
-          g.y0 = g.y - 240;
+          // Keep the flying sprite visible until it has cleared the viewport.
+          g.x0 = g.dir > 0 ? fit.left + fit.width + 96 : fit.left - 96;
+          g.y0 = g.y - 300;
+          g.duration = clamp(Math.hypot(g.x0 - g.x, g.y0 - g.y) / 280, 1.5, 4.5);
           gull.classList.add("is-air");
-          gull.classList.remove("is-out");
         } else {
           if (Math.random() < 0.3) g.dir *= -1;
           g.mode = "hop";
@@ -2994,6 +3100,7 @@ const VB = { viewBox: "0 0 1600 1000", preserveAspectRatio: "xMidYMid slice", fo
   if (crab) {
     const c = { x: 0, y: 0, dir: 1, lo: 0, hi: 0, mode: "gone" as "gone" | "walk" | "pause" | "hide", wait: 0, shy: 0, phase: 0, idle: 5 };
     const place = () => (crab.style.transform = `translate3d(${c.x.toFixed(1)}px,${c.y.toFixed(1)}px,0)`);
+    inviteCrab = () => { if (c.mode === "gone") c.idle = 0; };
     const bold = () => env.rMid > 0.2 || root.hasAttribute("data-night");
     tasks.push((dt) => {
       if (c.mode === "gone") {
@@ -3104,6 +3211,8 @@ const VB = { viewBox: "0 0 1600 1000", preserveAspectRatio: "xMidYMid slice", fo
   let btSnap = () => {};
   if (court) {
     const M = Number(court.dataset.m) || -0.085;
+    const baseline = Number(court.dataset.baseline) || 140;
+    const serveX = (face: number) => -face * (baseline + 24);
     const ballEl = q(".jb-bt-ball", court);
     const bshEl = q(".jb-bt-bsh", court);
     const pokEl = q(".jb-bt-pok", court);
@@ -3123,6 +3232,7 @@ const VB = { viewBox: "0 0 1600 1000", preserveAspectRatio: "xMidYMid slice", fo
     let clock = 0;
     let mode: "off" | "toServe" | "fly" | "dead" | "fetch" | "leave" = "off";
     let rally = 0, server = 0, rcv = 1, wait = 0, leaveT = 0;
+    let pointWinner: number | null = null;
     const burst = (el: HTMLElement | null, x: number, h: number) => {
       if (!el) return;
       el.style.transform = `translate3d(${x.toFixed(1)}px,${(M * x - h).toFixed(1)}px,0)`;
@@ -3149,7 +3259,13 @@ const VB = { viewBox: "0 0 1600 1000", preserveAspectRatio: "xMidYMid slice", fo
       ball.h = SW[me.kind].h;
       rcv = 1 - by;
       const r = Math.random();
-      const shot = serve ? "lob" : r < 0.5 ? "drive" : r < 0.8 ? "lob" : "drop";
+      const situation = Math.abs(me.x - me.home) > 26 ? "stretched" : habitat.fatigue >= 4 || rally >= 6 ? "tired" : "balanced";
+      const shot = serve ? "lob" : chooseShot(tennisPolicy, situation, habitat.action, r);
+      if (court) {
+        court.dataset.shot = shot;
+        court.dataset.situation = situation;
+      }
+      recordHabitat(shot, situation, by, serve);
       const T = shot === "drive" ? rand(0.82, 1) : shot === "lob" ? rand(1.3, 1.6) : rand(0.95, 1.1);
       const H = shot === "drive" ? rand(12, 20) : shot === "lob" ? rand(34, 50) : rand(24, 30);
       const dist = shot === "drive" ? rand(60, 110) : shot === "lob" ? rand(88, 118) : rand(44, 58);
@@ -3157,6 +3273,7 @@ const VB = { viewBox: "0 0 1600 1000", preserveAspectRatio: "xMidYMid slice", fo
       const bend = env.windX * wind * 36; // a strong wind bows the flight; the receiver still reads it
       const pf = serve ? 0.04 : clamp(0.07 + rally * 0.03 + wind * 0.2, 0, 0.5);
       const fault = Math.random() < pf ? ["net", "long", "miss"][Math.floor(rand(0, 3))] : "";
+      pointWinner = fault === "net" || fault === "long" ? 1 - by : fault === "miss" ? by : null;
       const X = dir * dist;
       me.tx = me.home;
       if (fault === "net") {
@@ -3175,6 +3292,10 @@ const VB = { viewBox: "0 0 1600 1000", preserveAspectRatio: "xMidYMid slice", fo
     }
     function toss(by: number) {
       const me = P[by];
+      // Both feet stay behind the painted baseline until racket contact.
+      me.x = me.tx = serveX(me.face);
+      me.step = 0;
+      pointWinner = null;
       me.kind = "hi";
       me.hitAt = clock + 0.62;
       ball.x = me.x + me.face * 9;
@@ -3232,7 +3353,7 @@ const VB = { viewBox: "0 0 1600 1000", preserveAspectRatio: "xMidYMid slice", fo
           court.dataset.bt = "play";
           P.forEach((p) => ((p.x = -p.face * 36), (p.tx = p.home), (p.hitAt = -9)));
           server = Math.random() < 0.5 ? 0 : 1;
-          P[server].tx = P[server].home * 1.28;
+          P[server].tx = serveX(P[server].face);
           showBall(false);
           mode = "toServe";
           wait = 0.7;
@@ -3279,8 +3400,15 @@ const VB = { viewBox: "0 0 1600 1000", preserveAspectRatio: "xMidYMid slice", fo
           netEl?.classList.remove("is-hit");
           void netEl?.getBoundingClientRect();
           netEl?.classList.add("is-hit");
-        } else if (sg.then === "ground") burst(puffEl, ball.x, 0);
+        } else if (sg.then === "ground") {
+          burst(puffEl, ball.x, 0);
+          if (pointWinner !== null) {
+            awardHabitatPoint(pointWinner);
+            pointWinner = null; // later bounces belong to the same point
+          }
+        }
         else if (sg.then === "rest") {
+          habitat.fatigue++;
           mode = "dead";
           wait = rand(0.7, 1.3);
           P.forEach((p) => (p.tx = p.home));
@@ -3294,10 +3422,15 @@ const VB = { viewBox: "0 0 1600 1000", preserveAspectRatio: "xMidYMid slice", fo
       } else if (mode === "fetch") {
         if (Math.abs(P[server].tx - P[server].x) > 3) return;
         showBall(false); // picked up
-        P[server].tx = P[server].home * 1.28;
+        P[server].tx = serveX(P[server].face);
         mode = "toServe";
         wait = rand(0.5, 0.9);
       } else if (mode === "toServe") {
+        // Finish the point and retrieve its ball before resting. Resume from the held serve.
+        if (habitat.action === "break") {
+          if (P.every(p => Math.abs(p.tx - p.x) < 3)) habitat.resting = true;
+          return;
+        }
         if (Math.abs(P[server].tx - P[server].x) > 3) return;
         wait -= dt;
         if (wait <= 0) toss(server);
