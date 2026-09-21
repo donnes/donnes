@@ -347,7 +347,12 @@ function deckTile(seed: number, body: number, lump: number) {
     const y = body - rad * 0.2 + r() * lump * 0.35;
     for (const xx of [x, x - 800, x + 800]) if (xx > -rad && xx < 800 + rad) s += `<circle cx='${f(xx)}' cy='${f(y)}' r='${f(rad)}'/>`;
   }
-  return `url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='800' height='${body + lump * 2}' viewBox='0 0 800 ${body + lump * 2}'>${s}</svg>")`;
+  const height = body + lump * 2;
+  return {
+    height,
+    drawing: s,
+    mask: `url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='800' height='${height}' viewBox='0 0 800 ${height}'>${s}</svg>")`,
+  };
 }
 const deckBack = deckTile(61, 150, 46);
 const deckFront = deckTile(62, 96, 40);
@@ -437,6 +442,9 @@ const VB = { viewBox: "0 0 1600 1000", preserveAspectRatio: "xMidYMid slice", fo
   <!-- ░░ paint box: every layer of the scene lives here once and is <use>d ░░ -->
   <svg class="jb-paintbox" width="0" height="0" aria-hidden="true" focusable="false">
     <defs>
+      <g id="A-deck-back" set:html={deckBack.drawing}></g>
+      <g id="A-deck-front" set:html={deckFront.drawing}></g>
+      <g id="A-deck-hi" set:html={deckHi.drawing}></g>
       <filter id="wob" x="-5%" y="-5%" width="110%" height="110%">
         <feTurbulence type="fractalNoise" baseFrequency="0.011 0.016" numOctaves="2" seed="4" result="n"></feTurbulence>
         <feDisplacementMap in="SourceGraphic" in2="n" scale="12" xChannelSelector="R" yChannelSelector="G"></feDisplacementMap>
@@ -667,13 +675,25 @@ const VB = { viewBox: "0 0 1600 1000", preserveAspectRatio: "xMidYMid slice", fo
     </div>
     <svg class="jb-layer jb-nojs" {...VB}><use href="#L-cloudsFar"></use><use href="#L-cloudsNear"></use></svg>
     <div class="jb-stage i-cloud" data-d="0.22">
-      <i class="jb-deck jb-deck-back" style={`-webkit-mask-image:${deckBack};mask-image:${deckBack}`}></i>
+      <i class="jb-deck jb-deck-back" style={`-webkit-mask-image:${deckBack.mask};mask-image:${deckBack.mask}`}>
+        <svg class="jb-deck-drawing" viewBox={`0 0 3200 ${deckBack.height}`} preserveAspectRatio="none" focusable="false">
+          {[0, 1, 2, 3].map((tile) => <use href="#A-deck-back" x={tile * 800}></use>)}
+        </svg>
+      </i>
       {allClouds.filter((c) => c.tier === "far").map((c) => <svg class="jb-spr jb-cloud clouds far" data-tier="far" data-v="0.4" {...cloudBox(c)} focusable="false"><use href={`#A-${c.key}`}></use></svg>)}
     </div>
     <div class="jb-stage i-cloud" data-d="0.3">
       {allClouds.filter((c) => c.tier !== "far").map((c) => <svg class={`jb-spr jb-cloud clouds ${c.tier}`} data-tier={c.tier} data-cy={c.cy} data-v={c.tier === "extra" ? "0.8" : "1"} {...cloudBox(c)} focusable="false"><use href={`#A-${c.key}`}></use></svg>)}
-      <i class="jb-deck jb-deck-front" style={`-webkit-mask-image:${deckFront};mask-image:${deckFront}`}></i>
-      <i class="jb-deck jb-deck-hi jb-not-lite" style={`-webkit-mask-image:${deckHi};mask-image:${deckHi}`}></i>
+      <i class="jb-deck jb-deck-front" style={`-webkit-mask-image:${deckFront.mask};mask-image:${deckFront.mask}`}>
+        <svg class="jb-deck-drawing" viewBox={`0 0 3200 ${deckFront.height}`} preserveAspectRatio="none" focusable="false">
+          {[0, 1, 2, 3].map((tile) => <use href="#A-deck-front" x={tile * 800}></use>)}
+        </svg>
+      </i>
+      <i class="jb-deck jb-deck-hi jb-not-lite" style={`-webkit-mask-image:${deckHi.mask};mask-image:${deckHi.mask}`}>
+        <svg class="jb-deck-drawing" viewBox={`0 0 3200 ${deckHi.height}`} preserveAspectRatio="none" focusable="false">
+          {[0, 1, 2, 3].map((tile) => <use href="#A-deck-hi" x={tile * 800}></use>)}
+        </svg>
+      </i>
     </div>
     <svg class="jb-layer i-sea i-wipe" data-d="0.45" {...VB}><use href="#L-sea"></use></svg>
     <svg class="jb-layer i-land jb-veiled" data-d="0.45" {...VB}><use href="#L-hills"></use></svg>
@@ -840,6 +860,7 @@ const VB = { viewBox: "0 0 1600 1000", preserveAspectRatio: "xMidYMid slice", fo
     <div class="jb-dimmer"></div>
     <i class="jb-flash"></i>
     <div class="jb-grain"></div>
+
   </div>
 
   <main class="jb-world">
@@ -1352,6 +1373,16 @@ const VB = { viewBox: "0 0 1600 1000", preserveAspectRatio: "xMidYMid slice", fo
   /* ── the scene ── */
   .jb-scene { position: absolute; inset: 0 0 auto 0; height: 60svh; overflow: hidden; z-index: 0; background: var(--sky-1); }
   html.js .jb-scene { position: fixed; height: 100svh; }
+  .jb-draft { will-change: opacity; position: fixed; inset: 0; z-index: 3; overflow: hidden; pointer-events: none; background: #f5f0e5; }
+  .jb-draft-paint { position: absolute; inset: 0; filter: grayscale(1); }
+  .jb-draft [filter], .jb-draft .jb-veiled { filter: none !important; }
+  .jb-draft .jb-scene { background: #f5f0e5; }
+  .jb-deck-drawing { display: none; }
+  .jb-draft .jb-deck { background: none; -webkit-mask-image: none !important; mask-image: none !important; }
+  .jb-draft .jb-deck-drawing { display: block; width: 100%; height: 100%; }
+  .jb-draft .jb-grain, .jb-draft .jb-tag { visibility: hidden; }
+  .jb-draft *, .jb-draft *::before, .jb-draft *::after { animation-play-state: paused !important; transition: none !important; pointer-events: none !important; }
+  html.js .jb-draft .jb-scene { position: absolute; }
   .jb-layer { position: absolute; inset: -24px; width: calc(100% + 48px); height: calc(100% + 48px); display: block; }
   html.js .jb-nojs { display: none; }
   .jb-xstars { opacity: calc(var(--stars) * var(--clear, 0.5)); }
@@ -1865,7 +1896,6 @@ const VB = { viewBox: "0 0 1600 1000", preserveAspectRatio: "xMidYMid slice", fo
   /* still: everything that would animate a full-screen layer, or sit between two of them */
   html.is-lite .jb-glit-a, html.is-lite .jb-glit-b, html.is-lite .jb-shimmer-a, html.is-lite .jb-shimmer-b, html.is-lite .jb-sway-a.jb-layer, html.is-lite .jb-sway-b.jb-layer, html.is-lite .jb-crown, html.is-lite .jb-rays, html.is-lite .jb-spark, html.is-lite .jb-mist, html.is-lite .jb-spray,
   html.is-lite .i-sky, html.is-lite .i-cloud, html.is-lite .i-sea, html.is-lite .i-land, html.is-lite .i-veg { animation: none !important; }
-  html.is-lite.jb-intro .jb-scene { animation: jb-in-fade 0.5s ease-out backwards; }
   /* rain: one streak layer, no bigger than the screen plus one fall (the script keeps the slant small) */
   html.is-lite .jb-rainbox { inset: -290px -130px 0; }
   html.is-lite .jb-rainfall { inset: -280px 0 0; }
@@ -1965,27 +1995,13 @@ const VB = { viewBox: "0 0 1600 1000", preserveAspectRatio: "xMidYMid slice", fo
     .jb-bt-net.is-hit { animation: jb-net-hit 0.5s ease-out 1; }
     .jb-bt-pok.is-go { animation: jb-pok 0.3s ease-out 1; } .jb-bt-puff.is-go { animation: jb-puff 0.55s ease-out 1; }
 
-    /* entrance — once per load, ≤1.5s */
-    html.jb-intro .i-sky { animation: jb-in-fade 0.5s ease-out backwards; }
-    html.jb-intro .i-cloud { animation: jb-in-cloud 0.9s cubic-bezier(0.2, 0.8, 0.2, 1) 0.1s backwards; }
-    html.jb-intro .i-sea { animation: jb-in-rise 0.6s cubic-bezier(0.2, 0.8, 0.2, 1) 0.15s backwards; }
-    html.jb-intro .i-wipe { animation: jb-in-wipe 0.7s cubic-bezier(0.5, 0, 0.2, 1) 0.1s backwards; }
-    html.jb-intro .jb-glit-a { animation: jb-in-rise 0.6s 0.2s backwards, jb-glint 1.9s ease-in-out infinite alternate; }
-    html.jb-intro .jb-glit-b { animation: jb-in-rise 0.6s 0.2s backwards, jb-glint 2.7s ease-in-out -1.1s infinite alternate-reverse; }
-    html.jb-intro .jb-swell { animation: jb-in-fade 0.6s 0.4s backwards, jb-swell 7.5s ease-in-out infinite alternate; }
-    html.jb-intro .jb-shimmer-a { animation: jb-in-fade 0.6s 0.4s backwards, jb-shimmer 5.2s ease-in-out infinite alternate; }
-    html.jb-intro .jb-shimmer-b { animation: jb-in-fade 0.6s 0.45s backwards, jb-shimmer 6.4s ease-in-out infinite alternate-reverse; }
-    html.jb-intro .i-land { animation: jb-in-land 0.7s cubic-bezier(0.2, 0.9, 0.25, 1) 0.25s backwards; }
-    html.jb-intro .i-veg { animation: jb-in-veg 0.7s cubic-bezier(0.2, 0.9, 0.25, 1) 0.4s backwards; }
-    html.jb-intro .i-grass { animation: jb-in-pop 0.55s var(--spring) 0.8s backwards, jb-sway 5.5s ease-in-out infinite alternate; }
-    html.jb-intro .i-grass.i-late { animation: jb-in-pop 0.55s var(--spring) 0.9s backwards, jb-sway 7s ease-in-out infinite alternate-reverse; }
-    html.jb-intro .jb-fg { animation: jb-in-pop 0.5s var(--spring) 0.95s backwards, jb-sway 5.5s ease-in-out infinite alternate; }
-    html.jb-intro .jb-fg-late { animation: jb-in-pop 0.5s var(--spring) 1.02s backwards, jb-sway 7s ease-in-out infinite alternate-reverse; }
-    html.jb-intro .jb-id { animation: jb-in-id 0.6s cubic-bezier(0.2, 0.9, 0.25, 1) 0.35s backwards; }
-    html.jb-intro .jb-hello { animation: jb-in-hello 0.55s var(--spring) 0.7s backwards; }
-    html.jb-intro .jb-lang { animation: jb-in-fade 0.4s ease-out 1s backwards; }
-    html.jb-intro.jb-ready .jb-obj .jb-art { animation: jb-in-drop 0.62s var(--spring) backwards; animation-delay: calc(var(--i) * 90ms + 0.55s); }
-    html.jb-intro.jb-ready .jb-obj .jb-tag { animation: jb-in-tag 0.4s var(--spring) backwards; animation-delay: calc(var(--i) * 90ms + 0.95s); }
+    /* Keep the initial paint in pencil while the scene script places its sprites. */
+    html.jb-intro:not(.jb-draft-ready) .jb-scene::after { content: ""; position: absolute; inset: 0; z-index: 10; background: #f5f0e5; }
+    html.jb-intro:not(.jb-draft-ready) .jb-objs { visibility: hidden; }
+    html.jb-intro:not(.jb-draft-ready) .jb-obj { visibility: hidden; }
+    /* Both copies keep the same pose until the color reveal finishes. */
+    html.jb-intro:not(.jb-intro-done) :is(.jb-scene, .jb-objs, .jb-fg),
+    html.jb-intro:not(.jb-intro-done) :is(.jb-scene, .jb-objs) * { animation-play-state: paused !important; transition: none !important; }
 
     @keyframes jb-shimmer { from { opacity: 0.35; transform: translateX(-6px) scaleY(0.985); } to { opacity: 1; transform: translateX(6px) scaleY(1.02); } }
     @keyframes jb-swell { from { opacity: 0.25; transform: scaleY(0.97); } to { opacity: 0.9; transform: scaleY(1.035); } }
@@ -2060,18 +2076,11 @@ const VB = { viewBox: "0 0 1600 1000", preserveAspectRatio: "xMidYMid slice", fo
     @keyframes jb-pok { 0% { opacity: 0.95; scale: 0.2; } 100% { opacity: 0; scale: 1.15; } }
     @keyframes jb-puff { 0% { opacity: 0.9; scale: 0.3; } 100% { opacity: 0; scale: 1.7; translate: 0 -5px; } }
     @keyframes jb-in-fade { from { opacity: 0; } }
-    @keyframes jb-in-cloud { from { opacity: 0; translate: 60px 0; } }
-    @keyframes jb-in-rise { from { opacity: 0; translate: 0 24px; } }
-    @keyframes jb-in-wipe { from { clip-path: inset(0 100% 0 0); } to { clip-path: inset(0 0 0 0); } }
-    @keyframes jb-in-land { from { opacity: 0; translate: 0 56px; } }
-    @keyframes jb-in-veg { from { opacity: 0; translate: 90px 20px; } }
-    @keyframes jb-in-pop { from { opacity: 0; scale: 1 0.2; } }
-    @keyframes jb-in-id { from { opacity: 0; translate: -36px 0; } }
-    @keyframes jb-in-hello { from { opacity: 0; translate: 0 -30px; } }
-    @keyframes jb-in-drop { from { opacity: 0; translate: 0 -90px; rotate: -7deg; } }
-    @keyframes jb-in-tag { from { opacity: 0; scale: 0.4; } }
   }
   @media (prefers-reduced-motion: reduce) {
+    .jb-draft { display: none; }
+    html.js .jb-scene { animation: jb-calm-reveal 0.2s ease both; }
+    @keyframes jb-calm-reveal { from { opacity: 0; } to { opacity: 1; } }
     .jb-art, .jb-tag, .jb-tag::after, .jb-hello, .jb-close, .jb-mark, .jb-marks, .jb-turn, .jb-dock, .jb-dock button, .o-pb, .bt-rest, .jb-bt-pl, .jb-bt-ball, .jb-bt-bsh, .jb-meta, .jb-copy, .jb-print, .jb-id, .jb-cloud, .jb-deck, .jb-rainfall, .jb-tint, .jb-win, .jb-gull, .jb-boat-wrap, .jb-sail-go, .jb-kite-go,
     .o-sh, .o-can-open, .o-can-shut, .o-cover, .o-shades, .o-blanket, .o-cool-open, .o-cool-lid { transition: none !important; }
     .jb-o-about .jb-idle { rotate: var(--umb-lean, 0deg); }
@@ -2173,6 +2182,7 @@ const VB = { viewBox: "0 0 1600 1000", preserveAspectRatio: "xMidYMid slice", fo
   /* ───────────── one clock for everything that moves ───────────── */
   type Task = (dt: number, now: number) => void;
   const tasks: Task[] = [];
+  let introPending = root.classList.contains("jb-intro") && !calm.matches;
   let running = false;
   let last = 0;
   let held = false; // lite phones: a sheet covers the beach, so the scene stops entirely (see holdScene)
@@ -2195,7 +2205,7 @@ const VB = { viewBox: "0 0 1600 1000", preserveAspectRatio: "xMidYMid slice", fo
   function syncRunning() {
     const should = !document.hidden && !held;
     root.classList.toggle("is-asleep", document.hidden);
-    const go = should && !calm.matches;
+    const go = should && !calm.matches && !introPending;
     if (go && !running) {
       running = true;
       last = performance.now();
@@ -2503,6 +2513,7 @@ const VB = { viewBox: "0 0 1600 1000", preserveAspectRatio: "xMidYMid slice", fo
     } else syncClouds(false);
   }
   function update() {
+    if (introPending && state) return; // Apply incoming weather after the two copies have blended.
     const next = readState();
     const p = state;
     if (p && p.sky === next.sky && p.phase === next.phase && Math.abs(p.cyc - next.cyc) < 0.0015 && p.cover === next.cover && p.wind === next.wind && p.windX === next.windX && p.temp === next.temp && p.kmh === next.kmh && p.label === next.label && p.preview === next.preview) return;
@@ -3318,7 +3329,7 @@ const VB = { viewBox: "0 0 1600 1000", preserveAspectRatio: "xMidYMid slice", fo
     window.addEventListener("pointermove", (e) => {
       pointer.x = e.clientX;
       pointer.y = e.clientY;
-      if (e.pointerType === "touch" || calm.matches || LITE) return;
+      if (e.pointerType === "touch" || calm.matches || LITE || introPending) return;
       tx = (e.clientX / window.innerWidth - 0.5) * 20;
       ty = (e.clientY / window.innerHeight - 0.5) * 9;
       if (!raf && !document.hidden) raf = requestAnimationFrame(step);
@@ -3794,6 +3805,117 @@ const VB = { viewBox: "0 0 1600 1000", preserveAspectRatio: "xMidYMid slice", fo
       }, 1800);
     });
   });
+
+  // Trace the actual SVG geometry, including shared layers and every beach object.
+  // The temporary, inert drawing stays aligned with the paused color scene.
+  if (introPending) {
+    const draft = document.createElement("div");
+    draft.className = "jb-draft";
+    draft.setAttribute("aria-hidden", "true");
+    draft.inert = true;
+    const paint = document.createElement("div");
+    paint.className = "jb-draft-paint";
+    for (const source of [scene, q(".jb-objs"), ...qa(".jb-fg")]) {
+      if (!source) continue;
+      const copy = source.cloneNode(true) as Element;
+      for (const el of [copy, ...qa<Element>("*", copy)]) {
+        el.removeAttribute("id");
+        el.removeAttribute("aria-controls");
+      }
+      paint.append(copy);
+    }
+    // Expand <use> instances so each contour can receive a normalized pencil stroke.
+    // Keep the original definitions for clip paths, but never duplicate their IDs.
+    const expandUses = (host: Element, depth = 0) => {
+      if (depth > 8) return;
+      for (const use of qa<SVGUseElement>("use", host)) {
+        const href = use.getAttribute("href") || use.getAttribute("xlink:href");
+        if (!href?.startsWith("#")) continue;
+        const source = document.getElementById(href.slice(1));
+        if (!source) continue;
+        const group = document.createElementNS("http://www.w3.org/2000/svg", "g");
+        for (const attr of [...use.attributes]) {
+          if (!["href", "xlink:href", "x", "y", "id"].includes(attr.name)) group.setAttribute(attr.name, attr.value);
+        }
+        const offset = document.createElementNS("http://www.w3.org/2000/svg", "g");
+        offset.setAttribute("transform", `translate(${use.getAttribute("x") || 0} ${use.getAttribute("y") || 0})`);
+        const geometry = source.cloneNode(true) as Element;
+        for (const el of [geometry, ...qa<Element>("[id]", geometry)]) el.removeAttribute("id");
+        offset.append(geometry);
+        group.append(offset);
+        expandUses(group, depth + 1);
+        use.replaceWith(group);
+      }
+    };
+    expandUses(paint);
+    draft.append(paint);
+    q(".jb-world")?.append(draft);
+    root.classList.add("jb-draft-ready");
+
+    const contours = qa<SVGGeometryElement>("path, rect, circle, ellipse, line, polyline, polygon", paint)
+      .filter((el) => !el.closest("defs, clipPath, mask"));
+    // Read styles together before writing, so conversion does not repeatedly force layout.
+    const fills = contours.map((el) => getComputedStyle(el).fill);
+    contours.forEach((el, i) => {
+      el.setAttribute("pathLength", "1");
+      el.style.setProperty("fill", fills[i] === "none" ? "none" : "#f5f0e5", "important");
+      el.style.setProperty("stroke", "#777166", "important");
+      el.style.setProperty("stroke-width", "0.8px", "important");
+      el.style.setProperty("stroke-linecap", "round", "important");
+      el.style.setProperty("stroke-linejoin", "round", "important");
+      el.style.setProperty("stroke-dasharray", "1", "important");
+      el.style.setProperty("stroke-dashoffset", "inherit", "important");
+      el.setAttribute("vector-effect", "non-scaling-stroke");
+    });
+    const drawings = qa<SVGSVGElement>("svg", paint);
+    drawings.forEach((svg) => { svg.style.strokeDashoffset = "1"; });
+    const strokes: Animation[] = [];
+    let reveal: Animation | undefined;
+    const finishIntro = () => {
+      if (!introPending) return;
+      introPending = false;
+      draft.remove();
+      reveal?.cancel();
+      strokes.forEach((stroke) => stroke.cancel());
+      root.classList.add("jb-intro-done");
+      window.removeEventListener("resize", finishIntro);
+      calm.removeEventListener("change", finishIntro);
+      document.removeEventListener("visibilitychange", syncReveal);
+      syncRunning();
+      update();
+      rates();
+    };
+    const syncReveal = () => {
+      for (const animation of [...strokes, ...(reveal ? [reveal] : [])]) {
+        if (document.hidden) animation.pause();
+        else animation.play();
+      }
+    };
+    window.addEventListener("resize", finishIntro, { once: true });
+    calm.addEventListener("change", finishIntro, { once: true });
+    document.addEventListener("visibilitychange", syncReveal);
+    // Trace contours in overlapping passes, then let the paint show through.
+    // One animation per SVG inherits down to its paths, rather than one per contour.
+    requestAnimationFrame(() => requestAnimationFrame(() => {
+      if (!introPending) return;
+      drawings.forEach((svg, i) => {
+        strokes.push(svg.animate([{ strokeDashoffset: "1" }, { strokeDashoffset: "0" }], {
+          duration: 900,
+          delay: (i / Math.max(1, drawings.length - 1)) * 450,
+          easing: "linear",
+          fill: "both",
+        }));
+      });
+      reveal = draft.animate([{ opacity: 1 }, { opacity: 0 }], {
+        duration: 700,
+        delay: 1100,
+        easing: "ease",
+        fill: "both",
+      });
+      syncReveal();
+      void reveal.finished.then(finishIntro, finishIntro);
+    }));
+  }
 
   const wanted = location.hash.slice(1) || params.get("p") || "";
   if (btnFor(wanted)) openPanel(wanted, false);
