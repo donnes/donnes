@@ -321,6 +321,8 @@ const flapA = lerp(TW[1], TW[0], 0.17);
 const flapB = lerp(TW[1], TW[2], 0.32);
 const towelD = `M${pts(TW[0], flapA, flapB, TW[2], TW[3])}Z`;
 const flapD = `M${pts(flapA, flapB, [333.8, 91])}Z`;
+const flapOrigin = `${f((flapA[0] + flapB[0]) / 2)}px ${f((flapA[1] + flapB[1]) / 2)}px`;
+const flapAngle = `${f(Math.atan2(flapB[1] - flapA[1], flapB[0] - flapA[0]) * 180 / Math.PI)}deg`;
 const towelStripes = (
   [[0.03, 0.11, "o-teal"], [0.15, 0.19, "o-gold"], [0.23, 0.33, "o-coral"], [0.37, 0.41, "o-gold"], [0.45, 0.55, "o-teal"], [0.59, 0.63, "o-gold"], [0.67, 0.77, "o-coral"], [0.81, 0.85, "o-gold"], [0.89, 0.97, "o-teal"]] as [number, number, string][]
 ).map(([a, b, c]) => ({ c, d: `M${pts(lerp(TW[0], TW[1], a), lerp(TW[0], TW[1], b), lerp(TW[3], TW[2], b), lerp(TW[3], TW[2], a))}Z` }));
@@ -893,7 +895,7 @@ const VB = { viewBox: "0 0 1600 1000", preserveAspectRatio: "xMidYMid slice", fo
               <path class="o-cream" d={towelD}></path>
               <g clip-path="url(#towelClip)">{towelStripes.map((s) => <path class={s.c} d={s.d}></path>)}</g>
               <path class="o-fringe" d={fringe.join("")}></path>
-              <path class="o-fold" d={flapD}></path>
+              <path class="o-fold jb-flap" style={`transform-origin:${flapOrigin};--fold-angle:${flapAngle}`} d={flapD}></path>
             </g>
             <g class="o-pb"><g transform="translate(118 84) rotate(-13)" filter="url(#wobS)">
               <path class="o-shadow" d="M4 70h100l6 8h-100Z"></path>
@@ -904,6 +906,7 @@ const VB = { viewBox: "0 0 1600 1000", preserveAspectRatio: "xMidYMid slice", fo
               <path class="o-line lt" d="M12 40h40M12 50h28"></path>
               <path class="o-pages" d="M104 3V34L66 0H101Q104 0 104 3Z"></path>
               <path class="o-line" d="M80 8l18 16M88 7l11 10"></path>
+              <g class="jb-flutter"><path class="o-navy jb-flutter-c" d="M104 3V34L66 0H101Q104 0 104 3Z"></path></g>
               <path class="o-mark" d="M84 66v18l5 -5l5 5v-18Z"></path>
             </g></g>
             <g class="o-cover" filter="url(#wobS)">
@@ -932,8 +935,6 @@ const VB = { viewBox: "0 0 1600 1000", preserveAspectRatio: "xMidYMid slice", fo
             </g>
           </svg>
           <i class="jb-lamp-glow"></i>
-          <svg class="jb-flutter" viewBox="0 0 400 230" aria-hidden="true" focusable="false"><g transform="translate(118 84) rotate(-13)"><path class="o-navy jb-flutter-c" d="M106 -2V38L62 -2Z"></path></g></svg>
-          <svg class="jb-flap" viewBox="310 30 80 70" aria-hidden="true" focusable="false"><path class="o-fold" d={flapD}></path></svg>
         </span>
         <span class="jb-tag">{S.work.label} <small>— {S.work.sub}</small></span>
         <span class="jb-hint" aria-hidden="true"><span>{S.work.hint}</span><svg viewBox="0 0 90 70" focusable="false"><path pathLength="1" d="M84 6Q40 4 16 52"></path><path class="jb-hint-tip" d="M16 52l1 -16M16 52l15 -7"></path></svg></span>
@@ -1550,9 +1551,9 @@ const VB = { viewBox: "0 0 1600 1000", preserveAspectRatio: "xMidYMid slice", fo
   .jb-o-work[aria-expanded="true"] .o-pb { transform: translateY(-46px) scale(1.25) rotate(8deg); opacity: 0; }
   .jb-o-work[aria-expanded="true"] .o-cover { transform: scaleY(0); opacity: 0; transition: transform 0.3s cubic-bezier(0.5, 0, 0.3, 1), opacity 0.15s ease 0.2s; }
   .jb-o-work[aria-expanded="true"] .jb-flutter { visibility: hidden; }
-  html.js .jb-flutter { display: block; position: absolute; inset: 0; pointer-events: none; }
+  html.js .jb-flutter { display: inline; pointer-events: none; }
   [data-tuck] .jb-flutter { visibility: hidden; }
-  .jb-flutter-c { transform-box: fill-box; transform-origin: 28% 72%; }
+  .jb-flutter-c { transform-box: view-box; transform-origin: 85px 17px; }
   html.jb-hinting .jb-hint { display: block; position: absolute; left: 47%; bottom: 83%; width: 150px; color: var(--ink); pointer-events: none; }
   html.jb-hinting[data-night] .jb-hint { color: #fff6e4; }
   .jb-hint span { display: block; margin: 0 0 -8px 56px; font: 700 29px/1 var(--hand); white-space: nowrap; transform: rotate(-5deg); }
@@ -1592,7 +1593,7 @@ const VB = { viewBox: "0 0 1600 1000", preserveAspectRatio: "xMidYMid slice", fo
   .jb-bt-pok, .jb-bt-puff { width: 14px; height: 14px; margin: -7px 0 0 -7px; border-radius: 50%; opacity: 0; }
   .jb-bt-pok { border: 1.6px solid #fffdf4; } .jb-bt-puff { height: 8px; margin-top: -6px; background: radial-gradient(closest-side, rgb(255 236 196 / 0.95), rgb(236 186 120 / 0.5) 60%, transparent); }
 
-  .jb-flap { position: absolute; left: 77.5%; top: 13.04%; width: 20% !important; transform-origin: 48% 45%; }
+  .jb-flap { transform-box: view-box; }
   .jb-tag { position: absolute; left: 50%; top: calc(100% - 4px); transform: translateX(-50%) rotate(-3deg); padding: 1px 13px 4px; background: var(--cream); color: var(--ink); border: 1.5px solid var(--ink); border-radius: 11px 11px 11px 3px; font: 700 27px/1.05 var(--hand); white-space: nowrap; box-shadow: 0 3px 0 -1px rgb(60 40 10 / 0.25), 0 0 calc(var(--lights, 0) * 20px) calc(var(--lights, 0) * 3px) rgb(255 226 150 / calc(var(--lights, 0) * 0.55)); transition: transform 0.35s var(--spring), background-color 0.2s, opacity 0.3s ease 0.2s; }
   .jb-tag::after { content: ""; position: absolute; left: 12px; right: 12px; bottom: 4px; height: 2.5px; border-radius: 2px; background: var(--v-coral, #f0583a); background: #d8452a; transform: scaleX(0); transform-origin: 0 50%; transition: transform 0.3s cubic-bezier(0.5, 0, 0.2, 1); }
   .jb-obj:hover .jb-tag::after, .jb-obj:focus-visible .jb-tag::after, .jb-obj[aria-expanded="true"] .jb-tag::after { transform: scaleX(1); }
@@ -2031,7 +2032,8 @@ const VB = { viewBox: "0 0 1600 1000", preserveAspectRatio: "xMidYMid slice", fo
     }
     @keyframes jb-pop { 0%, 52% { opacity: 0; transform: scale(0.4); } 58% { opacity: 0.95; transform: scale(1); } 68% { opacity: 0.85; transform: scale(1.2); } 72%, 100% { opacity: 0; transform: scale(1.9); } }
     @keyframes jb-bob { from { transform: translateY(-1.2px) rotate(-2.4deg); } to { transform: translateY(1.6px) rotate(2.8deg); } }
-    @keyframes jb-flap { from { transform: rotate(0deg) scale(1); } to { transform: rotate(-9deg) scale(0.8, 0.62); } }
+    /* Compress perpendicular to the crease, keeping both ends attached to the cloth. */
+    @keyframes jb-flap { from { transform: none; } to { transform: rotate(var(--fold-angle)) scaleY(0.62) rotate(calc(-1 * var(--fold-angle))); } }
     @keyframes jb-nudge { 0%, 9%, 100% { transform: none; } 3% { transform: translateY(-7px) rotate(-1.6deg); } 6% { transform: translateY(1px) rotate(0.8deg); } }
     @keyframes jb-twinkle { 0%, 100% { opacity: 0.15; transform: scale(0.7); } 50% { opacity: 1; transform: scale(1.15); } }
     @keyframes jb-ripple { 0% { opacity: 0.8; transform: scale(0.15); } 100% { opacity: 0; transform: scale(1); } }
@@ -2068,7 +2070,8 @@ const VB = { viewBox: "0 0 1600 1000", preserveAspectRatio: "xMidYMid slice", fo
     @keyframes jb-tick { from { opacity: 0; transform: translateY(-4px); } }
     @keyframes jb-write { from { clip-path: inset(-12% 100% -12% 0); opacity: 0.4; } to { clip-path: inset(-12% -6% -12% 0); opacity: 1; } }
     @keyframes jb-stamp { from { opacity: 0; transform: scale(1.5) rotate(-8deg); } }
-    @keyframes jb-flutter { 0%, 86%, 100% { transform: none; } 89% { transform: scale(0.5) rotate(-7deg); } 92% { transform: scale(0.85) rotate(-2deg); } 95% { transform: scale(0.6) rotate(-6deg); } }
+    /* The page's crease runs from (66, 0) to (104, 34), through (85, 17). */
+    @keyframes jb-flutter { 0%, 86%, 100% { transform: none; } 89% { transform: rotate(41.82deg) scaleY(0.5) rotate(-41.82deg); } 92% { transform: rotate(41.82deg) scaleY(0.85) rotate(-41.82deg); } 95% { transform: rotate(41.82deg) scaleY(0.6) rotate(-41.82deg); } }
     @keyframes jb-hint-in { from { opacity: 0; scale: 0.6; } }
     @keyframes jb-hint-bob { from { translate: 0 0; } to { translate: -5px 6px; } }
     @keyframes jb-net { from { transform: skewX(calc(var(--wdir, 1) * -1deg)); } to { transform: skewX(calc(var(--wdir, 1) * 3deg)) scaleY(0.975); } }
