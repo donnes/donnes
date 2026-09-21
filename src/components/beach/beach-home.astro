@@ -794,15 +794,20 @@ const VB = { viewBox: "0 0 1600 1000", preserveAspectRatio: "xMidYMid slice", fo
                       <path class="bt-hair-dark" d="M-4.4 -41.5Q-3.4 -38.7 -1.3 -38.7L0 -39.7Q1 -39 2 -39.7L3.3 -38.7Q5.6 -39.6 6.3 -41.7L5.5 -38.1Q1 -33.8 -3.8 -38.1Z"></path>
                       <path class="bt-face-line" d="M-0.6 -39.8Q1 -40.7 2.8 -39.8"></path>
                       <path class="bt-smile" d="M-0.9 -38.4Q1 -37.4 3 -38.5"></path>
-                      <path class="bt-face-line" d="M-2.5 -43.3h1.2M3 -43.3h1.2"></path>
+                      <g class="bt-sunglasses">
+                        <path d="M-4.4 -44Q-2.5 -44.8 -0.3 -44L-0.7 -41.4Q-2.5 -40.2 -4 -41.5ZM1.3 -44Q3.8 -44.8 6 -44L5.5 -41.4Q3.5 -40.2 1.7 -41.5Z"></path>
+                        <path class="bt-sunglasses-frame" d="M-0.3 -43Q0.5 -43.7 1.4 -43M-4.3 -43.3L-5.2 -43.8M5.9 -43.3L6.7 -43.8"></path>
+                      </g>
                     </g>
                   ) : (
                     <g>
                       <path class="bt-hair-light" d="M-4.6 -41.8Q-6.5 -48 0 -50Q7 -51 7.6 -44L6.8 -37Q9 -33 6.8 -29L4.8 -32Q6 -36 4.8 -41.5L3.3 -46.6Q0 -43.6 -3.4 -44L-4 -36Q-3 -32 -5.7 -29L-7 -32Q-4.5 -36 -4.6 -41.8Z"></path>
                       <path class="bt-hair-highlight" d="M-2.7 -47.5Q0 -49 3 -48.5M6 -38Q8 -33 6 -30M-5.5 -36Q-4.5 -32 -6 -30"></path>
-                      <g class="bt-glasses">
-                        <path d="M-4.6 -43.6Q-2.9 -44.5 -0.2 -43.7L-0.6 -41.2Q-2.4 -39.8 -4 -41.2ZM1.4 -43.7Q4 -44.5 6.1 -43.6L5.6 -41.2Q3.6 -39.8 1.8 -41.2Z"></path>
-                        <path d="M-0.2 -42.8Q0.6 -43.5 1.5 -42.8"></path>
+                      <g class="bt-green-eyes">
+                        <circle cx="-2.3" cy="-42.6" r="0.85"></circle>
+                        <circle cx="3.6" cy="-42.6" r="0.85"></circle>
+                        <circle class="bt-eye-pupil" cx="-2.3" cy="-42.6" r="0.32"></circle>
+                        <circle class="bt-eye-pupil" cx="3.6" cy="-42.6" r="0.32"></circle>
                       </g>
                       <path class="bt-lips" d="M-0.2 -38.9Q1.2 -38.1 2.7 -39"></path>
                     </g>
@@ -1618,7 +1623,10 @@ const VB = { viewBox: "0 0 1600 1000", preserveAspectRatio: "xMidYMid slice", fo
   .bt-leg, .bt-limb { stroke-width: 3.4; stroke-linecap: round; }
   .bt-hair-dark { fill: var(--v-hair-dark); } .bt-hair-light { fill: var(--v-hair-light); }
   .bt-hair-highlight { fill: none; stroke: var(--v-hair-highlight); stroke-width: 0.8; stroke-linecap: round; }
-  .bt-glasses { fill: none; stroke: var(--v-dark); stroke-width: 0.65; stroke-linecap: round; stroke-linejoin: round; }
+  .bt-sunglasses { fill: var(--v-dark); stroke: var(--v-dark); stroke-width: 0.65; stroke-linecap: round; stroke-linejoin: round; }
+  .bt-sunglasses-frame { fill: none; }
+  .bt-green-eyes { fill: #4f8f53; stroke: var(--v-dark); stroke-width: 0.22; }
+  .bt-green-eyes .bt-eye-pupil { fill: var(--v-dark); stroke: none; }
   .bt-face-line { fill: none; stroke: var(--v-hair-dark); stroke-width: 0.65; stroke-linecap: round; }
   .bt-smile { fill: none; stroke: var(--v-cream); stroke-width: 0.7; stroke-linecap: round; }
   .bt-lips { fill: none; stroke: var(--v-coral); stroke-width: 0.7; stroke-linecap: round; }
