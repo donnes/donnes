@@ -2129,7 +2129,8 @@ const VB = { viewBox: "0 0 1600 1000", preserveAspectRatio: "xMidYMid slice", fo
 
 <script>
   import { prepareBeachDrawing } from "../../lib/beach-drawing";
-  import { reportHabitat, recordHabitat, awardHabitatPoint } from "../../lib/habitat/display";
+  import { reportHabitat, recordHabitat, reportMatch } from "../../lib/habitat/display";
+  import { createMatch, awardPoint, landingWinner, faultWinner, other, type Player, type PointReason } from "../../lib/habitat/match";
   import { LOCAL_TENNIS, parseTennis, chooseShot } from "../../lib/habitat/tennis";
   import { fallback, parsePlan, allowed, type Action, type Context } from "../../lib/habitat/plan";
   const root = document.documentElement;
@@ -3023,7 +3024,7 @@ const VB = { viewBox: "0 0 1600 1000", preserveAspectRatio: "xMidYMid slice", fo
     if (habitat.action === "gull") inviteGull();
     if (habitat.action === "crab") inviteCrab();
     root.dataset.habitat = habitat.action;
-    recordHabitat(habitat.action);
+    if (btWant === "play") recordHabitat(habitat.action);
   });
 
   // a gull lands on the sand, hops about, and leaves (dry daylight only)
@@ -3201,7 +3202,7 @@ const VB = { viewBox: "0 0 1600 1000", preserveAspectRatio: "xMidYMid slice", fo
   }
 
 
-  /* ───────────── beach tennis: two players keep a rally going further along the sand (volleys only — a bounce ends the point) ───────────── */
+  /* ───────────── beach tennis: one-set Donald vs Wife exhibition, volleys only ───────────── */
   const court = q(".jb-court");
   let btSnap = () => {};
   if (court) {
@@ -3222,12 +3223,42 @@ const VB = { viewBox: "0 0 1600 1000", preserveAspectRatio: "xMidYMid slice", fo
       return { el, arm: q<SVGGElement>(".bt-arm", el), body: q<SVGGElement>(".bt-body", el), la: q<SVGPathElement>(".bt-leg-a", el), lb: q<SVGPathElement>(".bt-leg-b", el), face, x: -face * 36, tx: -face * 36, home: -face * 86, step: 0, hitAt: -9, kind: "hi" };
     };
     const P = [mk("a", 1), mk("b", -1)];
-    type Seg = { x1: number; h1: number; H: number; T: number; bend?: number; then: "return" | "serve" | "whiff" | "net" | "ground" | "rest" };
+    let match = createMatch();
+    const publishMatch = (announce = false) => {
+      reportMatch(match, announce);
+      court.dataset.server = String(match.server);
+      court.dataset.games = match.games.join("-");
+      court.dataset.points = match.points.join("-");
+      court.dataset.tiebreak = String(match.tieBreak);
+    };
+    publishMatch();
+    let changingEnds = false;
+    let changeStart = P.map(p => p.x);
+    const placeEnds = () => {
+      changingEnds = P[0].face !== (match.ends ? -1 : 1);
+      if (changingEnds) changeStart = P.map(p => p.x);
+      P.forEach((p, i) => {
+        p.face = (i === 0 ? 1 : -1) * (match.ends ? -1 : 1);
+        p.home = -p.face * 86;
+        p.tx = p.home;
+      });
+    };
+    type Seg = { x1: number; h1: number; H: number; T: number; bend?: number; then: "return" | "serve" | "whiff" | "net" | "net-over" | "ground" | "rest" };
     const ball = { x: 0, h: 0, x0: 0, h0: 0, t: 0, on: false, segs: [] as Seg[] };
     let clock = 0;
-    let mode: "off" | "toServe" | "fly" | "dead" | "fetch" | "leave" = "off";
-    let rally = 0, server = 0, rcv = 1, wait = 0, leaveT = 0;
-    let pointWinner: number | null = null;
+    let mode: "off" | "toServe" | "fly" | "dead" | "fetch" | "leave" | "matchOver" = "off";
+    let rally = 0, server: Player = 0, rcv: Player = 1, collector: Player = 0, wait = 0, leaveT = 0;
+    let lastHitter: Player = 0;
+    let hitterEnd: -1 | 1 = -1;
+    let pointLive = false;
+    let serveFlight = false;
+    const finishPoint = (result: { winner: Player; reason: PointReason }) => {
+      if (!pointLive) return;
+      pointLive = false;
+      match = awardPoint(match, result.winner, result.reason);
+      publishMatch(true);
+      court.dataset.pointReason = result.reason;
+    };
     const burst = (el: HTMLElement | null, x: number, h: number) => {
       if (!el) return;
       el.style.transform = `translate3d(${x.toFixed(1)}px,${(M * x - h).toFixed(1)}px,0)`;
@@ -3248,11 +3279,20 @@ const VB = { viewBox: "0 0 1600 1000", preserveAspectRatio: "xMidYMid slice", fo
       mode = "fly";
     };
     const bounces = (x: number, dir: number): Seg[] => [{ x1: x + dir * 17, h1: 0, H: 11, T: 0.36, then: "ground" }, { x1: x + dir * 26, h1: 0, H: 4.5, T: 0.22, then: "rest" }];
-    function hit(by: number, serve = false) {
-      const me = P[by], ot = P[1 - by], dir = me.face, wind = env.wind || 0;
+    function hit(by: Player, serve = false) {
+      const me = P[by], ot = P[other(by)], dir = me.face, wind = env.wind || 0;
+      // A return must come from the opposing side; no passes or second contacts.
+      if (!serve && by === lastHitter) {
+        finishPoint(faultWinner(by, "double-hit"));
+        fly([{ x1: ball.x, h1: 0, H: 0, T: 0.3, then: "rest" }]);
+        return;
+      }
+      lastHitter = by;
+      hitterEnd = -me.face as -1 | 1;
+      serveFlight = serve;
       ball.x = me.x + dir * SW[me.kind].dx;
       ball.h = SW[me.kind].h;
-      rcv = 1 - by;
+      rcv = other(by);
       const r = Math.random();
       const situation = Math.abs(me.x - me.home) > 26 ? "stretched" : habitat.fatigue >= 4 || rally >= 6 ? "tired" : "balanced";
       const shot = serve ? "lob" : chooseShot(tennisPolicy, situation, habitat.action, r);
@@ -3268,7 +3308,7 @@ const VB = { viewBox: "0 0 1600 1000", preserveAspectRatio: "xMidYMid slice", fo
       const bend = env.windX * wind * 36; // a strong wind bows the flight; the receiver still reads it
       const pf = serve ? 0.04 : clamp(0.07 + rally * 0.03 + wind * 0.2, 0, 0.5);
       const fault = Math.random() < pf ? ["net", "long", "miss"][Math.floor(rand(0, 3))] : "";
-      pointWinner = fault === "net" || fault === "long" ? 1 - by : fault === "miss" ? by : null;
+
       const X = dir * dist;
       me.tx = me.home;
       if (fault === "net") {
@@ -3282,15 +3322,19 @@ const VB = { viewBox: "0 0 1600 1000", preserveAspectRatio: "xMidYMid slice", fo
         ot.kind = kind;
         ot.tx = X + dir * SW[kind].dx + (fault ? dir * 15 : 0); // a miss: read it a step too deep
         ot.hitAt = clock + T;
-        fly(fault ? [{ x1: X, h1: SW[kind].h, H, T, bend, then: "whiff" }, { x1: X + dir * 30, h1: 0, H: 0, T: 0.34, then: "ground" }, ...bounces(X + dir * 30, dir)] : [{ x1: X, h1: SW[kind].h, H, T, bend, then: "return" }]);
+        if (serve && !fault && Math.random() < 0.08) {
+          // A serve brushing the tape stays live. It is never replayed as a let.
+          ot.hitAt = clock + T + 0.15;
+          fly([{ x1: 0, h1: 43.5, H: 14, T: T * 0.5, then: "net-over" }, { x1: X, h1: SW[kind].h, H: 12, T: T * 0.5 + 0.15, then: "return" }]);
+        } else fly(fault ? [{ x1: X, h1: SW[kind].h, H, T, bend, then: "whiff" }, { x1: X + dir * 30, h1: 0, H: 0, T: 0.34, then: "ground" }, ...bounces(X + dir * 30, dir)] : [{ x1: X, h1: SW[kind].h, H, T, bend, then: "return" }]);
       }
     }
-    function toss(by: number) {
+    function toss(by: Player) {
       const me = P[by];
       // Both feet stay behind the painted baseline until racket contact.
       me.x = me.tx = serveX(me.face);
       me.step = 0;
-      pointWinner = null;
+      pointLive = true;
       me.kind = "hi";
       me.hitAt = clock + 0.62;
       ball.x = me.x + me.face * 9;
@@ -3310,7 +3354,10 @@ const VB = { viewBox: "0 0 1600 1000", preserveAspectRatio: "xMidYMid slice", fo
       const walk = clamp(Math.abs(v) / 30, 0, 1), sw = Math.sin(p.step) * walk * 24;
       const tau = clock - p.hitAt;
       const hop = tau > -0.12 && tau < 0.2 ? Math.sin((Math.PI * (tau + 0.12)) / 0.32) * (p.kind === "hi" ? 4 : 1.5) : 0;
-      p.el.style.transform = `translate3d(${(p.x - 30).toFixed(1)}px,${(M * p.x - 64).toFixed(1)}px,0) scaleX(${p.face})`;
+      const index = P.indexOf(p);
+      const travel = clamp((p.x - changeStart[index]) / (p.tx - changeStart[index] || 1), 0, 1);
+      const aroundPost = changingEnds ? Math.sin(Math.PI * travel) * (index ? -48 : 48) : 0;
+      p.el.style.transform = `translate3d(${(p.x - 30).toFixed(1)}px,${(M * p.x - 64 + aroundPost).toFixed(1)}px,0) scaleX(${p.face})`;
       if (p.body) p.body.style.transform = `translate(0px,${(-hop - Math.abs(Math.sin(p.step)) * walk * 1.3).toFixed(1)}px) translate(0px,-20px) rotate(${(clamp(v / 95, -1, 1) * p.face * 6).toFixed(1)}deg) translate(0px,20px)`;
       if (p.arm) p.arm.style.transform = `translate(3px,-33px) rotate(${armAt(p).toFixed(1)}deg) translate(-3px,33px)`;
       if (p.la) p.la.style.transform = `translate(-1px,-19px) rotate(${sw.toFixed(1)}deg) translate(1px,19px)`;
@@ -3341,6 +3388,7 @@ const VB = { viewBox: "0 0 1600 1000", preserveAspectRatio: "xMidYMid slice", fo
     tasks.push((dt) => {
       if (mode === "off") {
         if (btWant === "play") {
+          if (match.winner !== null) { mode = "matchOver"; wait = 9; return; }
           const alreadyOnCourt = court.dataset.bt === "play";
           court.dataset.bt = "play";
           P.forEach((p) => {
@@ -3349,7 +3397,8 @@ const VB = { viewBox: "0 0 1600 1000", preserveAspectRatio: "xMidYMid slice", fo
             p.tx = p.home;
             p.hitAt = -9;
           });
-          server = Math.random() < 0.5 ? 0 : 1;
+          placeEnds();
+          server = match.server;
           P[server].tx = serveX(P[server].face);
           showBall(false);
           mode = "toServe";
@@ -3358,11 +3407,23 @@ const VB = { viewBox: "0 0 1600 1000", preserveAspectRatio: "xMidYMid slice", fo
         if (mode === "off") return;
       } else if (btWant !== "play" && mode !== "leave") {
         mode = "leave";
+        pointLive = false; // Weather suspends the unfinished point, preserving the score and server.
+        ball.segs = [];
         leaveT = 2.4;
         showBall(false);
         P.forEach((p) => (p.tx = -p.face * 36));
       }
       clock += dt;
+      if (mode === "matchOver") {
+        wait -= dt;
+        if (wait <= 0) {
+          match = createMatch(other(match.firstServer));
+          habitat.fatigue = 0;
+          publishMatch();
+          mode = "off";
+        }
+        return;
+      }
       for (const p of P) {
         const v = clamp((p.tx - p.x) * 5.5, -96, 96);
         p.x += v * dt;
@@ -3393,32 +3454,34 @@ const VB = { viewBox: "0 0 1600 1000", preserveAspectRatio: "xMidYMid slice", fo
           burst(pokEl, ball.x, ball.h);
           rally = sg.then === "serve" ? 0 : rally + 1;
           hit(sg.then === "serve" ? server : rcv, sg.then === "serve");
-        } else if (sg.then === "net") {
+        } else if (sg.then === "net" || sg.then === "net-over") {
+          if (sg.then === "net") finishPoint(faultWinner(lastHitter, serveFlight ? "serve-fault" : "net"));
           netEl?.classList.remove("is-hit");
           void netEl?.getBoundingClientRect();
           netEl?.classList.add("is-hit");
         } else if (sg.then === "ground") {
           burst(puffEl, ball.x, 0);
-          if (pointWinner !== null) {
-            awardHabitatPoint(pointWinner);
-            pointWinner = null; // later bounces belong to the same point
-          }
+          const result = landingWinner(lastHitter, hitterEnd, ball.x / baseline * 8, 0, 4, 3.5 / baseline * 8);
+          if (serveFlight && result.winner !== lastHitter) result.reason = "serve-fault";
+          finishPoint(result); // Only the first landing scores; subsequent bounces are dead-ball retrieval.
         }
         else if (sg.then === "rest") {
           habitat.fatigue++;
-          mode = "dead";
-          wait = rand(0.7, 1.3);
+          mode = match.winner !== null ? "matchOver" : "dead";
+          wait = match.winner !== null ? 9 : match.lastPoint?.changeEnds ? 1.8 : rand(0.7, 1.3);
           P.forEach((p) => (p.tx = p.home));
         }
       } else if (mode === "dead") {
         wait -= dt;
         if (wait > 0) return;
-        server = ball.x < 0 ? 0 : 1;
-        P[server].tx = clamp(ball.x - P[server].face * 8, -176, 176);
+        collector = P[0].face * ball.x < 0 ? 0 : 1;
+        P[collector].tx = clamp(ball.x - P[collector].face * 8, -176, 176);
         mode = "fetch";
       } else if (mode === "fetch") {
-        if (Math.abs(P[server].tx - P[server].x) > 3) return;
-        showBall(false); // picked up
+        if (Math.abs(P[collector].tx - P[collector].x) > 3) return;
+        showBall(false); // The collector returns the dead ball; the rules choose the server.
+        placeEnds();
+        server = match.server;
         P[server].tx = serveX(P[server].face);
         mode = "toServe";
         wait = rand(0.5, 0.9);
@@ -3428,7 +3491,8 @@ const VB = { viewBox: "0 0 1600 1000", preserveAspectRatio: "xMidYMid slice", fo
           if (P.every(p => Math.abs(p.tx - p.x) < 3)) habitat.resting = true;
           return;
         }
-        if (Math.abs(P[server].tx - P[server].x) > 3) return;
+        if (P.some(p => Math.abs(p.tx - p.x) > 3)) return;
+        changingEnds = false;
         wait -= dt;
         if (wait <= 0) toss(server);
       }

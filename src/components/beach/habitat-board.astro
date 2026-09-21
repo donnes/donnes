@@ -12,9 +12,10 @@ const pt = Astro.props.lang === "pt-br";
     </g>
     <g fill="#f6ebce" text-anchor="middle">
       <text x="82" y="39" class="sign-title">Donald × {pt ? "Esposa" : "Wife"}</text>
-      <path d="M29 48 136 46" stroke="currentColor" opacity=".5" />
+      <text x="82" y="51" id="habitat-sign-games" class="sign-games">Games 0 × 0 · {pt ? "IA" : "AI"} ↗</text>
+      <circle id="habitat-serve-dot" cx="19" cy="65" r="2" />
       <text x="82" y="69" id="habitat-sign-status" class="sign-score">0 × 0</text>
-      <text x="82" y="83" class="sign-hint">{pt ? "pontos · IA ↗" : "points · AI notes ↗"}</text>
+      <text x="82" y="83" id="habitat-sign-hint" class="sign-hint">{pt ? "Donald saca" : "Donald serves"}</text>
     </g>
   </svg>
 </button>
@@ -24,6 +25,12 @@ const pt = Astro.props.lang === "pt-br";
   <p class="notes-kicker">Jurerê · {pt ? "caderno de campo" : "field notes"}</p>
   <h2 id="habitat-title">{pt ? "Uma praia com IA" : "A beach with a mind"}</h2>
   <p class="notes-intro">{pt ? "A IA sugere o ritmo da praia e as jogadas. O código cuida do movimento, do contato com a bola e das regras." : "AI suggests the beach rhythm and the shots. Code handles movement, ball contact, and the rules."}</p>
+  <section class="match-summary" aria-label={pt ? "Placar da partida" : "Match score"}>
+    <h3>{pt ? "Donald × Esposa" : "Donald × Wife"}</h3>
+    <p id="habitat-match-score">Games 0 × 0 · {pt ? "Pontos" : "Points"} 0 × 0</p>
+    <p id="habitat-match-status">{pt ? "Donald saca" : "Donald serves"}</p>
+    <p class="notes-footnote">{pt ? "Exibição 1 contra 1 · um set. 15, 30, 40, game; ponto decisivo no 40–40. Set de 6 games com dois de vantagem; tie-break até 7 no 6–6, também com dois de vantagem. Um saque, sem let. Após o resultado, começa uma revanche." : "1 vs 1 exhibition · one set. 15, 30, 40, game; deciding point at 40–40. Six games with a two-game lead; at 6–6, tie-break to seven with a two-point lead. One serve, no let. A rematch follows the result."}</p>
+  </section>
   <p id="habitat-latest" class="notes-mode"></p>
   <p id="habitat-mode" class="notes-mode"></p>
   <dl class="notes-tallies">
@@ -44,6 +51,8 @@ const pt = Astro.props.lang === "pt-br";
   .habitat-sign svg { display: block; width: 100%; overflow: visible; }
   .habitat-sign text { font: 700 17px var(--hand); }
   .habitat-sign .sign-title { font-size: 20px; }
+  .habitat-sign .sign-games { font-size: 13px; }
+  .match-summary { padding-block: 8px; border-bottom: 1px solid #9c8b664f; }
   .habitat-sign .sign-score { font-size: 28px; font-variant-numeric: tabular-nums; }
   .habitat-sign .sign-hint { font-size: 13px; }
   :global(html:not(.jb-ready)) .habitat-sign, :global(html[data-og]) .habitat-sign { visibility: hidden; }

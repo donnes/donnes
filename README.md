@@ -104,3 +104,25 @@ a 25ms animation interval and startup tasks up to 128ms before drawing began.
 Android reported 21 janky frames out of 1,415 across loading and subsequent play.
 These samples demonstrate the improvement, not a guarantee of zero dropped frames
 on every device. Static preview uses local tennis rules because it has no AI endpoint.
+
+### Beach tennis matches
+
+Donald and his wife play a one-set 1-vs-1 exhibition. The court keeps its illustrated
+layout; this is not a four-player doubles simulation. The deterministic rules in
+`src/lib/habitat/match.ts` score 0/15/30/40 with no-ad, six games with a two-game lead,
+and a seven-point, win-by-two tie-break at 6–6. One player serves the whole game;
+tie-break service follows one point, then alternating pairs. Players change ends
+after odd games and after tie-break points 1, 5, 9, etc. A nine-second result display
+precedes a rematch with the other opening server.
+
+The first sand contact ends a point. Landing coordinates determine in/out, with
+lines included; later dead-ball bounces never score again. A blocked serve loses
+the point immediately, while a serve brushing the tape and crossing continues.
+Ball retrieval cannot change the designated server. Weather suspends an unfinished
+point without changing the score. AI still selects shot style from cached policies;
+match scoring introduces no model calls. The clickable courtside board shows points,
+games, server, deciding points, tie-breaks, and the final result.
+
+`pnpm test:habitat` includes pure scoring tests and a deterministic replay of two
+complete matches through the actual animation state machine, including service
+position, rematches, point deduplication, and weather suspension.

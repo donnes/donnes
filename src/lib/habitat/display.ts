@@ -1,8 +1,9 @@
+import { createMatch, pointScore, decidingPoint, type Match } from "./match";
 import type { Usage } from "./usage";
 type Provider = { source?: string; usage?: Usage };
 type Report = Provider & { tennis?: Provider };
 let report: Report = {}, shots = 0;
-const score = [0, 0];
+let match = createMatch();
 const history: string[] = [];
 let current = "";
 const pt = () => document.documentElement.lang.toLowerCase().startsWith("pt");
@@ -46,19 +47,40 @@ function render() {
   const log = document.getElementById("habitat-decisions");
   if (log && history.length) log.replaceChildren(...history.map(text => { const li = document.createElement("li"); li.textContent = text; return li; }));
 }
+const playerName = (player: number) => player === 0 ? "Donald" : word("Wife", "Esposa");
+const reasons: Record<string, [string, string]> = {
+  in: ["Ball on the sand", "Bola na areia"], out: ["Out", "Fora"], net: ["Into the net", "Bola na rede"],
+  "net-touch": ["Net contact", "Toque na rede"], "double-hit": ["Second contact", "Segundo toque"], "serve-fault": ["Service fault", "Falta de saque"],
+};
 function renderScore() {
-  set("habitat-sign-status", `${score[0]} × ${score[1]}`);
+  const points = pointScore(match);
+  const games = `${match.games[0]} × ${match.games[1]}`;
+  const finished = match.winner !== null;
+  set("habitat-sign-status", finished ? games : `${points[0]} × ${points[1]}`);
+  set("habitat-sign-games", finished ? word("Final · AI ↗", "Final · IA ↗") : `${word("Games", "Games")} ${games} · ${word("AI", "IA")} ↗`);
+  const status = finished ? `${playerName(match.winner!)} ${word("wins", "venceu")}` : decidingPoint(match) ? word("Deciding point", "Ponto decisivo") : `${match.tieBreak ? "TB · " : ""}${playerName(match.server)} ${word("serves", "saca")}`;
+  set("habitat-sign-hint", status);
+  set("habitat-match-score", `${word("Games", "Games")} ${games} · ${match.tieBreak ? "Tie-break" : word("Points", "Pontos")} ${points[0]} × ${points[1]}`);
+  set("habitat-match-status", decidingPoint(match) ? `${status} · ${playerName(match.server)} ${word("serves", "saca")}` : status);
+  const serveDot = document.getElementById("habitat-serve-dot");
+  if (serveDot) { serveDot.setAttribute("cx", match.server === 0 ? "19" : "145"); serveDot.setAttribute("opacity", finished ? "0" : "1"); }
   document.getElementById("habitat-sign")?.setAttribute("aria-label", word(
-    `Donald ${score[0]}, Wife ${score[1]} points. Open the AI match notebook`,
-    `Donald ${score[0]}, Esposa ${score[1]} pontos. Abrir o caderno de IA da partida`,
+    `Donald vs Wife. Games ${match.games[0]} to ${match.games[1]}. Points ${points[0]} to ${points[1]}. ${status}. Open the match notebook`,
+    `Donald contra Esposa. Games ${match.games[0]} a ${match.games[1]}. Pontos ${points[0]} a ${points[1]}. ${status}. Abrir o caderno da partida`,
   ));
 }
-export function awardHabitatPoint(winner: number) {
-  if (winner !== 0 && winner !== 1) return;
-  score[winner]++;
-  current = `${word("Point", "Ponto")}: ${winner === 0 ? "Donald" : word("Wife", "Esposa")}`;
-  history.unshift(`${current} · ${score[0]} × ${score[1]}`);
-  history.splice(6);
+export function reportMatch(value: Match, announce = false) {
+  match = value;
+  if (announce && match.lastPoint) {
+    const point = match.lastPoint;
+    const reason = reasons[point.reason];
+    current = `${playerName(point.winner)} · ${reason[pt() ? 1 : 0]}`;
+    if (match.winner !== null) current = `${playerName(match.winner)} ${word("wins the match", "venceu a partida")} · ${match.games[0]} × ${match.games[1]}`;
+    else if (point.game) current += ` · ${word("game", "game")}`;
+    if (point.changeEnds) current += ` · ${word("changing ends", "troca de lados")}`;
+    history.unshift(current); history.splice(6);
+    set("habitat-latest", current);
+  }
   renderScore();
   if ((document.getElementById("habitat-notes") as HTMLDialogElement | null)?.open) render();
 }

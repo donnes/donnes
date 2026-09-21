@@ -6,10 +6,14 @@ import ts from "typescript";
 const temp = await mkdtemp(join(tmpdir(), "habitat-tests-"));
 try {
   await writeFile(join(temp, "package.json"), '{"type":"module"}');
-  for (const name of ["usage", "plan", "director", "tennis", "typesafe", "endpoint"]) {
+  for (const name of ["usage", "plan", "director", "tennis", "typesafe", "endpoint", "match"]) {
     const source = await readFile(`src/lib/habitat/${name}.ts`, "utf8");
     await writeFile(join(temp, `${name}.js`), ts.transpileModule(source, { compilerOptions: { target: ts.ScriptTarget.ES2022, module: ts.ModuleKind.ES2022 } }).outputText);
   }
+  const { runMatch } = await import("../tests/match.mjs");
+  runMatch(await import(pathToFileURL(join(temp, "match.js"))));
+  const { runMatchScene } = await import("../tests/match-scene.mjs");
+  await runMatchScene(await import(pathToFileURL(join(temp, "match.js"))));
   const { runTennis } = await import("../tests/tennis.mjs");
   await runTennis(await import(pathToFileURL(join(temp, "tennis.js"))), await import(pathToFileURL(join(temp, "typesafe.js"))));
   const { run } = await import("../tests/habitat.mjs");
