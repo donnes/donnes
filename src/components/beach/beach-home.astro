@@ -1251,7 +1251,7 @@ const VB = { viewBox: "0 0 1600 1000", preserveAspectRatio: "xMidYMid slice", fo
   </main>
 
 <style is:global>
-  :root {
+  :root, .jb-palette-probe {
     --ink: #23201a;
     --cream: #fbf7ec;
     --green: #12695c;
@@ -2037,8 +2037,8 @@ const VB = { viewBox: "0 0 1600 1000", preserveAspectRatio: "xMidYMid slice", fo
     html.jb-intro:not(.jb-draft-ready) .jb-objs { visibility: hidden; }
     html.jb-intro:not(.jb-draft-ready) .jb-obj { visibility: hidden; }
     /* Both copies keep the same pose until the color reveal finishes. */
-    html.jb-intro:not(.jb-intro-done) :is(.jb-scene, .jb-objs, .jb-fg),
-    html.jb-intro:not(.jb-intro-done) :is(.jb-scene, .jb-objs) * { animation-play-state: paused !important; transition: none !important; }
+    html.jb-intro:not(.jb-intro-prepared) :is(.jb-scene, .jb-objs, .jb-fg),
+    html.jb-intro:not(.jb-intro-prepared) :is(.jb-scene, .jb-objs) * { animation-play-state: paused !important; transition: none !important; }
 
     @keyframes jb-shimmer { from { opacity: 0.35; transform: translateX(-6px) scaleY(0.985); } to { opacity: 1; transform: translateX(6px) scaleY(1.02); } }
     @keyframes jb-swell { from { opacity: 0.25; transform: scaleY(0.97); } to { opacity: 0.9; transform: scaleY(1.035); } }
@@ -2128,6 +2128,7 @@ const VB = { viewBox: "0 0 1600 1000", preserveAspectRatio: "xMidYMid slice", fo
 </style>
 
 <script>
+  import { prepareBeachDrawing } from "../../lib/beach-drawing";
   import { reportHabitat, recordHabitat, awardHabitatPoint } from "../../lib/habitat/display";
   import { LOCAL_TENNIS, parseTennis, chooseShot } from "../../lib/habitat/tennis";
   import { fallback, parsePlan, allowed, type Action, type Context } from "../../lib/habitat/plan";
@@ -2165,14 +2166,21 @@ const VB = { viewBox: "0 0 1600 1000", preserveAspectRatio: "xMidYMid slice", fo
   }
   const fit = { s: 1, ox: 0, oy: 0, left: 0, width: 1600, portrait: false };
   const placed = qa<HTMLButtonElement>(".jb-obj");
+  let measuredWidth = 0, measuredHeight = 0;
   function measure() {
-    const W = window.innerWidth + 48;
-    const H = window.innerHeight + 48;
+    // Match the painting's 100svh canvas, which stays put when mobile browser chrome moves.
+    const viewportWidth = scene?.clientWidth || window.innerWidth;
+    const viewportHeight = scene?.clientHeight || window.innerHeight;
+    if (viewportWidth === measuredWidth && viewportHeight === measuredHeight) return false;
+    measuredWidth = viewportWidth;
+    measuredHeight = viewportHeight;
+    const W = viewportWidth + 48;
+    const H = viewportHeight + 48;
     fit.s = Math.max(W / 1600, H / 1000);
     fit.ox = (W - 1600 * fit.s) / 2 - 24;
     fit.oy = (H - 1000 * fit.s) / 2 - 24;
     fit.left = -fit.ox / fit.s;
-    fit.width = window.innerWidth / fit.s;
+    fit.width = viewportWidth / fit.s;
     fit.portrait = fit.width < 1100;
     const st = root.style;
     st.setProperty("--fs", fit.s.toFixed(4));
@@ -2180,9 +2188,9 @@ const VB = { viewBox: "0 0 1600 1000", preserveAspectRatio: "xMidYMid slice", fo
     st.setProperty("--oy", `${fit.oy.toFixed(1)}px`);
     st.setProperty("--hz", `${((H - 1000 * fit.s) / 2 + HORIZON * fit.s).toFixed(1)}px`);
     // a portrait screen only sees the middle of the painting: the things gather there, a little smaller
-    const k = fit.portrait ? clamp(window.innerWidth / 780, 0.46, 0.64) : clamp(fit.width / 1500, 0.78, 1);
+    const k = fit.portrait ? clamp(viewportWidth / 780, 0.46, 0.64) : clamp(fit.width / 1500, 0.78, 1);
     st.setProperty("--k", k.toFixed(3));
-    const bottom = (window.innerHeight - fit.oy) / fit.s; // painting-y of the screen's bottom edge
+    const bottom = (viewportHeight - fit.oy) / fit.s; // painting-y of the screen's bottom edge
     for (const el of placed) {
       const d = el.dataset;
       const fx = Number(fit.portrait ? d.pfx : d.fx);
@@ -2192,9 +2200,9 @@ const VB = { viewBox: "0 0 1600 1000", preserveAspectRatio: "xMidYMid slice", fo
       if (fit.portrait && d.prow) {
         // two rows on the sand: towel + cooler along the bottom, the guarda-sol standing clear above them
         // Keep the foreground props below a full-width court on portrait screens.
-        const screenY = d.prow === "bottom" ? window.innerHeight - 54 : d.prow === "top" ? window.innerHeight * 0.56 : window.innerHeight - 80;
+        const screenY = d.prow === "bottom" ? viewportHeight - 54 : d.prow === "top" ? viewportHeight * 0.56 : viewportHeight - 80;
         y = (screenY - fit.oy) / fit.s;
-      } else if (fit.portrait && el.classList.contains("jb-o-contact")) y = (window.innerHeight * 0.56 - fit.oy) / fit.s;
+      } else if (fit.portrait && el.classList.contains("jb-o-contact")) y = (viewportHeight * 0.56 - fit.oy) / fit.s;
       else y = Math.min(y, bottom - 84 / fit.s + (el.classList.contains("jb-ball") ? 30 : 0));
       el.style.setProperty("--x", x.toFixed(1));
       el.style.setProperty("--y", y.toFixed(1));
@@ -2207,21 +2215,26 @@ const VB = { viewBox: "0 0 1600 1000", preserveAspectRatio: "xMidYMid slice", fo
       // The court gets its own middle row, rather than shrinking into a leftover gap.
       cx = fit.left + fit.width * 0.44;
       ck = fit.width * 0.80 / 380;
-      cy = (window.innerHeight * 0.725 - fit.oy) / fit.s;
+      cy = (viewportHeight * 0.725 - fit.oy) / fit.s;
     }
     st.setProperty("--bt-x", cx.toFixed(1));
     st.setProperty("--bt-y", cy.toFixed(1));
     st.setProperty("--bt-k", ck.toFixed(3));
     st.setProperty("--hb-x", (fit.portrait ? fit.left + fit.width * 0.84 : cx + 205).toFixed(1));
-    st.setProperty("--hb-y", (fit.portrait ? Math.min(cy - 8, (window.innerHeight - 54 - 230 * k * fit.s - 86 - fit.oy) / fit.s) : cy - 8).toFixed(1));
+    st.setProperty("--hb-y", (fit.portrait ? Math.min(cy - 8, (viewportHeight - 54 - 230 * k * fit.s - 86 - fit.oy) / fit.s) : cy - 8).toFixed(1));
     st.setProperty("--hb-w", (fit.portrait ? 90 / fit.s : 138).toFixed(1));
+    return true;
   }
   measure();
   root.classList.add("jb-ready");
   let resizeRaf = 0;
   window.addEventListener("resize", () => {
     cancelAnimationFrame(resizeRaf);
-    resizeRaf = requestAnimationFrame(measure);
+    resizeRaf = requestAnimationFrame(() => {
+      if (!measure() || !state) return;
+      placeLum();
+      render();
+    });
   });
 
   /* ───────────── one clock for everything that moves ───────────── */
@@ -2232,20 +2245,12 @@ const VB = { viewBox: "0 0 1600 1000", preserveAspectRatio: "xMidYMid slice", fo
   let last = 0;
   let held = false; // lite phones: a sheet covers the beach, so the scene stops entirely (see holdScene)
   let loop = 0; // only the newest loop keeps going
-  let brisk = false;
-  /** A task calls this while it needs smooth motion (a bird in flight, the ball rolling). Without it, lite only ticks ~10×/s. */
-  const hurry = () => (brisk = true);
   function frame(now: number, id: number) {
     if (!running || id !== loop) return;
-    const next = () => requestAnimationFrame((t) => frame(t, id));
-    if (LITE && now - last < 30) return void next(); // lite: ~30fps at most, even on a 120Hz screen
-    const dt = Math.min(LITE ? 0.15 : 0.05, (now - last) / 1000);
+    const dt = Math.min(0.05, (now - last) / 1000);
     last = now;
-    brisk = false;
-    for (const t of tasks) t(dt, now);
-    // lite, and nothing quick is happening: no need for a main-thread frame at every vsync just to nudge a cloud
-    if (LITE && !brisk) window.setTimeout(next, 90);
-    else next();
+    for (const task of tasks) task(dt, now);
+    requestAnimationFrame((t) => frame(t, id));
   }
   function syncRunning() {
     const should = !document.hidden && !held;
@@ -2271,15 +2276,6 @@ const VB = { viewBox: "0 0 1600 1000", preserveAspectRatio: "xMidYMid slice", fo
       else if (!on && a.playState === "paused") a.play();
     }
     syncRunning();
-  }
-  /** Slow movers (clouds, the sail): in lite they are only repositioned ~10×/s. Returns the elapsed time to apply, or 0 to skip this frame. */
-  function slowly(acc: { t: number }, dt: number): number {
-    if (!LITE) return dt;
-    acc.t += dt;
-    if (acc.t < 0.1) return 0;
-    const all = acc.t;
-    acc.t = 0;
-    return all;
   }
   // a thing that never moves per-frame in lite is placed with a 2D transform, so it does not become a texture of its own
   const at = (x: number, y = 0, still = LITE) => (still ? `translate(${x.toFixed(1)}px,${y.toFixed(1)}px)` : `translate3d(${x.toFixed(1)}px,${y.toFixed(1)}px,0)`);
@@ -2329,10 +2325,18 @@ const VB = { viewBox: "0 0 1600 1000", preserveAspectRatio: "xMidYMid slice", fo
   const PALS = {} as Record<BoxName, Pal>;
   let veiledBase: number[][] = [];
   {
-    const keep = root.dataset.tod;
-    for (const t of BOXES) {
-      root.dataset.tod = t;
-      const cs = getComputedStyle(root);
+    // Read all six palettes from isolated, empty nodes in one style pass.
+    // Cycling data-tod on <html> used to restyle the entire beach six times at startup.
+    const probes = BOXES.map(t => {
+      const el = document.createElement("div");
+      el.className = "jb-palette-probe";
+      el.dataset.tod = t;
+      el.style.cssText = "position:absolute;visibility:hidden;contain:strict;width:0;height:0";
+      return el;
+    });
+    document.body.append(...probes);
+    for (const [i, t] of BOXES.entries()) {
+      const cs = getComputedStyle(probes[i]);
       PALS[t] = { c: COLS.map((k) => hex(cs.getPropertyValue(k))), n: NUMS.map((k) => parseFloat(cs.getPropertyValue(k)) || 0) };
       if (t === "day") {
         veiledBase = VEILED.map((k) => hex(cs.getPropertyValue(k)));
@@ -2340,7 +2344,7 @@ const VB = { viewBox: "0 0 1600 1000", preserveAspectRatio: "xMidYMid slice", fo
       }
     }
     PALS.aft = mix(PALS.day, PALS.golden, 0.26);
-    root.dataset.tod = keep;
+    probes.forEach(el => el.remove());
   }
   // `cyc` is the continuous time of day: 0 = sunrise, 1 = sunset, 2 = the next sunrise
   const PAL_KEYS: [number, BoxName][] = [[0, "dawn"], [0.1, "morning"], [0.26, "day"], [0.58, "day"], [0.74, "aft"], [0.89, "golden"], [1, "dusk"], [1.1, "night"], [1.88, "night"], [2, "dawn"]];
@@ -2795,10 +2799,7 @@ const VB = { viewBox: "0 0 1600 1000", preserveAspectRatio: "xMidYMid slice", fo
   }
   const decks = qa(".jb-deck").map((el, i) => ({ el, x: 0, v: [0.35, 0.6, 0.85][i] ?? 0.5 }));
   const shades = qa(".jb-cshade").map((el) => ({ el, x: 0, v: Number(el.dataset.v) || 1, left: parseFloat(el.style.left), w: parseFloat(el.style.width) }));
-  const cloudAcc = { t: 0 };
   tasks.push((dt) => {
-    dt = slowly(cloudAcc, dt);
-    if (!dt) return;
     const dir = env.windX < 0 ? -1 : 1;
     const speed = env.windX * (4 + env.wind * 52) + dir * env.storm * 14;
     let cross = 0;
@@ -2899,7 +2900,6 @@ const VB = { viewBox: "0 0 1600 1000", preserveAspectRatio: "xMidYMid slice", fo
   tasks.push((dt) => {
     for (const b of birds) {
       if (!b.on || b.auto) continue;
-      hurry();
       b.t += dt / b.dur;
       if (b.t >= 1) {
         b.on = false;
@@ -2925,10 +2925,7 @@ const VB = { viewBox: "0 0 1600 1000", preserveAspectRatio: "xMidYMid slice", fo
   const kiteArt = q<SVGSVGElement>(".jb-kite");
   const sail = { x: 0 };
   const kite = { x: 900, dir: 1 };
-  const sailAcc = { t: 0 };
   tasks.push((dt) => {
-    dt = slowly(sailAcc, dt);
-    if (!dt) return;
     const dir = env.windX < 0 ? -1 : 1;
     if (sailGo) {
       sail.x += dir * (3 + env.wind * 12) * dt;
@@ -3000,8 +2997,7 @@ const VB = { viewBox: "0 0 1600 1000", preserveAspectRatio: "xMidYMid slice", fo
     } catch { /* The local plan is already playing. No retries or catch-up calls. */ }
   }
   tasks.push((dt) => {
-    // The existing task loop already pauses for intro, hidden tabs and reduced motion.
-    if (LITE) return;
+    // The task loop pauses for intro, hidden tabs, mobile sheets and reduced motion.
     const context = habitatContext();
     if (context !== habitat.context) {
       habitat.context = context;
@@ -3188,7 +3184,6 @@ const VB = { viewBox: "0 0 1600 1000", preserveAspectRatio: "xMidYMid slice", fo
       const gust = away ? Math.sign(env.windX) * 420 : env.wind > 0.5 ? env.windX * (env.wind - 0.45) * 260 : 0;
       if (!away && lost) b.v += (b.x < lo ? 1 : -1) * 300 * dt; // the storm is over: it comes rolling back
       if (Math.abs(b.v) < 2 && !gust && !lost) return;
-      hurry();
       b.v += gust * dt;
       b.v *= Math.pow(0.22, dt);
       const k = Number(root.style.getPropertyValue("--k")) || 1;
@@ -3344,14 +3339,16 @@ const VB = { viewBox: "0 0 1600 1000", preserveAspectRatio: "xMidYMid slice", fo
       if (!running) hold();
     };
     tasks.push((dt) => {
-      if (LITE) {
-        if (court.dataset.bt !== btWant || mode !== "off") hold(); // lite: the same held pose as reduced motion, no rally
-        return;
-      }
       if (mode === "off") {
         if (btWant === "play") {
+          const alreadyOnCourt = court.dataset.bt === "play";
           court.dataset.bt = "play";
-          P.forEach((p) => ((p.x = -p.face * 36), (p.tx = p.home), (p.hitAt = -9)));
+          P.forEach((p) => {
+            // Continue from the sketched pose when loading hands over to the rally.
+            if (!alreadyOnCourt) p.x = -p.face * 36;
+            p.tx = p.home;
+            p.hitAt = -9;
+          });
           server = Math.random() < 0.5 ? 0 : 1;
           P[server].tx = serveX(P[server].face);
           showBall(false);
@@ -3475,11 +3472,6 @@ const VB = { viewBox: "0 0 1600 1000", preserveAspectRatio: "xMidYMid slice", fo
   tick();
   if (stale()) poll();
   window.setTimeout(rates, 1800); // once the entrance has handed over to the looping animations
-  window.addEventListener("resize", () => {
-    if (!state) return;
-    placeLum();
-    render();
-  });
   liteMq.addEventListener("change", () => {
     LITE = liteMq.matches;
     root.classList.toggle("is-lite", LITE);
@@ -3947,11 +3939,14 @@ const VB = { viewBox: "0 0 1600 1000", preserveAspectRatio: "xMidYMid slice", fo
   if (introPending) {
     const draft = document.createElement("div");
     draft.className = "jb-draft";
+    draft.dataset.phase = "prepare";
     draft.setAttribute("aria-hidden", "true");
     draft.inert = true;
     const paint = document.createElement("div");
     paint.className = "jb-draft-paint";
-    for (const source of [scene, q(".jb-objs"), ...qa(".jb-fg")]) {
+    if (LITE) paint.style.opacity = "0"; // Keep preparation behind the paper; canvas supplies the visible ink.
+    const drawingSources = [scene, q(".jb-objs"), q("#habitat-sign"), ...qa(".jb-fg")].filter((el): el is HTMLElement => !!el);
+    for (const source of LITE ? [] : drawingSources) {
       if (!source) continue;
       const copy = source.cloneNode(true) as Element;
       for (const el of [copy, ...qa<Element>("*", copy)]) {
@@ -3987,34 +3982,49 @@ const VB = { viewBox: "0 0 1600 1000", preserveAspectRatio: "xMidYMid slice", fo
     draft.append(paint);
     q(".jb-world")?.append(draft);
     root.classList.add("jb-draft-ready");
-
-    const contours = qa<SVGGeometryElement>("path, rect, circle, ellipse, line, polyline, polygon", paint)
-      .filter((el) => !el.closest("defs, clipPath, mask"));
-    // Read styles together before writing, so conversion does not repeatedly force layout.
-    const fills = contours.map((el) => getComputedStyle(el).fill);
-    contours.forEach((el, i) => {
-      el.setAttribute("pathLength", "1");
-      el.style.setProperty("fill", fills[i] === "none" ? "none" : "#f5f0e5", "important");
-      el.style.setProperty("stroke", "#777166", "important");
-      el.style.setProperty("stroke-width", "0.8px", "important");
-      el.style.setProperty("stroke-linecap", "round", "important");
-      el.style.setProperty("stroke-linejoin", "round", "important");
-      el.style.setProperty("stroke-dasharray", "1", "important");
-      el.style.setProperty("stroke-dashoffset", "inherit", "important");
-      el.setAttribute("vector-effect", "non-scaling-stroke");
+    // Release the descendant CSS pause while paper still covers the scene. Keep the
+    // animation objects paused so the final handoff needs no whole-scene restyle.
+    const pausedScene = document.getAnimations().filter(animation => {
+      const target = (animation.effect as KeyframeEffect | null)?.target;
+      return target instanceof Element && !draft.contains(target) && drawingSources.some(source => source.contains(target));
     });
+    pausedScene.forEach(animation => animation.pause());
+    root.classList.add("jb-intro-prepared");
+
+    const contours = (LITE ? drawingSources.flatMap(source => qa<SVGGeometryElement | SVGUseElement | SVGTextElement>("path, rect, circle, ellipse, line, polyline, polygon, use, text", source)) : qa<SVGGeometryElement>("path, rect, circle, ellipse, line, polyline, polygon", paint))
+      .filter((el) => !el.closest("defs, clipPath, mask"));
     const drawings = qa<SVGSVGElement>("svg", paint);
-    drawings.forEach((svg) => { svg.style.strokeDashoffset = "1"; });
+    if (!LITE) {
+      // Read styles together before writing, so conversion does not repeatedly force layout.
+      const fills = contours.map((el) => getComputedStyle(el).fill);
+      contours.forEach((el, i) => {
+        el.setAttribute("pathLength", "1");
+        el.style.setProperty("fill", fills[i] === "none" ? "none" : "#f5f0e5", "important");
+        el.style.setProperty("stroke", "#777166", "important");
+        el.style.setProperty("stroke-width", "0.8px", "important");
+        el.style.setProperty("stroke-linecap", "round", "important");
+        el.style.setProperty("stroke-linejoin", "round", "important");
+        el.style.setProperty("stroke-dasharray", "1", "important");
+        el.style.setProperty("stroke-dashoffset", "inherit", "important");
+        el.setAttribute("vector-effect", "non-scaling-stroke");
+      });
+      drawings.forEach((svg) => { svg.style.strokeDashoffset = "1"; });
+    }
+    let drawingRaf = 0;
+    let drawingTime = 0;
+    let drawingLast = 0;
     const strokes: Animation[] = [];
     let reveal: Animation | undefined;
     const finishIntro = () => {
       if (!introPending) return;
       introPending = false;
+      cancelAnimationFrame(drawingRaf);
       draft.remove();
       reveal?.cancel();
       strokes.forEach((stroke) => stroke.cancel());
       root.classList.add("jb-intro-done");
-      window.removeEventListener("resize", finishIntro);
+      if (!held && !document.hidden && !calm.matches) pausedScene.forEach(animation => animation.play());
+      window.removeEventListener("resize", resizeIntro);
       calm.removeEventListener("change", finishIntro);
       document.removeEventListener("visibilitychange", syncReveal);
       syncRunning();
@@ -4022,34 +4032,57 @@ const VB = { viewBox: "0 0 1600 1000", preserveAspectRatio: "xMidYMid slice", fo
       rates();
     };
     const syncReveal = () => {
+      drawingLast = 0;
       for (const animation of [...strokes, ...(reveal ? [reveal] : [])]) {
         if (document.hidden) animation.pause();
         else animation.play();
       }
     };
-    window.addEventListener("resize", finishIntro, { once: true });
+    const introWidth = measuredWidth, introHeight = measuredHeight;
+    const resizeIntro = () => {
+      if (scene?.clientWidth !== introWidth || scene?.clientHeight !== introHeight) finishIntro();
+    };
+    window.addEventListener("resize", resizeIntro);
     calm.addEventListener("change", finishIntro, { once: true });
     document.addEventListener("visibilitychange", syncReveal);
     // Trace contours in overlapping passes, then let the paint show through.
     // One animation per SVG inherits down to its paths, rather than one per contour.
-    requestAnimationFrame(() => requestAnimationFrame(() => {
-      if (!introPending) return;
-      drawings.forEach((svg, i) => {
-        strokes.push(svg.animate([{ strokeDashoffset: "1" }, { strokeDashoffset: "0" }], {
-          duration: 900,
-          delay: (i / Math.max(1, drawings.length - 1)) * 450,
-          easing: "linear",
-          fill: "both",
-        }));
-      });
+    const fadeToPaint = () => {
+      draft.dataset.phase = "color";
       reveal = draft.animate([{ opacity: 1 }, { opacity: 0 }], {
-        duration: 700,
-        delay: 1100,
-        easing: "ease",
-        fill: "both",
+        duration: 700, easing: "ease", fill: "both",
       });
       syncReveal();
       void reveal.finished.then(finishIntro, finishIntro);
+    };
+    if (LITE) {
+      void prepareBeachDrawing(root, contours, measuredWidth, measuredHeight).then(({ canvas, draw }) => {
+        if (!introPending) return;
+        paint.replaceWith(canvas);
+        const trace = (now: number) => {
+          if (!introPending) return;
+          if (!document.hidden && drawingLast) drawingTime += Math.min(50, now - drawingLast);
+          drawingLast = now;
+          if (drawingTime > 0 && draft.dataset.phase !== "drawing") draft.dataset.phase = "drawing";
+          draw(drawingTime);
+          if (drawingTime >= 1350) fadeToPaint();
+          else drawingRaf = requestAnimationFrame(trace);
+        };
+        drawingRaf = requestAnimationFrame(trace);
+      }).catch(finishIntro);
+    } else requestAnimationFrame(() => requestAnimationFrame(() => {
+      if (!introPending) return;
+      draft.dataset.phase = "drawing";
+      drawings.forEach((svg, i) => {
+        strokes.push(svg.animate([{ strokeDashoffset: "1" }, { strokeDashoffset: "0" }], {
+          duration: 900, delay: (i / Math.max(1, drawings.length - 1)) * 450,
+          easing: "linear", fill: "both",
+        }));
+      });
+      void Promise.all(strokes.map(stroke => stroke.finished)).then(() => {
+        if (introPending) fadeToPaint();
+      }, finishIntro);
+      syncReveal();
     }));
   }
 

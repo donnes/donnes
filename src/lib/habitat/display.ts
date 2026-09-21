@@ -23,7 +23,7 @@ function render() {
   const active = providers.filter(p => p.source && p.source !== "local");
   const complete = active.length > 0 && active.every(p => p.usage?.input != null && p.usage?.output != null);
   set("habitat-tokens", complete ? num(active.reduce((n, p) => n + p.usage!.input! + p.usage!.output!, 0)) : "—");
-  const lite = matchMedia("(max-width: 1100px), (pointer: coarse)").matches || matchMedia("(prefers-reduced-motion: reduce)").matches;
+  const lite = matchMedia("(prefers-reduced-motion: reduce)").matches;
   set("habitat-mode", lite ? word("A quiet beach. AI calls are paused in this view.", "Praia tranquila. Chamadas de IA pausadas nesta visualização.") : active.length ? word("AI-guided plans, reused as the beach plays.", "Planos guiados por IA, reutilizados durante o jogo.") : word("Local beach rhythm. No AI plan in use.", "Ritmo local da praia. Nenhum plano de IA em uso."));
   const container = document.getElementById("habitat-providers");
   if (container) {

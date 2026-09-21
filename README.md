@@ -13,10 +13,11 @@ For a fresh checkout, copy `.env.example` to `.env` first. The key stays on the 
 `OPENROUTER_MODEL` defaults to `z-ai/glm-5.3-flash`; change it to a model that supports
 JSON schema responses. No key is needed for the local behavior sequence.
 
-The desktop beach alternates rally styles, finishes points before resting, and
-invites gulls and crabs. Completed points build fatigue, which leads to a break.
-Weather restricts the available actions. Existing lightweight mobile and reduced-motion
-poses remain in place and make no model requests. Hidden tabs pause the habitat clock.
+The beach alternates rally styles and finishes points before resting. Desktop
+scenes also invite gulls and crabs. Completed points build fatigue, which leads to a break.
+Weather restricts the available actions. Mobile plays the tennis rallies using the
+same cached plans; reduced motion keeps a held pose and makes no model requests.
+Hidden tabs pause the habitat clock.
 The model picks action names only; the scene owns every movement and ball contact.
 
 A visit requests at most two plans, with no automatic retries. Each successful plan
@@ -60,3 +61,46 @@ observed player situations, model names, and provider-reported input/output toke
 for the currently active cached plans. It does not estimate missing usage, count
 cached deliveries as new spending, or expose model reasoning. The notebook uses a
 native dialog with Escape and focus return, and supports English and Portuguese.
+
+### Profiling the Android beach
+
+Use a production build for frame measurements: `pnpm build`, then
+`pnpm preview --host :: --port 4323`. Forward the page and Chrome's debugger through
+ADB on the connected phone:
+
+```sh
+adb -s <device> reverse tcp:4323 tcp:4323
+adb -s <device> forward tcp:9222 localabstract:chrome_devtools_remote
+```
+
+Open `http://localhost:4323/?wx=clear&tod=midday` in Chrome on the unlocked phone.
+The steady-state capture leaves the page in place; the loading capture reloads it.
+
+```sh
+node scripts/profile-android.mjs http://localhost:9222 localhost:4323 15000 /tmp/beach-steady.json
+node scripts/profile-loading-android.mjs localhost:4323 /tmp/beach-loading.json
+pnpm test:frames
+```
+
+Keep the browser visible throughout each capture. The loading report separates
+preparation, contour drawing, color fade, and the running scene. Raw samples retain
+phase boundaries. These measure browser callback cadence; pair them with Android
+rendering traces or `dumpsys gfxinfo` to assess presented frames.
+
+The mobile sketch draws the existing SVG geometry onto one canvas, including shared
+`use` definitions, clipping paths, and the overcast cloud bands. Its backing scale
+is capped at 1.5; the painted art stays at native resolution. Desktop retains the
+SVG contour animation. Both wait for the drawing to finish before fading into color.
+Palettes are read from isolated elements instead of repeatedly restyling the page.
+The scene clock follows display callbacks, and layout uses the painting's stable
+viewport height so the browser toolbar cannot shift the court.
+
+September 21, 2026, physical SM-S731B / Android 16, static production preview:
+Chrome's original clear-midday drawing averaged 37.6 callbacks/sec with a 317ms gap.
+Afterward, an overcast-midday capture averaged 60 during drawing and color fade.
+DuckDuckGo's final clear-midday capture averaged 117 during drawing, 107 during the
+fade, and 60 once painted, as its refresh cadence changed. That capture still had
+a 25ms animation interval and startup tasks up to 128ms before drawing began.
+Android reported 21 janky frames out of 1,415 across loading and subsequent play.
+These samples demonstrate the improvement, not a guarantee of zero dropped frames
+on every device. Static preview uses local tennis rules because it has no AI endpoint.
