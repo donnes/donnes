@@ -234,14 +234,6 @@ const bubbles = Array.from({ length: 12 }, (_, i) => {
   const x = 90 + i * 124 + lifeR() * 70;
   return { x: f(x), y: f(yAt(shoreShift(-22 - lifeR() * 12), x)), s: f(5 + lifeR() * 6), delay: f(lifeR() * 1.3) };
 });
-// somebody walks the wet sand now and then; the next big wave takes the prints
-const prints = Array.from({ length: 16 }, (_, i) => {
-  const x = 372 + i * 54;
-  const slope = Math.atan2(yAt(SHORE, x + 30) - yAt(SHORE, x - 30), 60);
-  const side = i % 2 ? 7 : -7;
-  return { x: f(x - Math.sin(slope) * side), y: f(yAt(SHORE, x) + 27 + Math.cos(slope) * side), rot: f(90 + (slope * 180) / Math.PI + (i % 2 ? 7 : -7)) };
-});
-
 const sandR = rng(101);
 const speckles = Array.from({ length: 260 }, () => {
   const x = -60 + sandR() * 1700;
@@ -437,6 +429,10 @@ const VB = { viewBox: "0 0 1600 1000", preserveAspectRatio: "xMidYMid slice", fo
 ---
 
 <script is:inline type="application/json" id="jb-strings" set:html={clientStrings} />
+<!-- "lite": phones, tablets and narrow windows get the cheap scene (see html.is-lite in the styles; the scene script keeps the class in sync) -->
+<script is:inline>
+  document.documentElement.classList.toggle("is-lite", matchMedia("(max-width: 1100px), (pointer: coarse)").matches);
+</script>
 
   <!-- ░░ paint box: every layer of the scene lives here once and is <use>d ░░ -->
   <svg class="jb-paintbox" width="0" height="0" aria-hidden="true" focusable="false">
@@ -545,7 +541,7 @@ const VB = { viewBox: "0 0 1600 1000", preserveAspectRatio: "xMidYMid slice", fo
         ))
       }
 
-      <g id="L-land">
+      <g id="L-hills">
         <path class="refl" d={`M1090 ${HORIZON + 5}L1720 ${HORIZON + 5}L1720 ${HORIZON + 44}Q1500 ${HORIZON + 50} 1300 ${HORIZON + 30}Q1170 ${HORIZON + 20} 1090 ${HORIZON + 5}Z`} filter="url(#wob)"></path>
         <g filter="url(#dry)"><path class="h-md" d={hillLD}></path></g>
         <g filter="url(#wobS)">{blobsL.map((b) => <circle class={b.c} cx={b.x} cy={b.y} r={b.r}></circle>)}</g>
@@ -559,6 +555,8 @@ const VB = { viewBox: "0 0 1600 1000", preserveAspectRatio: "xMidYMid slice", fo
             </g>
           ))}
         </g>
+      </g>
+      <g id="L-land">
         <path class="wet" d={wetD} filter="url(#wob)"></path>
         <g filter="url(#dry)"><path class="sand" d={sandD}></path></g>
         <g class="sand-strokes" filter="url(#wob)">{sandStrokes.map((s) => <path class={s.c} d={s.d} stroke-width={s.w}></path>)}</g>
@@ -678,6 +676,7 @@ const VB = { viewBox: "0 0 1600 1000", preserveAspectRatio: "xMidYMid slice", fo
       <i class="jb-deck jb-deck-hi jb-not-lite" style={`-webkit-mask-image:${deckHi};mask-image:${deckHi}`}></i>
     </div>
     <svg class="jb-layer i-sea i-wipe" data-d="0.45" {...VB}><use href="#L-sea"></use></svg>
+    <svg class="jb-layer i-land jb-veiled" data-d="0.45" {...VB}><use href="#L-hills"></use></svg>
     <svg class="jb-layer i-sea jb-glit-a" data-d="0.45" {...VB}><use href="#L-glitA"></use></svg>
     <svg class="jb-layer i-sea jb-glit-b" data-d="0.45" {...VB}><use href="#L-glitB"></use></svg>
     <svg class="jb-layer i-sea jb-swell jb-not-lite" data-d="0.45" {...VB}><use href="#L-swell"></use></svg>
@@ -718,7 +717,6 @@ const VB = { viewBox: "0 0 1600 1000", preserveAspectRatio: "xMidYMid slice", fo
     </div>
     <div class="jb-stage jb-st-shore i-land" data-d="0.45">
       <i class="jb-spray"></i>
-      {prints.map((p) => <i class="jb-print" style={`left:${p.x}px;top:${p.y}px;transform:rotate(${p.rot}deg)`}></i>)}
       {bubbles.map((b) => <i class="jb-bub" style={`left:${b.x}px;top:${b.y}px;width:${b.s}px;height:${b.s}px;animation-delay:${b.delay}s`}></i>)}
       {bioPts.map((b) => <i class="jb-bio" style={`left:${b.x}px;top:${b.y}px;width:${b.s}px;height:${b.s}px;animation-delay:${b.delay}s;animation-duration:${b.dur}s`}></i>)}
       {splashes.map((p) => <i class="jb-splash" style={`left:${p.x}px;top:${p.y}px;--s:${p.s};animation-delay:${p.delay}s;animation-duration:${p.dur}s`}></i>)}
@@ -1232,6 +1230,8 @@ const VB = { viewBox: "0 0 1600 1000", preserveAspectRatio: "xMidYMid slice", fo
     --v-cream: #fdf3da; --v-white: #fffdf4; --v-coral: #f0583a; --v-teal: #0fa3b8; --v-gold: #ffc93c; --v-green: #2fa36b; --v-navy: #1d4e89;
     --v-amber: #c9772b; --v-glass: #b6ebe0; --v-cork: #b98654; --v-pages: #efe3c4; --v-fold: #e9d7ae; --v-pole: #fff6e0; --v-under: #b63a27;
     --v-skin-a: #e9ae7e; --v-skin-b: #9c6646; --v-orange: #ff8a2a;
+    /* fixed land paint (the veil filter tints it; lite bakes the veil into these instead — see LAND in the script) */
+    --p-wall: #fbf3df; --p-roof-a: #d95a35; --p-roof-b: #b2452a; --p-speck-dk: #d29f5e; --p-speck-lt: #fff3d6; --p-starfish: #f0583a; --p-shell: #fff6e4; --p-trunk: #96704a; --p-ring: #6c5138; --p-seed: #c99c45;
     --v-dark: #4a3a2a; --v-char: #3a3a3a; --v-brown: #6c5138; --v-shade: #9a7440; --v-crab: #e0502f; --v-hill: #4fa45e; --v-hill-dk: #2e7d56; --v-hill-lt: #8fce62;
   }
   [data-tod="dawn"] {
@@ -1308,7 +1308,7 @@ const VB = { viewBox: "0 0 1600 1000", preserveAspectRatio: "xMidYMid slice", fo
   .waves .lace { stroke-width: 4; opacity: 0.85; }
   .refl { fill: var(--hill-dk); opacity: 0.3; }
   .h-md { fill: var(--hill); } .h-dk { fill: var(--hill-dk); } .h-lt { fill: var(--hill-lt); }
-  .wall { fill: #fbf3df; } .roof-a { fill: #d95a35; } .roof-b { fill: #b2452a; }
+  .wall { fill: var(--p-wall); } .roof-a { fill: var(--p-roof-a); } .roof-b { fill: var(--p-roof-b); }
   .sail path { fill: var(--v-cream); } .sail .hullf { fill: var(--v-char); }
   .hull { fill: var(--v-cream); } .hull-stripe { fill: var(--v-coral); } .cabin { fill: var(--v-teal); } .cabin-win { fill: var(--v-cream); }
   .mast { fill: none; stroke: var(--v-dark); stroke-width: 2.5; }
@@ -1324,12 +1324,12 @@ const VB = { viewBox: "0 0 1600 1000", preserveAspectRatio: "xMidYMid slice", fo
   .wet { fill: var(--wet); } .sand { fill: var(--sand); } .dune { fill: var(--dune); }
   .sand-strokes path { fill: none; stroke-linecap: round; opacity: 0.5; }
   .sand-strokes .s-lt { stroke: var(--sand-lt); } .sand-strokes .s-dk { stroke: var(--sand-dk); }
-  circle.s-dk { fill: #d29f5e; opacity: 0.7; } circle.s-lt { fill: #fff3d6; opacity: 0.9; }
-  .starfish { fill: #f0583a; } .shells { fill: #fff6e4; stroke: #d29f5e; stroke-width: 1.2; }
-  .trunk { fill: #96704a; } .rings path { fill: none; stroke: #6c5138; stroke-width: 1.8; opacity: 0.6; }
+  circle.s-dk { fill: var(--p-speck-dk); opacity: 0.7; } circle.s-lt { fill: var(--p-speck-lt); opacity: 0.9; }
+  .starfish { fill: var(--p-starfish); } .shells { fill: var(--p-shell); stroke: var(--p-speck-dk); stroke-width: 1.2; }
+  .trunk { fill: var(--p-trunk); } .rings path { fill: none; stroke: var(--p-ring); stroke-width: 1.8; opacity: 0.6; }
   .blades path { fill: none; stroke-linecap: round; }
   .blades .g1 { stroke: var(--g1); } .blades .g2 { stroke: var(--g2); } .blades .g3 { stroke: var(--g3); } .blades .straw { stroke: var(--straw); }
-  .seedhead { fill: #c99c45; }
+  .seedhead { fill: var(--p-seed); }
   /* object paint */
   .o-cream { fill: var(--v-cream); } .o-white { fill: var(--v-white); } .o-coral { fill: var(--v-coral); } .o-teal { fill: var(--v-teal); } .o-gold { fill: var(--v-gold); }
   .o-green { fill: var(--v-green); } .o-navy { fill: var(--v-navy); } .o-amber { fill: var(--v-amber); } .o-dark { fill: var(--v-dark); } .o-cork { fill: var(--v-cork); }
@@ -1441,8 +1441,6 @@ const VB = { viewBox: "0 0 1600 1000", preserveAspectRatio: "xMidYMid slice", fo
   .jb-bio { display: none; border-radius: 50%; background: #9ff3e6; box-shadow: 0 0 9px 3px rgb(120 240 225 / 0.7); opacity: 0.8; }
   [data-night] .jb-bio { display: block; }
   .jb-bub { border-radius: 50%; border: 1.5px solid var(--foam); background: rgb(255 255 255 / 0.5); opacity: 0; }
-  .jb-print { width: 22px; height: 11px; margin: -5px 0 0 -11px; border-radius: 50%; background: #9a6c34; opacity: 0; transition: opacity 0.9s ease; }
-  .jb-print.on { opacity: 0.42; transition-duration: 0.35s; }
   .jb-crab { left: 0; top: 0; width: 54px; height: 35px; margin: -18px 0 0 -27px; opacity: 0; }
   .jb-crab svg { width: 100%; height: 100%; transform-origin: 50% 100%; transition: transform 0.22s var(--spring); }
   .jb-crab.is-out { opacity: 1; }
@@ -1813,7 +1811,12 @@ const VB = { viewBox: "0 0 1600 1000", preserveAspectRatio: "xMidYMid slice", fo
   }
   /* mobile: a bottom sheet, the beach stays visible above it */
   @media (max-width: 819px) {
+    /* both sheets stay laid out and painted while parked just below the screen: opening is a plain slide (transform only),
+       with the content there from the first frame. The script keeps a parked sheet `inert`. */
+    html.js .jb-panel, html.js .jb-book { visibility: visible; opacity: 1; transform: translateY(100%); will-change: transform; }
+    html.js .jb-panel.is-open, html.js .jb-book.is-open { transform: none; }
     html.js .jb-panel { top: auto; bottom: -40px; left: 0; right: 0; width: auto; max-height: none; margin: 0; }
+    html.js .jb-paper::before { display: none; }
     html.js .jb-paper { max-height: calc(75svh + 40px); padding-bottom: 40px; transform: none; border-radius: 22px 22px 0 0; border-bottom: 0; box-shadow: 0 -10px 30px -12px rgb(70 45 10 / 0.5); }
     html.js .jb-grab { display: grid; place-items: center; flex: none; height: 26px; touch-action: none; cursor: grab; }
     html.js .jb-bk-grab { display: grid; }
@@ -1821,13 +1824,14 @@ const VB = { viewBox: "0 0 1600 1000", preserveAspectRatio: "xMidYMid slice", fo
     html.js .jb-close { top: 16px; right: 14px; width: 44px; height: 44px; }
     html.js .jb-sec { padding: 6px 20px 84px; }
     /* the notebook on a phone: one page in the sheet — header block, then the bullets; tabs are a snap strip; swipe changes role */
-    html.js .jb-book { position: fixed; z-index: 20; top: auto; bottom: -40px; left: 0; right: 0; max-width: none; max-height: calc(78svh + 40px); margin: 0; padding: 0 0 40px; display: flex; flex-direction: column; border-radius: 22px 22px 0 0; border-bottom: 0; box-shadow: 0 -10px 30px -12px rgb(70 45 10 / 0.5); visibility: hidden; opacity: 0; pointer-events: none; }
-    html.js .jb-book.is-open { visibility: visible; opacity: 1; pointer-events: auto; }
+    /* …a fixed height, so the sheet never moves when a shorter role is picked: the page scrolls inside it */
+    html.js .jb-book { position: fixed; z-index: 20; top: auto; bottom: -40px; left: 0; right: 0; max-width: none; height: calc(78svh + 40px); margin: 0; padding: 0 0 40px; display: flex; flex-direction: column; border-radius: 22px 22px 0 0; border-bottom: 0; box-shadow: 0 -10px 30px -12px rgb(70 45 10 / 0.5); pointer-events: none; }
+    html.js .jb-book.is-open { pointer-events: auto; }
     html.js .jb-tilt, html.js .jb-board { display: contents; }
     html.js .jb-bk-head { flex: none; padding: 2px 70px 0 20px; } html.js .jb-bk-head h2 { font-size: 28px; } html.js .jb-bk-head h2 span { font-size: 22px; }
-    html.js .jb-marks { display: flex; flex: none; gap: 8px; margin: 10px 0 0; padding: 2px 20px 10px; overflow-x: auto; scroll-snap-type: x mandatory; scroll-padding: 0 20px; scrollbar-width: none; border-bottom: 1px solid var(--hair); }
+    html.js .jb-marks { display: flex; flex: none; gap: 8px; margin: 10px 0 0; padding: 2px 20px 10px; overflow-x: auto; overscroll-behavior-x: contain; scrollbar-width: none; border-bottom: 1px solid var(--hair); }
     html.js .jb-marks::-webkit-scrollbar { display: none; }
-    html.js .jb-mark { all: unset; box-sizing: border-box; flex: none; scroll-snap-align: start; cursor: pointer; display: grid; gap: 2px; min-height: 46px; padding: 14px 13px 8px; border: 1.5px solid var(--ink); border-radius: 12px; background: linear-gradient(var(--c) 0 7px, var(--ink) 7px 8.5px, #fff 8.5px); overflow: hidden; transition: transform 0.25s var(--spring); }
+    html.js .jb-mark { all: unset; box-sizing: border-box; flex: none; cursor: pointer; display: grid; gap: 2px; min-height: 46px; padding: 14px 13px 8px; border: 1.5px solid var(--ink); border-radius: 12px; background: linear-gradient(var(--c) 0 7px, var(--ink) 7px 8.5px, #fff 8.5px); overflow: hidden; transition: transform 0.25s var(--spring); }
     html.js .jb-mark[aria-selected="true"] { background: var(--c); transform: rotate(-1.2deg); box-shadow: 0 3px 0 -1px rgb(60 40 10 / 0.3); }
     .jb-mark-c { font: 600 14px/1.15 var(--sans); letter-spacing: -0.01em; white-space: nowrap; } .jb-mark-y { font: 400 10.5px/1 var(--mono); white-space: nowrap; }
     html.js .jb-leaves { flex: 1; min-height: 0; overflow-y: auto; overscroll-behavior: contain; padding: 0 20px 96px; touch-action: pan-y; }
@@ -1843,18 +1847,34 @@ const VB = { viewBox: "0 0 1600 1000", preserveAspectRatio: "xMidYMid slice", fo
     html.js[data-panel] .jb-hello, html.js[data-panel] .jb-lang { opacity: 1; visibility: visible; }
     .jb-tag { font-size: 30px; } .jb-o-about .jb-tag { top: calc(100% - 16px); left: 30%; } .jb-o-stack .jb-tag { top: calc(100% - 22px); } .jb-o-work .jb-tag { top: calc(100% - 34px); }
     html[lang="pt-BR"] .jb-o-work .jb-tag { font-size: 26.5px; left: 47%; } /* the longer label still has to fit beside the cooler */
-    .jb-crab, .jb-gull, .jb-bird ~ .jb-bird, .jb-not-lite, .jb-kite-go, .jb-heat, .jb-cloud.extra:nth-child(n + 6), .jb-bub:nth-child(2n), .jb-splash:nth-child(2n), .jb-rip:nth-child(2n), .jb-cap:nth-child(2n), .jb-wisp:nth-child(2n), .jb-ff:nth-child(n + 5), .jb-mist:nth-child(3) { display: none !important; }
   }
   @media (max-width: 560px) { .jb-wx-w, html.js .jb-ball { display: none; } }
-  /* Phones and tablets: url() SVG filters rasterise in software at full device resolution (and again on
-     every frame for the layers that sway), and blend modes force extra full-screen surfaces. That is
-     enough to get the tab killed on low-memory devices, so touch devices get GPU-only equivalents. */
+  /* ── lite: phones, tablets, narrow windows (html.is-lite, set before first paint and kept in sync by the script) ──
+     url() SVG filters rasterise in software at full device resolution, blend modes and per-layer filters force extra
+     full-screen surfaces, and every animated full-screen layer is its own ~12 MB texture at 3× (plus one more for whatever
+     is painted above it). That got tabs killed on low-memory phones. Lite keeps the painting and the concept and cuts
+     the cost: no filters (the veil is baked into the land paint by the script), one wave, a handful of small sprites. */
+  html.is-lite .jb-paintbox [filter], html.is-lite .jb-scene [filter], html.is-lite .jb-world [filter] { filter: none !important; }
+  html.is-lite .jb-veiled { filter: none !important; }
+  html.is-lite .jb-scene *, html.is-lite .jb-world * { mix-blend-mode: normal !important; }
+  html.is-lite .jb-layer, html.is-lite .jb-fg, html.is-lite .jb-cloud, html.is-lite .jb-bird, html.is-lite .jb-art, html.is-lite .jb-idle, html.is-lite .jb-ride, html.is-lite .jb-flap { will-change: auto !important; }
+  /* gone: the grain, the second/third wave, swell, cloud shadows, extra rain, gull, crab, kite, heat haze, fireflies, bioluminescence, bubbles, half of the small repeats */
+  html.is-lite .jb-grain, html.is-lite .jb-not-lite, html.is-lite .jb-crab, html.is-lite .jb-gull, html.is-lite .jb-bird ~ .jb-bird, html.is-lite .jb-kite-go, html.is-lite .jb-heat, html.is-lite .jb-ff, html.is-lite .jb-bio, html.is-lite .jb-bub, html.is-lite .jb-rain-first,
+  html.is-lite .jb-cloud.extra:nth-child(n + 6), html.is-lite .jb-twk:nth-child(2n), html.is-lite .jb-splash:nth-child(2n), html.is-lite .jb-rip:nth-child(2n), html.is-lite .jb-cap:nth-child(2n), html.is-lite .jb-wisp:nth-child(2n), html.is-lite .jb-mist:nth-child(3),
+  html.is-lite:not([data-deck]) .jb-deck, html.is-lite .jb-cloud.is-gone { display: none !important; }
+  /* still: everything that would animate a full-screen layer, or sit between two of them */
+  html.is-lite .jb-glit-a, html.is-lite .jb-glit-b, html.is-lite .jb-shimmer-a, html.is-lite .jb-shimmer-b, html.is-lite .jb-sway-a.jb-layer, html.is-lite .jb-sway-b.jb-layer, html.is-lite .jb-crown, html.is-lite .jb-rays, html.is-lite .jb-spark, html.is-lite .jb-mist, html.is-lite .jb-spray,
+  html.is-lite .i-sky, html.is-lite .i-cloud, html.is-lite .i-sea, html.is-lite .i-land, html.is-lite .i-veg { animation: none !important; }
+  html.is-lite.jb-intro .jb-scene { animation: jb-in-fade 0.5s ease-out backwards; }
+  /* rain: one streak layer, no bigger than the screen plus one fall (the script keeps the slant small) */
+  html.is-lite .jb-rainbox { inset: -290px -130px 0; }
+  html.is-lite .jb-rainfall { inset: -280px 0 0; }
+  /* while a sheet covers the beach (phones) the scene holds its breath: nothing animates, the clock stops */
+  html.is-held .jb-scene, html.is-held .jb-scene *, html.is-held .jb-objs *, html.is-held .jb-fg { animation-play-state: paused !important; }
+  /* no script, no class: keep at least the software filters away from small/touch screens */
   @media (max-width: 1100px), (pointer: coarse) {
-    .jb-scene [filter], .jb-world [filter], .jb-fg [filter] { filter: none !important; }
-    .jb-veiled { filter: brightness(var(--veil-b, 1)) !important; }
-    .jb-grain { mix-blend-mode: normal !important; opacity: 0.16 !important; }
-    .jb-scene *, .jb-world * { mix-blend-mode: normal !important; }
-    .jb-layer, .jb-fg, .jb-cloud, .jb-bird, .jb-crab, .jb-art, .jb-idle, .jb-ride, .jb-flap { will-change: auto !important; }
+    html:not(.js) .jb-paintbox [filter], html:not(.js) .jb-veiled { filter: none !important; }
+    html:not(.js) .jb-grain { display: none; }
   }
 
   @media (max-width: 420px) {
@@ -2069,6 +2089,11 @@ const VB = { viewBox: "0 0 1600 1000", preserveAspectRatio: "xMidYMid slice", fo
   qa<HTMLAnchorElement>('.jb-notes a[target="_blank"]').forEach((a) => (a.rel = "noopener"));
   const sheetMq = window.matchMedia("(max-width: 819px)");
   const calm = window.matchMedia("(prefers-reduced-motion: reduce)");
+  // LITE — the one switch for the cheap scene (phones, tablets, narrow windows). Mirrors `html.is-lite`, which the inline
+  // script at the top of the body sets before first paint; both follow the same media query.
+  const liteMq = window.matchMedia("(max-width: 1100px), (pointer: coarse)");
+  let LITE = liteMq.matches;
+  root.classList.toggle("is-lite", LITE);
 
   /* ───────────── painting → screen mapping, and where the four things sit ───────────── */
   const scene = q(".jb-scene");
@@ -2146,16 +2171,19 @@ const VB = { viewBox: "0 0 1600 1000", preserveAspectRatio: "xMidYMid slice", fo
   const tasks: Task[] = [];
   let running = false;
   let last = 0;
+  let held = false; // lite phones: a sheet covers the beach, so the scene stops entirely (see holdScene)
   function frame(now: number) {
     if (!running) return;
+    requestAnimationFrame(frame);
+    if (LITE && now - last < 30) return; // lite: the script moves things at ~30fps at most
     const dt = Math.min(0.05, (now - last) / 1000);
     last = now;
     for (const t of tasks) t(dt, now);
-    requestAnimationFrame(frame);
   }
   function syncRunning() {
-    const should = !document.hidden;
-    root.classList.toggle("is-asleep", !should);
+    const should = !document.hidden && !held;
+    root.classList.toggle("is-asleep", document.hidden);
+    root.classList.toggle("is-held", held);
     const go = should && !calm.matches;
     if (go && !running) {
       running = true;
@@ -2163,6 +2191,23 @@ const VB = { viewBox: "0 0 1600 1000", preserveAspectRatio: "xMidYMid slice", fo
       requestAnimationFrame(frame);
     } else if (!go) running = false;
   }
+  function holdScene(on: boolean) {
+    on = on && LITE && sheetMq.matches;
+    if (on === held) return;
+    held = on;
+    syncRunning();
+  }
+  /** Slow movers (clouds, the sail): in lite they are only repositioned ~10×/s. Returns the elapsed time to apply, or 0 to skip this frame. */
+  function slowly(acc: { t: number }, dt: number): number {
+    if (!LITE) return dt;
+    acc.t += dt;
+    if (acc.t < 0.1) return 0;
+    const all = acc.t;
+    acc.t = 0;
+    return all;
+  }
+  // a thing that never moves per-frame in lite is placed with a 2D transform, so it does not become a texture of its own
+  const at = (x: number, y = 0, still = LITE) => (still ? `translate(${x.toFixed(1)}px,${y.toFixed(1)}px)` : `translate3d(${x.toFixed(1)}px,${y.toFixed(1)}px,0)`);
   function sometimes(min: number, max: number, fn: () => void, firstIn = rand(min, max)) {
     let left = firstIn;
     tasks.push((dt) => {
@@ -2182,6 +2227,20 @@ const VB = { viewBox: "0 0 1600 1000", preserveAspectRatio: "xMidYMid slice", fo
   type Pal = { c: number[][]; n: number[] };
   const COLS = ["--sky-0", "--sky-1", "--sky-2", "--sky-3", "--cloud", "--cloud-shade", "--cloud-hi", "--sun", "--halo", "--far-1", "--far-2", "--sea-0", "--sea-1", "--sea-2", "--sea-3", "--sea-4", "--foam", "--glitter", "--veil"];
   const NUMS = ["--stars", "--lights"];
+  // lite has no veil filter: the veiled layers' own paint is multiplied by the veil instead (same maths as the filter's feBlend)
+  const LAND = ["--hill", "--hill-dk", "--hill-lt", "--sand", "--sand-lt", "--sand-dk", "--wet", "--dune", "--g1", "--g2", "--g3", "--straw", "--p-wall", "--p-roof-a", "--p-roof-b", "--p-speck-dk", "--p-speck-lt", "--p-starfish", "--p-shell", "--p-trunk", "--p-ring", "--p-seed"];
+  const veiledEls = qa<HTMLElement | SVGElement>(".jb-veiled");
+  let landBase: number[][] = [];
+  let landKey = "";
+  function paintLand(veil: number[]) {
+    const key = LITE ? veil.map((v) => Math.round(v)).join() : "";
+    if (key === landKey) return;
+    landKey = key;
+    LAND.forEach((k, i) => {
+      const v = LITE ? rgb(landBase[i].map((c, ch) => (c * veil[ch]) / 255)) : "";
+      for (const el of veiledEls) v ? el.style.setProperty(k, v) : el.style.removeProperty(k);
+    });
+  }
   const VEILED = ["--v-cream", "--v-white", "--v-coral", "--v-teal", "--v-gold", "--v-green", "--v-navy", "--v-amber", "--v-glass", "--v-cork", "--v-pages", "--v-fold", "--v-pole", "--v-under", "--v-dark", "--v-char", "--v-brown", "--v-shade", "--v-crab", "--v-hill", "--v-hill-dk", "--v-hill-lt", "--v-skin-a", "--v-skin-b", "--v-orange"];
   const hex = (h: string) => {
     const v = h.trim().replace("#", "");
@@ -2200,7 +2259,10 @@ const VB = { viewBox: "0 0 1600 1000", preserveAspectRatio: "xMidYMid slice", fo
       root.dataset.tod = t;
       const cs = getComputedStyle(root);
       PALS[t] = { c: COLS.map((k) => hex(cs.getPropertyValue(k))), n: NUMS.map((k) => parseFloat(cs.getPropertyValue(k)) || 0) };
-      if (t === "day") veiledBase = VEILED.map((k) => hex(cs.getPropertyValue(k)));
+      if (t === "day") {
+        veiledBase = VEILED.map((k) => hex(cs.getPropertyValue(k)));
+        landBase = LAND.map((k) => hex(cs.getPropertyValue(k)));
+      }
     }
     PALS.aft = mix(PALS.day, PALS.golden, 0.26);
     root.dataset.tod = keep;
@@ -2392,7 +2454,7 @@ const VB = { viewBox: "0 0 1600 1000", preserveAspectRatio: "xMidYMid slice", fo
   function applyState(prev: SceneState | null, next: SceneState) {
     state = next;
     Object.assign(goal, goalFor(next));
-    const snap = !prev || calm.matches || !running;
+    const snap = !prev || calm.matches || !running || LITE; // lite: each palette step restyles the whole painting, so it changes in one
     const hurry = prev && prev.temp === null && !prev.preview ? 0.3 : 1; // the first real reading after a clock-only first paint arrives briskly
     for (const k of KEYS) {
       if (snap) {
@@ -2480,15 +2542,15 @@ const VB = { viewBox: "0 0 1600 1000", preserveAspectRatio: "xMidYMid slice", fo
     const [sx, sy, se] = arc(ts);
     const [mx, my, me] = arc(env.cyc - 1);
     const k = fit.portrait ? " scale(0.72)" : "";
-    if (sunEl) sunEl.style.transform = `translate3d(${sx.toFixed(1)}px,${sy.toFixed(1)}px,0)${k}`;
-    if (moonEl) moonEl.style.transform = `translate3d(${mx.toFixed(1)}px,${my.toFixed(1)}px,0)${k}`;
-    if (glowEl) glowEl.style.transform = `translate3d(${sx.toFixed(1)}px,${HORIZON}px,0)`;
+    if (sunEl) sunEl.style.transform = at(sx, sy) + k;
+    if (moonEl) moonEl.style.transform = at(mx, my) + k;
+    if (glowEl) glowEl.style.transform = at(sx, HORIZON);
     lum.sunUp = day ? 1 : 0;
     lum.x = day ? sx : mx;
     lum.y = day ? sy : my;
     lum.elev = Math.max(0, day ? se : me);
     lum.side = Math.cos(Math.PI * clamp(day ? ts : env.cyc - 1, 0, 1)); // +1 = low in the east (right), −1 = low in the west (left)
-    if (sparksEl) sparksEl.style.transform = `translate3d(${lum.x.toFixed(1)}px,0,0)`;
+    if (sparksEl) sparksEl.style.transform = at(lum.x);
   }
 
   /* ───────────── render: env → palette + CSS variables + flags (called in steps, or once when snapping) ───────────── */
@@ -2515,6 +2577,7 @@ const VB = { viewBox: "0 0 1600 1000", preserveAspectRatio: "xMidYMid slice", fo
     const veil = cols[18];
     setVar("--veil-b", ((0.2126 * veil[0] + 0.7152 * veil[1] + 0.0722 * veil[2]) / 255).toFixed(3));
     VEILED.forEach((k, i) => setVar(k, rgb(veiledBase[i].map((v, ch) => (v * veil[ch]) / 255))));
+    paintLand(veil);
     const stars = base.n[0];
     const lights = clamp(Math.max(base.n[1], e.dark * 1.7 - 0.1), 0, 1);
     const night = lights > 0.75 && base.n[0] > 0.6;
@@ -2530,7 +2593,7 @@ const VB = { viewBox: "0 0 1600 1000", preserveAspectRatio: "xMidYMid slice", fo
     setVar("--r-far", e.rFar.toFixed(3));
     setVar("--r-mid", e.rMid.toFixed(3));
     setVar("--r-near", e.rNear.toFixed(3));
-    setVar("--rain-a", `${(e.windX * (7 + 24 * e.wind)).toFixed(1)}deg`);
+    setVar("--rain-a", `${clamp(e.windX * (7 + 24 * e.wind), LITE ? -10 : -90, LITE ? 10 : 90).toFixed(1)}deg`); // lite: the one streak layer is cut close to the screen
     setVar("--spray", (e.spray * 0.8).toFixed(2));
     setVar("--wet-a", (clamp(e.wet * 2.6, 0, 1) * (0.26 - 0.14 * e.wet)).toFixed(3));
     setVar("--wet-b", (clamp((e.wet - 0.15) / 0.85, 0, 1) * (0.52 - 0.22 * e.dark - 0.16 * (1 - daylight))).toFixed(3));
@@ -2568,6 +2631,7 @@ const VB = { viewBox: "0 0 1600 1000", preserveAspectRatio: "xMidYMid slice", fo
     flag("rain", e.rFirst > 0.02);
     flag("wet", e.wet > 0.004);
     flag("mist", e.fog > 0.01 || e.cyc > 1.88 || e.cyc < 0.17);
+    flag("deck", e.deck > 0.004);
     flag("fog", e.fog > 0.6);
     flag("tuck", e.rMid > 0.18);
     flag("lid", e.rMid > 0.28);
@@ -2625,9 +2689,11 @@ const VB = { viewBox: "0 0 1600 1000", preserveAspectRatio: "xMidYMid slice", fo
   window.setInterval(tick, 15000);
 
   /* ───────────── clouds: each one rolls in from the windward side and leaves downwind; the deck and the shadows ride the same wind ───────────── */
-  type Cloud = { el: SVGSVGElement; x: number; v: number; left: number; w: number; cy: number; near: boolean; th: number; on: boolean; enter: number; lv: number };
+  type Cloud = { el: SVGSVGElement; x: number; v: number; left: number; w: number; cy: number; near: boolean; th: number; on: boolean; enter: number; lv: number; gone: number };
   const CLOUD_TH = [0, 0.4, 0.22, 0.3, 0.45, 0, 0.6, 0.7, 0.8, 0.9]; // cover needed before each cloud shows up (far ×3, near ×3, extra ×4)
-  const clouds: Cloud[] = qa<SVGSVGElement>(".jb-cloud").map((el, i) => ({ el, x: 0, v: Number(el.dataset.v) || 1, left: parseFloat(el.style.left), w: parseFloat(el.style.width), cy: Number(el.dataset.cy) || 0, near: el.dataset.tier !== "far", th: CLOUD_TH[i] ?? 0.5, on: false, enter: 0, lv: 0 }));
+  const clouds: Cloud[] = qa<SVGSVGElement>(".jb-cloud").map((el, i) => ({ el, x: 0, v: Number(el.dataset.v) || 1, left: parseFloat(el.style.left), w: parseFloat(el.style.width), cy: Number(el.dataset.cy) || 0, near: el.dataset.tier !== "far", th: CLOUD_TH[i] ?? 0.5, on: false, enter: 0, lv: 0, gone: 0 }));
+  clouds.forEach((c) => c.el.classList.add("is-gone")); // until the sky asks for it (only lite acts on this: see the styles)
+  const cloudStill = (c: Cloud) => LITE && c.v < 0.5; // lite: the far clouds stay put
   function syncClouds(snap: boolean) {
     const dir = goal.windX < 0 ? -1 : 1;
     clouds.forEach((c, i) => {
@@ -2644,18 +2710,25 @@ const VB = { viewBox: "0 0 1600 1000", preserveAspectRatio: "xMidYMid slice", fo
         c.el.style.transitionDuration = "0.9s";
       } else c.el.style.transitionDuration = "";
       c.el.style.opacity = want ? (c.near ? "1" : "0.92") : "0";
-      if (snap) c.el.style.transform = `translate3d(${c.x.toFixed(1)}px,0,0)`;
+      if (snap) c.el.style.transform = at(c.x, 0, cloudStill(c));
+      // a cloud that has left costs nothing (it would otherwise keep its texture at opacity 0)
+      window.clearTimeout(c.gone);
+      if (want || snap) c.el.classList.toggle("is-gone", !want);
+      else c.gone = window.setTimeout(() => c.el.classList.add("is-gone"), 3000);
     });
   }
   const decks = qa(".jb-deck").map((el, i) => ({ el, x: 0, v: [0.35, 0.6, 0.85][i] ?? 0.5 }));
   const shades = qa(".jb-cshade").map((el) => ({ el, x: 0, v: Number(el.dataset.v) || 1, left: parseFloat(el.style.left), w: parseFloat(el.style.width) }));
+  const cloudAcc = { t: 0 };
   tasks.push((dt) => {
+    dt = slowly(cloudAcc, dt);
+    if (!dt) return;
     const dir = env.windX < 0 ? -1 : 1;
     const speed = env.windX * (4 + env.wind * 52) + dir * env.storm * 14;
     let cross = 0;
     for (const c of clouds) {
       if (!c.on && c.lv === 0 && c.el.style.opacity === "0") c.lv = 1; // leaving: hurry downwind while it fades
-      if (sheetMq.matches && c.v < 0.5) continue;
+      if (cloudStill(c)) continue;
       let move = speed * c.v * dt;
       if (c.enter > 1) {
         const m = c.enter * (1 - Math.exp(-dt / 1.5));
@@ -2672,18 +2745,20 @@ const VB = { viewBox: "0 0 1600 1000", preserveAspectRatio: "xMidYMid slice", fo
         else if (pos + c.w < -160) c.x += 1920 + c.w;
       }
       if (!c.on && (pos > 1900 || pos + c.w < -300)) continue;
-      c.el.style.transform = `translate3d(${c.x.toFixed(1)}px,0,0)`;
-      if (c.on && c.near) {
+      c.el.style.transform = at(c.x, 0, false);
+      if (c.on && c.near && !LITE) {
         const half = (c.w - 160) / 2;
         const dx = Math.abs(pos + c.w / 2 - lum.x);
         if (dx < half + 40 && Math.abs(lum.y - (c.cy - 36)) < 78) cross = Math.max(cross, clamp(1.5 - dx / (half + 40) * 1.5, 0, 1));
       }
     }
-    for (const d of decks) {
-      d.x = (((d.x + speed * d.v * dt) % 800) + 800) % 800;
-      d.el.style.transform = `translate3d(${d.x.toFixed(1)}px,0,0)`;
-    }
-    if (!sheetMq.matches && env.deck < 0.9)
+    // lite: the overcast deck is three very wide bands; rolling them means three very wide textures, so they stay put
+    if (!LITE)
+      for (const d of decks) {
+        d.x = (((d.x + speed * d.v * dt) % 800) + 800) % 800;
+        d.el.style.transform = `translate3d(${d.x.toFixed(1)}px,0,0)`;
+      }
+    if (!LITE && env.deck < 0.9)
       for (const s of shades) {
         s.x += speed * 1.5 * s.v * dt;
         const pos = s.left + s.x;
@@ -2710,14 +2785,14 @@ const VB = { viewBox: "0 0 1600 1000", preserveAspectRatio: "xMidYMid slice", fo
   const birds: Bird[] = qa<SVGSVGElement>(".jb-bird").map((el) => ({ el, on: false, t: 0, dur: 1, p: [], size: 1 }));
   function launchBird(delay = 0, near?: Bird) {
     const b = birds.find((k) => !k.on);
-    if (!b || (sheetMq.matches && birds.some((k) => k.on))) return;
+    if (!b || (LITE && birds.some((k) => k.on))) return;
     const ltr = near ? near.p[0][0] < near.p[3][0] : Math.random() < 0.5;
     const y0 = near ? near.p[0][1] + rand(-30, 30) : rand(60, 330);
     const y1 = near ? near.p[3][1] + rand(-30, 30) : rand(50, 300);
     const xs = ltr ? [-60, rand(300, 600), rand(900, 1300), 1680] : [1680, rand(1000, 1300), rand(300, 700), -60];
     b.p = [[xs[0], y0], [xs[1], y0 + rand(-100, 80)], [xs[2], y1 + rand(-80, 100)], [xs[3], y1]];
     b.size = near ? near.size * rand(0.8, 1) : rand(0.6, 1.2);
-    b.dur = (near ? near.dur : rand(13, 21)) * (sheetMq.matches ? 0.6 : 1);
+    b.dur = (near ? near.dur : rand(13, 21)) * (fit.portrait ? 0.6 : 1);
     b.t = -delay / b.dur;
     b.on = true;
     b.el.style.animationDelay = `${-rand(0, 2)}s`;
@@ -2759,7 +2834,10 @@ const VB = { viewBox: "0 0 1600 1000", preserveAspectRatio: "xMidYMid slice", fo
   const kiteArt = q<SVGSVGElement>(".jb-kite");
   const sail = { x: 0 };
   const kite = { x: 900, dir: 1 };
+  const sailAcc = { t: 0 };
   tasks.push((dt) => {
+    dt = slowly(sailAcc, dt);
+    if (!dt) return;
     const dir = env.windX < 0 ? -1 : 1;
     if (sailGo) {
       sail.x += dir * (3 + env.wind * 12) * dt;
@@ -2768,7 +2846,7 @@ const VB = { viewBox: "0 0 1600 1000", preserveAspectRatio: "xMidYMid slice", fo
       else if (pos < fit.left - 120) sail.x = fit.left + fit.width + 80 - 966;
       sailGo.style.transform = `translate3d(${sail.x.toFixed(1)}px,0,0)`;
     }
-    if (kiteGo && kiteArt && root.hasAttribute("data-kite")) {
+    if (kiteGo && kiteArt && !LITE && root.hasAttribute("data-kite")) {
       kite.x += kite.dir * (26 + env.wind * 40) * dt;
       if (kite.x > fit.left + fit.width * 0.92) kite.dir = -1;
       else if (kite.x < fit.left + fit.width * 0.3) kite.dir = 1;
@@ -2800,47 +2878,13 @@ const VB = { viewBox: "0 0 1600 1000", preserveAspectRatio: "xMidYMid slice", fo
     shoot.classList.add("is-go");
   }, 7);
 
-  // footprints: someone walks the wet sand; the next big wave takes them
-  const prints = qa(".jb-print");
-  const washA = q(".jb-wash-a");
-  const walk = { i: -1, acc: 0, done: false, lastPhase: 0, rev: false };
-  const bigWave = (): number => {
-    const a = washA?.getAnimations?.().find((k) => (k as CSSAnimation).animationName === "jb-wash");
-    return a ? ((Number(a.currentTime) || 0) % 9000) / 9000 : 0;
-  };
-  sometimes(22, 40, () => {
-    if (walk.i >= 0 || walk.done || env.rMid > 0.2 || lifeNow() < 0.3) return;
-    walk.i = 0;
-    walk.acc = 0;
-    walk.rev = Math.random() < 0.5;
-  }, 4.5);
-  tasks.push((dt) => {
-    if (walk.i >= 0) {
-      walk.acc += dt;
-      if (walk.acc > 0.34) {
-        walk.acc = 0;
-        prints[walk.rev ? prints.length - 1 - walk.i : walk.i]?.classList.add("on");
-        if (++walk.i >= prints.length) {
-          walk.i = -1;
-          walk.done = true;
-        }
-      }
-    }
-    const ph = bigWave();
-    if (walk.lastPhase < 0.4 && ph >= 0.4 && (walk.done || walk.i > 3)) {
-      prints.forEach((p) => p.classList.remove("on"));
-      if (walk.done) walk.done = false;
-    }
-    walk.lastPhase = ph;
-  });
-
   // a gull lands on the sand, hops about, and leaves (dry daylight only)
   const gull = q(".jb-gull");
   if (gull) {
     const g = { mode: "gone" as "gone" | "land" | "stand" | "hop" | "leave", x: 0, y: 0, x0: 0, y0: 0, t: 0, dir: 1, hops: 0, wait: 0 };
     const put = (x: number, y: number) => (gull.style.transform = `translate3d(${x.toFixed(1)}px,${y.toFixed(1)}px,0) scaleX(${g.dir})`);
     sometimes(24, 46, () => {
-      if (g.mode !== "gone" || sheetMq.matches || lifeNow() < 0.8 || env.wind > 0.7) return;
+      if (g.mode !== "gone" || LITE || lifeNow() < 0.8 || env.wind > 0.7) return;
       g.dir = Math.random() < 0.5 ? 1 : -1;
       g.x = fit.left + fit.width * rand(0.3, 0.68);
       g.y = shoreY(g.x) + rand(96, 130);
@@ -2905,7 +2949,7 @@ const VB = { viewBox: "0 0 1600 1000", preserveAspectRatio: "xMidYMid slice", fo
     tasks.push((dt) => {
       if (c.mode === "gone") {
         c.idle -= dt * (bold() ? 4 : 1); // comes out about four times as often in the rain or at night
-        if (c.idle > 0 || sheetMq.matches || env.storm > 0.5) return;
+        if (c.idle > 0 || LITE || env.storm > 0.5) return;
         c.idle = rand(20, 42);
         c.dir = Math.random() < 0.5 ? 1 : -1;
         c.lo = fit.left - 40;
@@ -3111,8 +3155,7 @@ const VB = { viewBox: "0 0 1600 1000", preserveAspectRatio: "xMidYMid slice", fo
       if (bshEl) bshEl.style.transform = `translate3d(${(ball.x + ball.h * 0.12).toFixed(1)}px,${(M * ball.x + 1).toFixed(1)}px,0) scale(${clamp(1 - ball.h / 150, 0.45, 1).toFixed(2)})`;
     }
     // without the clock (reduced motion) the court still tells the truth: a held pose, or the rackets by the net
-    btSnap = () => {
-      if (running) return;
+    const hold = () => {
       court.dataset.bt = btWant;
       mode = "off";
       if (btWant !== "play") return;
@@ -3126,7 +3169,14 @@ const VB = { viewBox: "0 0 1600 1000", preserveAspectRatio: "xMidYMid slice", fo
       showBall(true);
       putBall();
     };
+    btSnap = () => {
+      if (!running) hold();
+    };
     tasks.push((dt) => {
+      if (LITE) {
+        if (court.dataset.bt !== btWant || mode !== "off") hold(); // lite: the same held pose as reduced motion, no rally
+        return;
+      }
       if (mode === "off") {
         if (btWant === "play") {
           court.dataset.bt = "play";
@@ -3232,7 +3282,7 @@ const VB = { viewBox: "0 0 1600 1000", preserveAspectRatio: "xMidYMid slice", fo
     window.addEventListener("pointermove", (e) => {
       pointer.x = e.clientX;
       pointer.y = e.clientY;
-      if (e.pointerType === "touch" || calm.matches) return;
+      if (e.pointerType === "touch" || calm.matches || LITE) return;
       tx = (e.clientX / window.innerWidth - 0.5) * 20;
       ty = (e.clientY / window.innerHeight - 0.5) * 9;
       if (!raf && !document.hidden) raf = requestAnimationFrame(step);
@@ -3246,6 +3296,16 @@ const VB = { viewBox: "0 0 1600 1000", preserveAspectRatio: "xMidYMid slice", fo
     if (!state) return;
     placeLum();
     render();
+  });
+  liteMq.addEventListener("change", () => {
+    LITE = liteMq.matches;
+    root.classList.toggle("is-lite", LITE);
+    for (const l of deep) l.el.style.translate = "";
+    holdScene(!!openId);
+    if (!state) return;
+    placeLum();
+    render();
+    clouds.forEach((c) => c.on && (c.el.style.transform = at(c.x, 0, cloudStill(c))));
   });
 
   /* ───────────── what opens: the notebook (Work) and the cream sheet (About · Stack · Contact) ───────────── */
@@ -3290,6 +3350,7 @@ const VB = { viewBox: "0 0 1600 1000", preserveAspectRatio: "xMidYMid slice", fo
   let active = 0;
   let turning: Animation[] = [];
   let afterTurn: (() => void) | null = null;
+  let roleFade: Animation | null = null;
   // headings are "written on" word by word the first time a page is seen
   spreads.forEach((sp) => {
     const h = q("h3", sp);
@@ -3314,8 +3375,14 @@ const VB = { viewBox: "0 0 1600 1000", preserveAspectRatio: "xMidYMid slice", fo
     if (pgNow) pgNow.textContent = String(i + 1);
     if (prevBtn) prevBtn.disabled = i === 0;
     if (nextBtn) nextBtn.disabled = i === spreads.length - 1;
+    // phones: the strip only moves when the picked tab is not fully in view — just far enough to show it and a peek of its neighbour
     const m = marks[i];
-    if (marksEl && m && sheetMq.matches) marksEl.scrollTo({ left: m.offsetLeft - 20, behavior: calm.matches ? "auto" : "smooth" });
+    if (!marksEl || !m || !sheetMq.matches) return;
+    const lo = m.offsetLeft - 20 - (i > 0 ? 36 : 0);
+    const hi = m.offsetLeft + m.offsetWidth + 20 + (i < marks.length - 1 ? 36 : 0) - marksEl.clientWidth;
+    const left = marksEl.scrollLeft;
+    const to = left > lo ? lo : left < hi ? hi : left;
+    if (Math.abs(to - left) > 1) marksEl.scrollTo({ left: to, behavior: calm.matches ? "auto" : "smooth" });
   }
   function show(i: number, ink = true) {
     spreads.forEach((sp, k) => {
@@ -3408,12 +3475,13 @@ const VB = { viewBox: "0 0 1600 1000", preserveAspectRatio: "xMidYMid slice", fo
       return;
     }
     if (!sheetMq.matches) return turn(from, i);
-    // phones: the page slides across
+    // phones: one swap, one short crossfade of the whole page — no write-on, no staggered ink, nothing arrives twice
     endTurn();
-    show(i);
-    const dir = i > from ? 1 : -1;
+    roleFade?.cancel();
+    show(i, false);
     if (leaves) leaves.scrollTop = 0;
-    spreads[i].animate([{ transform: `translateX(${dir * 46}px)`, opacity: 0 }, { transform: "none", opacity: 1 }], { duration: 260, easing: "cubic-bezier(.2,.8,.3,1)" });
+    const dir = i > from ? 1 : -1;
+    roleFade = spreads[i].animate([{ transform: `translateX(${dir * 14}px)`, opacity: 0 }, { transform: "none", opacity: 1 }], { duration: 160, easing: "cubic-bezier(.2,.7,.3,1)" });
   }
   marks.forEach((m, k) => m.addEventListener("click", () => selectRole(k)));
   prevBtn?.addEventListener("click", () => selectRole(active - 1));
@@ -3459,7 +3527,7 @@ const VB = { viewBox: "0 0 1600 1000", preserveAspectRatio: "xMidYMid slice", fo
 
   // how a sheet leaves/returns: from the object on desktop, from below on phones
   function tucked(el: HTMLElement, btn: HTMLElement | null): Keyframe {
-    if (sheetMq.matches || !btn) return { transform: "translateY(105%)", opacity: 1 };
+    if (sheetMq.matches || !btn) return { transform: "translateY(100%)", opacity: 1 };
     const r = btn.getBoundingClientRect();
     const cx = r.left + r.width * (el === book ? 0.42 : 0.5) - el.offsetLeft;
     const cy = r.top + r.height * 0.55 - el.offsetTop;
@@ -3467,7 +3535,7 @@ const VB = { viewBox: "0 0 1600 1000", preserveAspectRatio: "xMidYMid slice", fo
     return { transform: el === book ? "scale(0.07) rotate(-13deg)" : "scale(0.06) rotate(-9deg)", opacity: 0 };
   }
   function tuckGhost(oldBtn: HTMLElement | null) {
-    if (!panel || calm.matches) return;
+    if (!panel || calm.matches || sheetMq.matches) return; // phones: the sheet simply slides up again with the new section
     const g = panel.cloneNode(true) as HTMLElement;
     g.removeAttribute("id");
     qa("[id]", g).forEach((n) => n.removeAttribute("id"));
@@ -3491,9 +3559,29 @@ const VB = { viewBox: "0 0 1600 1000", preserveAspectRatio: "xMidYMid slice", fo
     const clip = opening ? [{ clipPath: HALF, easing: "steps(1, end)" }, { clipPath: FULL, offset: 0.5 }, { clipPath: FULL }] : [{ clipPath: FULL, easing: "steps(1, end)" }, { clipPath: HALF, offset: 0.5 }, { clipPath: HALF }];
     return [lid.animate(swing, t), board.animate(clip, t)];
   }
+  // phones: which section the cream sheet holds. Done on pointerdown already, so it is laid out and painted before the slide starts.
+  function fillPanel(id: string) {
+    if (!panel || panel.dataset.open === id) return;
+    const ink = !sheetMq.matches; // the staggered ink-in is for the desktop card; a sheet arrives complete
+    secs.forEach((s) => {
+      const on = s.dataset.sec === id;
+      s.hidden = !on;
+      s.classList.toggle("is-in", on && ink);
+      if (on) {
+        panel.style.setProperty("--mark", s.style.getPropertyValue("--mark") || "#ffd25e");
+        if (ptab) ptab.textContent = q("h2", s)?.textContent || "";
+      }
+    });
+    panel.dataset.open = id;
+    panel.setAttribute("aria-labelledby", `jb-h-${id}`);
+    const sc = q(".jb-scroll", panel);
+    if (sc) sc.scrollTop = 0;
+  }
   function finishHide(el: HTMLElement) {
     el.classList.remove("is-open", "is-leaving", "jb-opening", "jb-closing");
     el.style.transform = "";
+    el.inert = true; // a parked sheet is still rendered on phones: keep it out of the tab order and the accessibility tree
+    holdScene(!!openId);
     if (el === panel) secs.forEach((s) => s.classList.remove("is-in"));
     else endTurn();
   }
@@ -3504,7 +3592,7 @@ const VB = { viewBox: "0 0 1600 1000", preserveAspectRatio: "xMidYMid slice", fo
     const cur = el.style.transform || "none";
     el.style.transform = "";
     const shrink = (delay: number) => {
-      const a = el.animate([{ transform: cur, opacity: 1 }, tucked(el, btn)], { duration: sheetMq.matches ? 260 : 210, delay, easing: OUT, fill: "both" });
+      const a = el.animate([{ transform: cur, opacity: 1 }, tucked(el, btn)], { duration: sheetMq.matches ? 220 : 210, delay, easing: sheetMq.matches ? "cubic-bezier(.4,0,1,1)" : OUT, fill: "both" });
       a.onfinish = () => {
         finishHide(el);
         stopAnims(el);
@@ -3536,21 +3624,15 @@ const VB = { viewBox: "0 0 1600 1000", preserveAspectRatio: "xMidYMid slice", fo
     host.style.transform = "";
     openId = id;
     if (host === panel) {
-      secs.forEach((s) => {
-        const on = s.dataset.sec === id;
-        s.hidden = !on;
-        s.classList.toggle("is-in", on);
-        if (on) {
-          panel.style.setProperty("--mark", s.style.getPropertyValue("--mark") || "#ffd25e");
-          if (ptab) ptab.textContent = q("h2", s)?.textContent || "";
-        }
-      });
-      panel.setAttribute("aria-labelledby", `jb-h-${id}`);
+      if (!sheetMq.matches) delete panel.dataset.open; // desktop: always re-inked
+      fillPanel(id);
       const sc = q(".jb-scroll", panel);
       if (sc) sc.scrollTop = 0;
     }
     host.dataset.open = id;
+    host.inert = false;
     host.classList.add("is-open");
+    holdScene(true);
     root.dataset.panel = id;
     btn?.setAttribute("aria-expanded", "true");
     dockBtns.forEach((d) => (d.dataset.go === id ? d.setAttribute("aria-current", "true") : d.removeAttribute("aria-current")));
@@ -3575,10 +3657,14 @@ const VB = { viewBox: "0 0 1600 1000", preserveAspectRatio: "xMidYMid slice", fo
           show(active);
           spreads[active].classList.add("jb-turned");
         };
+    } else if (sheetMq.matches) {
+      // phones: the sheet is already laid out and painted below the screen — a plain slide up, transform only, no overshoot
+      if (host === book) show(active, false);
+      live2.set(host, [host.animate([{ transform: "translateY(100%)" }, { transform: "none" }], { duration: 300, easing: "cubic-bezier(.2,.8,.2,1)" })]);
     } else {
       if (host === book) show(active);
       const from = tucked(host, btn);
-      live2.set(host, [host.animate([from, { opacity: 1, offset: 0.4 }, { transform: "none", opacity: 1 }], { duration: sheetMq.matches ? 380 : 340, easing: SPRING })]);
+      live2.set(host, [host.animate([from, { opacity: 1, offset: 0.4 }, { transform: "none", opacity: 1 }], { duration: 340, easing: SPRING })]);
     }
     if (focus) (host === book ? marks[active] ?? host : host).focus({ preventScroll: true });
     history.replaceState(null, "", `${location.pathname}${location.search}#${id}`);
@@ -3596,6 +3682,8 @@ const VB = { viewBox: "0 0 1600 1000", preserveAspectRatio: "xMidYMid slice", fo
     animateOut(host, btn);
   }
   openers.forEach((b) => b.addEventListener("click", () => openPanel(b.dataset.open || "")));
+  openers.forEach((b) => b.addEventListener("pointerdown", () => sheetMq.matches && !openId && b.dataset.open !== "work" && fillPanel(b.dataset.open || ""), { passive: true }));
+  for (const h of [panel, book]) if (h) h.inert = true;
   dockBtns.forEach((d) => d.addEventListener("click", () => d.dataset.go !== openId && openPanel(d.dataset.go || "")));
   qa(".jb-close").forEach((c) => c.addEventListener("click", () => closePanel()));
   document.addEventListener("keydown", (e) => {
