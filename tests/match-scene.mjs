@@ -18,7 +18,7 @@ export async function runMatchScene(rules) {
   const tasks = [];
   let context;
   context = vm.createContext({
-    ...rules, Math:math, q:element, tasks, btWant:'play', running:true,
+    ...rules, Math:math, q:element, tasks, btWant:'play', running:true, NOT_FOUND:false,
     env:{wind:0.2,windX:0.1}, habitat:{action:'rally',fatigue:0,resting:false},
     clamp:(n,a,b)=>Math.max(a,Math.min(b,n)), rand:(a,b)=>a+(b-a)*random(), ease:n=>n,
     tennisPolicy:{}, chooseShot:()=>['lob','drop','drive'][Math.floor(random()*3)],

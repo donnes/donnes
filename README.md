@@ -15,7 +15,7 @@ JSON schema responses. No key is needed for the local behavior sequence.
 
 The beach alternates rally styles and finishes points before resting. Desktop
 scenes also invite gulls and crabs. Completed points build fatigue, which leads to a break.
-Weather restricts the available actions. Mobile plays the tennis rallies using the
+Rallies run in any dry daylight, overcast or fog included; rain, storms and night restrict the available actions. Mobile plays the tennis rallies using the
 same cached plans; reduced motion keeps a held pose and makes no model requests.
 Hidden tabs pause the habitat clock.
 The model picks action names only; the scene owns every movement and ball contact.

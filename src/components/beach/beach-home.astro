@@ -2766,8 +2766,8 @@ const VB = { viewBox: "0 0 1600 1000", preserveAspectRatio: "xMidYMid slice", fo
     setVar("--on-sky", darkSky ? "#fff6e4" : "#1d1a14");
     setVar("--id-back", darkSky ? "rgb(10 14 40 / 0.42)" : "rgb(255 250 235 / 0.5)");
     setVar("--id-plate", darkSky ? "rgb(8 12 34 / 0.52)" : "rgb(255 251 240 / 0.64)");
-    // beach tennis: a rally in dry daylight under an open sky; otherwise the rackets wait by the net (or the court is left to the rain)
-    btWant = e.rFirst > 0.04 || e.wet > 0.5 ? "wet" : !NOT_FOUND && e.deck < 0.5 && e.fog < 0.45 && e.storm < 0.1 && e.cyc > 0.085 && e.cyc < 0.965 ? "play" : "rest";
+    // beach tennis: a rally whenever it is dry and light, overcast or foggy included; at night the rackets wait by the net, and rain or a storm leaves the court to the weather
+    btWant = e.rFirst > 0.04 || e.wet > 0.5 || e.storm > 0.1 ? "wet" : !NOT_FOUND && e.cyc > 0.085 && e.cyc < 0.965 ? "play" : "rest";
     const shut = e.cyc > 1.035 || e.cyc < 0.085;
     const hot = (state?.temp ?? 0) >= 28 && !!lum.sunUp && e.rFirst < 0.05 && e.deck < 0.5;
     const cold = state?.temp != null && state.temp <= 15;
