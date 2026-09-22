@@ -13,7 +13,7 @@ for (const rain of [0, 0.2]) for (const random of [0.1, 0.9]) {
   const env = { wind: 0, rMid: 0 };
   const context = vm.createContext({ q: () => gull, inviteGull: null, LITE: false, lifeNow: () => 1, env,
     fit: { left: 100, width: 1200 }, shoreY: () => 520, rand: (a,b) => (a+b)/2,
-    clamp: (n,a,b) => Math.min(b,Math.max(a,n)), sometimes: () => {}, tasks,
+    clamp: (n,a,b) => Math.min(b,Math.max(a,n)), clock: { add: (_n, t) => tasks.push(t), sometimes: () => {} },
     Math: Object.assign(Object.create(Math), { random: () => random }),
   });
   vm.runInContext(script, context);

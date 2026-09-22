@@ -1810,6 +1810,8 @@ const VB = { viewBox: "0 0 1600 1000", preserveAspectRatio: "xMidYMid slice", fo
 <script>
   import { prepareBeachDrawing } from "../../lib/beach-drawing";
   import { SHORE, HORIZON, yAt } from "../../lib/beach/shore";
+  import { createScene, type Env, type Sky, type Phase, type SceneState } from "../../lib/beach/scene";
+  import { createClock } from "../../lib/beach/clock";
   import { reportHabitat, recordHabitat, reportMatch } from "../../lib/habitat/display";
   import { createMatch, awardPoint, landingWinner, faultWinner, other, type Player, type PointReason } from "../../lib/habitat/match";
   import { LOCAL_TENNIS, parseTennis, chooseShot } from "../../lib/habitat/tennis";
@@ -1834,16 +1836,23 @@ const VB = { viewBox: "0 0 1600 1000", preserveAspectRatio: "xMidYMid slice", fo
   root.classList.toggle("is-lite", LITE);
 
   /* ───────────── painting → screen mapping, and where the four things sit ───────────── */
-  const scene = q(".jb-scene");
-  const NOT_FOUND = scene?.dataset.nf != null; // the 404 beach: nobody plays and no AI is asked
+  const sceneEl = q(".jb-scene");
+  const NOT_FOUND = sceneEl?.dataset.nf != null; // the 404 beach: nobody plays and no AI is asked
+  const scene = createScene({
+    root, notFound: NOT_FOUND, random: Math.random,
+    caps: { get lite() { return LITE; }, get calm() { return calm.matches; }, get sheet() { return sheetMq.matches; } },
+  });
+  const fit = scene.fit;
+  const env = scene.env;
+  const lum = scene.lum;
+  const pointer = scene.pointer;
   const shoreY = (x: number) => yAt(SHORE, x);
-  const fit = { s: 1, ox: 0, oy: 0, left: 0, width: 1600, portrait: false };
   const placed = qa<HTMLButtonElement>(".jb-obj");
   let measuredWidth = 0, measuredHeight = 0;
   function measure() {
     // Match the painting's 100svh canvas, which stays put when mobile browser chrome moves.
-    const viewportWidth = scene?.clientWidth || window.innerWidth;
-    const viewportHeight = scene?.clientHeight || window.innerHeight;
+    const viewportWidth = sceneEl?.clientWidth || window.innerWidth;
+    const viewportHeight = sceneEl?.clientHeight || window.innerHeight;
     if (viewportWidth === measuredWidth && viewportHeight === measuredHeight) return false;
     measuredWidth = viewportWidth;
     measuredHeight = viewportHeight;
@@ -1911,45 +1920,27 @@ const VB = { viewBox: "0 0 1600 1000", preserveAspectRatio: "xMidYMid slice", fo
   window.addEventListener("resize", () => {
     cancelAnimationFrame(resizeRaf);
     resizeRaf = requestAnimationFrame(() => {
-      if (!measure() || !state) return;
+      if (!measure() || !scene.state) return;
       placeLum();
       render();
     });
   });
 
   /* ───────────── one clock for everything that moves ───────────── */
-  type Task = (dt: number, now: number) => void;
-  const tasks: Task[] = [];
+  const clock = createClock({ random: Math.random });
   let introPending = root.classList.contains("jb-intro") && !calm.matches;
   let introBlending = false; // the paper is fading: the paint underneath is on show and must hold still
-  let running = false;
-  let last = 0;
   let held = false; // lite phones: a sheet covers the beach, so the scene stops entirely (see holdScene)
-  let loop = 0; // only the newest loop keeps going
-  function frame(now: number, id: number) {
-    if (!running || id !== loop) return;
-    const dt = Math.min(0.05, (now - last) / 1000);
-    last = now;
-    for (const task of tasks) task(dt, now);
-    requestAnimationFrame((t) => frame(t, id));
-  }
   function syncRunning() {
-    const should = !document.hidden && !held;
     root.classList.toggle("is-asleep", document.hidden);
-    const go = should && !calm.matches && !introPending;
-    if (go && !running) {
-      running = true;
-      last = performance.now();
-      const id = ++loop;
-      requestAnimationFrame((t) => frame(t, id));
-    } else if (!go) running = false;
+    clock.sync({ hidden: document.hidden, held, calm: calm.matches, intro: introPending });
   }
   function holdScene(on: boolean) {
     on = on && LITE && sheetMq.matches;
     if (on === held) return;
     held = on;
     // paused one by one rather than with a class on <html>: that would restyle the whole painting at the very moment a sheet starts to move
-    const parts = [scene, q(".jb-objs"), q(".jb-rainsky"), ...qa(".jb-fg")];
+    const parts = [sceneEl, q(".jb-objs"), q(".jb-rainsky"), ...qa(".jb-fg")];
     for (const a of document.getAnimations?.() ?? []) {
       const el = (a.effect as KeyframeEffect | null)?.target;
       if (a instanceof CSSTransition || !el || !parts.some((p) => p?.contains(el))) continue;
@@ -1960,16 +1951,6 @@ const VB = { viewBox: "0 0 1600 1000", preserveAspectRatio: "xMidYMid slice", fo
   }
   // a thing that never moves per-frame in lite is placed with a 2D transform, so it does not become a texture of its own
   const at = (x: number, y = 0, still = LITE) => (still ? `translate(${x.toFixed(1)}px,${y.toFixed(1)}px)` : `translate3d(${x.toFixed(1)}px,${y.toFixed(1)}px,0)`);
-  function sometimes(min: number, max: number, fn: () => void, firstIn = rand(min, max)) {
-    let left = firstIn;
-    tasks.push((dt) => {
-      left -= dt;
-      if (left <= 0) {
-        left = rand(min, max);
-        fn();
-      }
-    });
-  }
   document.addEventListener("visibilitychange", syncRunning);
   calm.addEventListener("change", syncRunning);
 
@@ -2050,13 +2031,10 @@ const VB = { viewBox: "0 0 1600 1000", preserveAspectRatio: "xMidYMid slice", fo
   const themeMeta = q<HTMLMetaElement>('meta[name="theme-color"]');
 
   /* ───────────── SceneState: what the beach is like right now ───────────── */
-  type Sky = "clear" | "partly" | "cloudy" | "fog" | "drizzle" | "rain" | "heavy" | "storm";
-  type Phase = "night" | "dawn" | "morning" | "midday" | "afternoon" | "golden" | "dusk";
-  type SceneState = { sky: Sky; phase: Phase; cyc: number; cover: number; wind: number; windX: number; kmh: number; compass: string; temp: number | null; label: string; preview: string };
   type Live = { at: number; temp: number; feels: number; code: number; cover: number; kmh: number; gust: number; dir: number; precip: number; sunrise: number; sunset: number };
 
   // per-sky look: every number is a channel the scene eases towards (see applyState)
-  type Look = { cover: number; deck: number; fog: number; rFirst: number; rFar: number; rMid: number; rNear: number; rSpd: number; storm: number; spray: number; wet: number; desat: number; tint: number; dark: number; tc: number[]; sun: number; glit: number; shade: number; birds: number; sea: number; amp: number };
+  type Look = Omit<Env, "tr" | "tg" | "tb" | "wind" | "windX" | "cyc"> & { tc: number[] };
   const dry = { rFirst: 0, rFar: 0, rMid: 0, rNear: 0, rSpd: 1, storm: 0, spray: 0, wet: 0 };
   const SKY: Record<Sky, Look> = {
     clear: { ...dry, cover: 0.08, deck: 0, fog: 0, desat: 0, tint: 0, dark: 0, tc: [150, 162, 178], sun: 1, glit: 1, shade: 1, birds: 1.3, sea: 1, amp: 1 },
@@ -2198,11 +2176,8 @@ const VB = { viewBox: "0 0 1600 1000", preserveAspectRatio: "xMidYMid slice", fo
   }
 
   /* ───────────── channels: every continuous quantity of the scene eases from where it is to where the state wants it ───────────── */
-  type Env = Omit<Look, "tc"> & { tr: number; tg: number; tb: number; wind: number; windX: number; cyc: number };
   const SECS: Record<keyof Env, number> = { cover: 7, deck: 7, fog: 7, rFirst: 1.6, rFar: 4, rMid: 6.5, rNear: 8, rSpd: 5, storm: 5, spray: 7, wet: 20, desat: 6, tint: 6, dark: 6, tr: 6, tg: 6, tb: 6, sun: 5, glit: 4, shade: 4, birds: 1, sea: 5, amp: 5, wind: 4, windX: 4, cyc: 6 };
   const KEYS = Object.keys(SECS) as (keyof Env)[];
-  let state: SceneState | null = null;
-  const env = {} as Env;
   const goal = {} as Env;
   const rate = {} as Env;
   let moving = false;
@@ -2212,9 +2187,9 @@ const VB = { viewBox: "0 0 1600 1000", preserveAspectRatio: "xMidYMid slice", fo
   }
   /** The one transition function: `prev` is null on first paint (snap), otherwise the scene eases to `next` over a few seconds. */
   function applyState(prev: SceneState | null, next: SceneState) {
-    state = next;
+    scene.state = next;
     Object.assign(goal, goalFor(next));
-    const snap = !prev || calm.matches || !running || LITE; // lite: each palette step restyles the whole painting, so it changes in one
+    const snap = !prev || calm.matches || !clock.running || LITE; // lite: each palette step restyles the whole painting, so it changes in one
     const hurry = prev && prev.temp === null && !prev.preview ? 0.3 : 1; // the first real reading after a clock-only first paint arrives briskly
     for (const k of KEYS) {
       if (snap) {
@@ -2245,15 +2220,15 @@ const VB = { viewBox: "0 0 1600 1000", preserveAspectRatio: "xMidYMid slice", fo
   function update() {
     // Weather that arrives while the paper still covers the beach snaps in unseen (nothing runs yet, so applyState snaps);
     // only the short fade to colour holds it back, rather than easing a whole new sky in right after the reveal.
-    if (introBlending && state) return;
+    if (introBlending && scene.state) return;
     const next = readState();
-    const p = state;
+    const p = scene.state;
     if (p && p.sky === next.sky && p.phase === next.phase && Math.abs(p.cyc - next.cyc) < 0.0015 && p.cover === next.cover && p.wind === next.wind && p.windX === next.windX && p.temp === next.temp && p.kmh === next.kmh && p.label === next.label && p.preview === next.preview) return;
     applyState(p, next);
   }
   let stepAcc = 0;
   let rateAcc = 0;
-  tasks.push((dt) => {
+  clock.add("channels", (dt) => {
     if (!moving) return;
     let busy = false;
     for (const k of KEYS) {
@@ -2289,7 +2264,6 @@ const VB = { viewBox: "0 0 1600 1000", preserveAspectRatio: "xMidYMid slice", fo
   const glowEl = q(".jb-glow");
   const sparksEl = q(".jb-sparks");
   const dimmer = q(".jb-dimmer");
-  const lum = { x: 800, y: 100, sunUp: 1, elev: 1, side: 0, cross: 0 };
   function arc(t: number): [number, number, number] {
     const cx = fit.portrait ? fit.left + fit.width * 0.5 : 880; // kept clear of the name block (left) and the morro (right)
     const rx = fit.portrait ? fit.width * 0.38 : 180;
@@ -2317,7 +2291,6 @@ const VB = { viewBox: "0 0 1600 1000", preserveAspectRatio: "xMidYMid slice", fo
   }
 
   /* ───────────── render: env → palette + CSS variables + flags (called in steps, or once when snapping) ───────────── */
-  let btWant: "play" | "rest" | "wet" = "rest";
   const winEls = qa(".jb-win").map((el) => ({ el, th: rand(0.12, 0.92) }));
   function render() {
     const e = env;
@@ -2385,10 +2358,10 @@ const VB = { viewBox: "0 0 1600 1000", preserveAspectRatio: "xMidYMid slice", fo
     setVar("--id-back", darkSky ? "rgb(10 14 40 / 0.42)" : "rgb(255 250 235 / 0.5)");
     setVar("--id-plate", darkSky ? "rgb(8 12 34 / 0.52)" : "rgb(255 251 240 / 0.64)");
     // beach tennis: a rally whenever it is dry and light, overcast or foggy included; at night the rackets wait by the net, and rain or a storm leaves the court to the weather
-    btWant = e.rFirst > 0.04 || e.wet > 0.5 || e.storm > 0.1 ? "wet" : !NOT_FOUND && e.cyc > 0.085 && e.cyc < 0.965 ? "play" : "rest";
+    scene.court = e.rFirst > 0.04 || e.wet > 0.5 || e.storm > 0.1 ? "wet" : !NOT_FOUND && e.cyc > 0.085 && e.cyc < 0.965 ? "play" : "rest";
     const shut = e.cyc > 1.035 || e.cyc < 0.085;
-    const hot = (state?.temp ?? 0) >= 28 && !!lum.sunUp && e.rFirst < 0.05 && e.deck < 0.5;
-    const cold = state?.temp != null && state.temp <= 15;
+    const hot = (scene.state?.temp ?? 0) >= 28 && !!lum.sunUp && e.rFirst < 0.05 && e.deck < 0.5;
+    const cold = scene.state?.temp != null && scene.state.temp <= 15;
     root.dataset.umb = shut ? "shut" : "open";
     flag("night", night);
     flag("rain", e.rFirst > 0.02);
@@ -2403,7 +2376,7 @@ const VB = { viewBox: "0 0 1600 1000", preserveAspectRatio: "xMidYMid slice", fo
     flag("caps", e.wind > 0.5 || e.storm > 0.4);
     flag("storm", e.storm > 0.5);
     flag("kite", e.wind > 0.5 && e.storm < 0.2 && e.rMid < 0.35 && e.fog < 0.5 && !!lum.sunUp && lum.elev > 0.15);
-    flag("noboats", !!state && !PHASES[state.phase].boats);
+    flag("noboats", !!scene.state && !PHASES[scene.state.phase].boats);
     flag("ff", night && e.rFirst < 0.05 && e.wind < 0.6);
     flag("hot", hot);
     flag("cold", !!cold);
@@ -2482,7 +2455,7 @@ const VB = { viewBox: "0 0 1600 1000", preserveAspectRatio: "xMidYMid slice", fo
   }
   const decks = qa(".jb-deck").map((el, i) => ({ el, x: 0, v: [0.35, 0.6, 0.85][i] ?? 0.5 }));
   const shades = qa(".jb-cshade").map((el) => ({ el, x: 0, v: Number(el.dataset.v) || 1, left: parseFloat(el.style.left), w: parseFloat(el.style.width) }));
-  tasks.push((dt) => {
+  clock.add("clouds", (dt) => {
     const dir = env.windX < 0 ? -1 : 1;
     const speed = env.windX * (4 + env.wind * 52) + dir * env.storm * 14;
     let cross = 0;
@@ -2540,7 +2513,7 @@ const VB = { viewBox: "0 0 1600 1000", preserveAspectRatio: "xMidYMid slice", fo
   }
 
   /* ───────────── sky & shore life ───────────── */
-  const lifeNow = () => (state ? PHASES[state.phase].life * env.birds : 0);
+  const lifeNow = () => (scene.state ? PHASES[scene.state.phase].life * env.birds : 0);
   type Bird = { el: SVGSVGElement; on: boolean; auto: boolean; t: number; dur: number; p: number[][]; size: number };
   const birds: Bird[] = qa<SVGSVGElement>(".jb-bird").map((el) => ({ el, on: false, auto: false, t: 0, dur: 1, p: [], size: 1 }));
   // where a bird is, and how it banks, `t` of the way along its curve
@@ -2580,7 +2553,7 @@ const VB = { viewBox: "0 0 1600 1000", preserveAspectRatio: "xMidYMid slice", fo
     }
     return b;
   }
-  tasks.push((dt) => {
+  clock.add("birds", (dt) => {
     for (const b of birds) {
       if (!b.on || b.auto) continue;
       b.t += dt / b.dur;
@@ -2595,7 +2568,7 @@ const VB = { viewBox: "0 0 1600 1000", preserveAspectRatio: "xMidYMid slice", fo
       b.el.style.transform = birdAt(b, b.t);
     }
   });
-  sometimes(6, 13, () => {
+  clock.sometimes(6, 13, () => {
     const life = lifeNow();
     if (Math.random() > life) return;
     const lead = launchBird();
@@ -2608,7 +2581,7 @@ const VB = { viewBox: "0 0 1600 1000", preserveAspectRatio: "xMidYMid slice", fo
   const kiteArt = q<SVGSVGElement>(".jb-kite");
   const sail = { x: 0 };
   const kite = { x: 900, dir: 1 };
-  tasks.push((dt) => {
+  clock.add("sail", (dt) => {
     const dir = env.windX < 0 ? -1 : 1;
     if (sailGo) {
       sail.x += dir * (3 + env.wind * 12) * dt;
@@ -2638,9 +2611,9 @@ const VB = { viewBox: "0 0 1600 1000", preserveAspectRatio: "xMidYMid slice", fo
       el.classList.add("is-zap");
     }
   }
-  sometimes(12, 30, () => env.storm > 0.7 && zap(), 5);
+  clock.sometimes(12, 30, () => env.storm > 0.7 && zap(), 5);
   const shoot = q(".jb-shoot");
-  sometimes(14, 32, () => {
+  clock.sometimes(14, 32, () => {
     if (!shoot || !root.hasAttribute("data-night") || env.cover > 0.35 || env.deck > 0.2) return;
     shoot.style.left = `${(fit.left + fit.width * rand(0.35, 0.95)).toFixed(0)}px`;
     shoot.style.top = `${rand(10, 110).toFixed(0)}px`;
@@ -2657,7 +2630,7 @@ const VB = { viewBox: "0 0 1600 1000", preserveAspectRatio: "xMidYMid slice", fo
   let inviteGull = () => {};
   let inviteCrab = () => {};
   const habitatContext = (): Context => root.hasAttribute("data-night") ? "night"
-    : env.rMid > 0.1 || env.storm > 0.1 || btWant === "wet" ? "wet" : env.wind > 0.55 ? "windy" : "sunny";
+    : env.rMid > 0.1 || env.storm > 0.1 || scene.court === "wet" ? "wet" : env.wind > 0.55 ? "windy" : "sunny";
   async function requestHabitat(context: Context) {
     if (NOT_FOUND || habitat.requests >= 2 || habitat.requested.has(context)) return;
     habitat.requested.add(context);
@@ -2679,7 +2652,7 @@ const VB = { viewBox: "0 0 1600 1000", preserveAspectRatio: "xMidYMid slice", fo
       }
     } catch { /* The local plan is already playing. No retries or catch-up calls. */ }
   }
-  tasks.push((dt) => {
+  clock.add("habitat", (dt) => {
     // The task loop pauses for intro, hidden tabs, mobile sheets and reduced motion.
     const context = habitatContext();
     if (context !== habitat.context) {
@@ -2694,7 +2667,7 @@ const VB = { viewBox: "0 0 1600 1000", preserveAspectRatio: "xMidYMid slice", fo
     }
     if (habitat.requests < 2 && !habitat.requested.has(context)) void requestHabitat(context);
     // A rest lasts its full duration after the players have retrieved the ball.
-    if (habitat.action === "break" && btWant === "play" && !habitat.resting && habitat.remaining > 0) return;
+    if (habitat.action === "break" && scene.court === "play" && !habitat.resting && habitat.remaining > 0) return;
     habitat.remaining -= dt;
     if (habitat.remaining > 0) return;
     const next = habitat.plan.actions[habitat.index++ % habitat.plan.actions.length];
@@ -2706,7 +2679,7 @@ const VB = { viewBox: "0 0 1600 1000", preserveAspectRatio: "xMidYMid slice", fo
     if (habitat.action === "gull") inviteGull();
     if (habitat.action === "crab") inviteCrab();
     root.dataset.habitat = habitat.action;
-    if (btWant === "play") recordHabitat(habitat.action);
+    if (scene.court === "play") recordHabitat(habitat.action);
   });
 
   // a gull lands on the sand, hops about, and leaves (dry daylight only)
@@ -2727,8 +2700,8 @@ const VB = { viewBox: "0 0 1600 1000", preserveAspectRatio: "xMidYMid slice", fo
       g.mode = "land";
       gull.classList.add("is-out", "is-air");
     };
-    sometimes(24, 46, () => inviteGull(), 9);
-    tasks.push((dt) => {
+    clock.sometimes(24, 46, () => inviteGull(), 9);
+    clock.add("gull", (dt) => {
       if (g.mode === "gone") return;
       g.t += dt;
       if (g.mode === "land" || g.mode === "leave") {
@@ -2775,13 +2748,12 @@ const VB = { viewBox: "0 0 1600 1000", preserveAspectRatio: "xMidYMid slice", fo
 
   // the crab: scuttles sideways along the damp sand, ducks into it when the pointer comes close. It loves rain and the dark.
   const crab = q(".jb-crab");
-  const pointer = { x: -999, y: -999 };
   if (crab) {
     const c = { x: 0, y: 0, dir: 1, lo: 0, hi: 0, mode: "gone" as "gone" | "walk" | "pause" | "hide", wait: 0, shy: 0, phase: 0, idle: 5 };
     const place = () => (crab.style.transform = `translate3d(${c.x.toFixed(1)}px,${c.y.toFixed(1)}px,0)`);
     inviteCrab = () => { if (c.mode === "gone") c.idle = 0; };
     const bold = () => env.rMid > 0.2 || root.hasAttribute("data-night");
-    tasks.push((dt) => {
+    clock.add("crab", (dt) => {
       if (c.mode === "gone") {
         c.idle -= dt * (bold() ? 4 : 1); // comes out about four times as often in the rain or at night
         if (c.idle > 0 || LITE || env.storm > 0.5) return;
@@ -2858,7 +2830,7 @@ const VB = { viewBox: "0 0 1600 1000", preserveAspectRatio: "xMidYMid slice", fo
       }
       b.v = dir * rand(260, 380);
     });
-    tasks.push((dt) => {
+    clock.add("ball", (dt) => {
       const away = env.storm > 0.5;
       const base = Number(ball.style.getPropertyValue("--x"));
       const lo = fit.left + 60 - base;
@@ -2928,7 +2900,7 @@ const VB = { viewBox: "0 0 1600 1000", preserveAspectRatio: "xMidYMid slice", fo
     };
     type Seg = { x1: number; h1: number; H: number; T: number; bend?: number; then: "return" | "serve" | "whiff" | "net" | "net-over" | "ground" | "rest" };
     const ball = { x: 0, h: 0, x0: 0, h0: 0, t: 0, on: false, segs: [] as Seg[] };
-    let clock = 0;
+    let courtTime = 0;
     let mode: "off" | "toServe" | "fly" | "dead" | "fetch" | "leave" | "matchOver" = "off";
     let rally = 0, server: Player = 0, rcv: Player = 1, collector: Player = 0, wait = 0, leaveT = 0;
     let lastHitter: Player = 0;
@@ -3004,10 +2976,10 @@ const VB = { viewBox: "0 0 1600 1000", preserveAspectRatio: "xMidYMid slice", fo
       } else {
         ot.kind = kind;
         ot.tx = X + dir * SW[kind].dx + (fault ? dir * 15 : 0); // a miss: read it a step too deep
-        ot.hitAt = clock + T;
+        ot.hitAt = courtTime + T;
         if (serve && !fault && Math.random() < 0.08) {
           // A serve brushing the tape stays live. It is never replayed as a let.
-          ot.hitAt = clock + T + 0.15;
+          ot.hitAt = courtTime + T + 0.15;
           fly([{ x1: 0, h1: 43.5, H: 14, T: T * 0.5, then: "net-over" }, { x1: X, h1: SW[kind].h, H: 12, T: T * 0.5 + 0.15, then: "return" }]);
         } else fly(fault ? [{ x1: X, h1: SW[kind].h, H, T, bend, then: "whiff" }, { x1: X + dir * 30, h1: 0, H: 0, T: 0.34, then: "ground" }, ...bounces(X + dir * 30, dir)] : [{ x1: X, h1: SW[kind].h, H, T, bend, then: "return" }]);
       }
@@ -3019,14 +2991,14 @@ const VB = { viewBox: "0 0 1600 1000", preserveAspectRatio: "xMidYMid slice", fo
       me.step = 0;
       pointLive = true;
       me.kind = "hi";
-      me.hitAt = clock + 0.62;
+      me.hitAt = courtTime + 0.62;
       ball.x = me.x + me.face * 9;
       ball.h = 28;
       showBall(true);
       fly([{ x1: me.x + me.face * SW.hi.dx, h1: SW.hi.h, H: 20, T: 0.62, then: "serve" }]);
     }
     const armAt = (p: Pl): number => {
-      const tau = clock - p.hitAt, a = SW[p.kind].a;
+      const tau = courtTime - p.hitAt, a = SW[p.kind].a;
       if (tau < -0.5 || tau > 0.55) return a[0];
       if (tau < -0.13) return a[0] + (a[1] - a[0]) * ease((tau + 0.5) / 0.37);
       if (tau < 0) return a[1] + (a[2] - a[1]) * ((tau + 0.13) / 0.13) ** 2;
@@ -3035,7 +3007,7 @@ const VB = { viewBox: "0 0 1600 1000", preserveAspectRatio: "xMidYMid slice", fo
     };
     function pose(p: Pl, v: number) {
       const walk = clamp(Math.abs(v) / 30, 0, 1), sw = Math.sin(p.step) * walk * 24;
-      const tau = clock - p.hitAt;
+      const tau = courtTime - p.hitAt;
       const hop = tau > -0.12 && tau < 0.2 ? Math.sin((Math.PI * (tau + 0.12)) / 0.32) * (p.kind === "hi" ? 4 : 1.5) : 0;
       const index = P.indexOf(p);
       const travel = clamp((p.x - changeStart[index]) / (p.tx - changeStart[index] || 1), 0, 1);
@@ -3050,11 +3022,11 @@ const VB = { viewBox: "0 0 1600 1000", preserveAspectRatio: "xMidYMid slice", fo
       if (ballEl) ballEl.style.transform = `translate3d(${ball.x.toFixed(1)}px,${(M * ball.x - ball.h).toFixed(1)}px,0)`;
       if (bshEl) bshEl.style.transform = `translate3d(${(ball.x + ball.h * 0.12).toFixed(1)}px,${(M * ball.x + 1).toFixed(1)}px,0) scale(${clamp(1 - ball.h / 150, 0.45, 1).toFixed(2)})`;
     }
-    // without the clock (reduced motion) the court still tells the truth: a held pose, or the rackets by the net
+    // without the courtTime (reduced motion) the court still tells the truth: a held pose, or the rackets by the net
     const hold = () => {
-      court.dataset.bt = btWant;
+      court.dataset.bt = scene.court;
       mode = "off";
-      if (btWant !== "play") return;
+      if (scene.court !== "play") return;
       P.forEach((p) => {
         p.x = p.home;
         p.hitAt = -9;
@@ -3066,11 +3038,11 @@ const VB = { viewBox: "0 0 1600 1000", preserveAspectRatio: "xMidYMid slice", fo
       putBall();
     };
     btSnap = () => {
-      if (!running) hold();
+      if (!clock.running) hold();
     };
-    tasks.push((dt) => {
+    clock.add("rally", (dt) => {
       if (mode === "off") {
-        if (btWant === "play") {
+        if (scene.court === "play") {
           if (match.winner !== null) { mode = "matchOver"; wait = 9; return; }
           const alreadyOnCourt = court.dataset.bt === "play";
           court.dataset.bt = "play";
@@ -3086,9 +3058,9 @@ const VB = { viewBox: "0 0 1600 1000", preserveAspectRatio: "xMidYMid slice", fo
           showBall(false);
           mode = "toServe";
           wait = 0.7;
-        } else if (court.dataset.bt !== btWant) court.dataset.bt = btWant;
+        } else if (court.dataset.bt !== scene.court) court.dataset.bt = scene.court;
         if (mode === "off") return;
-      } else if (btWant !== "play" && mode !== "leave") {
+      } else if (scene.court !== "play" && mode !== "leave") {
         mode = "leave";
         pointLive = false; // Weather suspends the unfinished point, preserving the score and server.
         ball.segs = [];
@@ -3096,7 +3068,7 @@ const VB = { viewBox: "0 0 1600 1000", preserveAspectRatio: "xMidYMid slice", fo
         showBall(false);
         P.forEach((p) => (p.tx = -p.face * 36));
       }
-      clock += dt;
+      courtTime += dt;
       if (mode === "matchOver") {
         wait -= dt;
         if (wait <= 0) {
@@ -3116,7 +3088,7 @@ const VB = { viewBox: "0 0 1600 1000", preserveAspectRatio: "xMidYMid slice", fo
       if (mode === "leave") {
         leaveT -= dt;
         if (leaveT <= 0 || P.every((p) => Math.abs(p.tx - p.x) < 3)) {
-          court.dataset.bt = btWant === "play" ? "rest" : btWant;
+          court.dataset.bt = scene.court === "play" ? "rest" : scene.court;
           mode = "off";
         }
         return;
@@ -3224,7 +3196,7 @@ const VB = { viewBox: "0 0 1600 1000", preserveAspectRatio: "xMidYMid slice", fo
     root.classList.toggle("is-lite", LITE);
     for (const l of deep) l.el.style.translate = "";
     holdScene(!!openId);
-    if (!state) return;
+    if (!scene.state) return;
     placeLum();
     render();
     clouds.forEach((c) => c.on && (c.el.style.transform = at(c.x, 0, cloudStill(c))));
@@ -3690,7 +3662,7 @@ const VB = { viewBox: "0 0 1600 1000", preserveAspectRatio: "xMidYMid slice", fo
     draft.setAttribute("aria-hidden", "true");
     draft.inert = true;
     const paint = document.createElement("div"); // Paper only, until the canvas has read the contours.
-    const drawingSources = [scene, q(".jb-objs"), q("#habitat-sign"), ...qa(".jb-fg")].filter((el): el is HTMLElement => !!el);
+    const drawingSources = [sceneEl, q(".jb-objs"), q("#habitat-sign"), ...qa(".jb-fg")].filter((el): el is HTMLElement => !!el);
     draft.append(paint);
     q(".jb-world")?.append(draft);
     root.classList.add("jb-draft-ready");
@@ -3733,7 +3705,7 @@ const VB = { viewBox: "0 0 1600 1000", preserveAspectRatio: "xMidYMid slice", fo
     };
     const introWidth = measuredWidth, introHeight = measuredHeight;
     const resizeIntro = () => {
-      if (scene?.clientWidth !== introWidth || scene?.clientHeight !== introHeight) finishIntro();
+      if (sceneEl?.clientWidth !== introWidth || sceneEl?.clientHeight !== introHeight) finishIntro();
     };
     window.addEventListener("resize", resizeIntro);
     calm.addEventListener("change", finishIntro, { once: true });
