@@ -53,9 +53,9 @@ export function createMeasure(scene: Scene, els: MeasureEls, viewport: Viewport 
       el.style.setProperty("--y", y.toFixed(1));
     }
     // the beach-tennis court lies further along the sand, parallel to the shore and clear of the biggest wave
-    let cx = Math.min(fit.left + fit.width * 0.7, 1110); // …and of the palm fronds
+    let cx = Math.min(fit.left + fit.width * 0.68, 1090); // …and of the palm fronds
     let cy = shoreY(cx) + 68;
-    let ck = 1;
+    let ck = 1.15;
     if (fit.portrait) {
       // The court gets its own middle row, rather than shrinking into a leftover gap.
       cx = fit.left + fit.width * 0.44;
@@ -65,7 +65,7 @@ export function createMeasure(scene: Scene, els: MeasureEls, viewport: Viewport 
     st.setProperty("--bt-x", cx.toFixed(1));
     st.setProperty("--bt-y", cy.toFixed(1));
     st.setProperty("--bt-k", ck.toFixed(3));
-    st.setProperty("--hb-x", (fit.portrait ? fit.left + fit.width * 0.84 : cx + 240).toFixed(1));
+    st.setProperty("--hb-x", (fit.portrait ? fit.left + fit.width * 0.84 : cx + 275).toFixed(1));
     st.setProperty("--hb-y", (fit.portrait ? Math.min(cy - 8, (viewportHeight - 54 - 230 * k * fit.s - 86 - fit.oy) / fit.s) : cy - 8).toFixed(1));
     st.setProperty("--hb-w", (fit.portrait ? 90 / fit.s : 138).toFixed(1));
     if (scene.notFound) {
