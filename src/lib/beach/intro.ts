@@ -2,7 +2,7 @@
 // the paint fades in. `pending` gates the clock from the first line of boot; start() builds the drawing once the first
 // state has been painted underneath the paper.
 import type { SceneView } from "./scene.ts";
-import { prepareBeachDrawing } from "../beach-drawing.ts";
+import { prepareBeachDrawing } from "./drawing.ts";
 
 export type IntroEls = { sceneEl: HTMLElement | null; sources: HTMLElement[]; world: HTMLElement | null };
 export type IntroDeps = {

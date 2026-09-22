@@ -1,8 +1,8 @@
 import { type CollectionEntry, getCollection } from "astro:content";
 
-import { CITY, SITE } from "../constants";
-import { useTranslations } from "./i18n";
-import type { Language } from "./i18n/translations";
+import { CITY, SITE } from "../../constants";
+import { useTranslations } from "../i18n";
+import type { Language } from "../i18n/translations";
 
 // "cv.summary" is the long CV paragraph; the homepage uses its first two sentences.
 const firstSentences = (text: string, n: number) =>
