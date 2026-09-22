@@ -9,7 +9,7 @@ Date: 2026-09-22 · Status: accepted
 ## Decision
 
 1. **Actors are modules in `src/lib/beach/`.** Each is `create<Name>(scene, els)` returning `{ tick(dt, now) }` plus named methods (`invite`, `snap`). Behaviour and painting live in the same file; where the split is a pure cut, `step` and `paint` are separate functions inside it.
-2. **One `Scene` handle, `Readonly` for actors.** The page creates it once. Only the channels task, `measure()` and the pointer listener hold the mutable type. No module-level mutable singletons.
+2. **One `Scene` handle, `Readonly` for actors.** The page creates it once. Only the channels task, `measure()`, the pointer listener and the sky (which owns `lum`, where the sun or moon is) hold the mutable type. No module-level mutable singletons.
 3. **The clock takes an explicit ordered list.** `clock.add(name, tick)` in source order in the boot code, with a comment on why the order matters. No topological sort, no phases, no event bus. Eleven tasks do not justify machinery.
 4. **Cross-actor wiring is events returned to boot.** The Habitat player returns `{ action, invite? }`; boot dispatches to the gull, crab or rally. A missing element means the actor is not registered, visibly, in boot.
 5. **Tests import the modules** and run under `node --test --experimental-strip-types`. No runner dependency. Modules must avoid `enum` and parameter properties.

@@ -18,6 +18,8 @@ export function fakeElement() {
       contains: (c: string) => classes.has(c),
     },
     attributes: new Set<string>(),
+    dataset: {} as Record<string, string>,
+    animate() { return { onfinish: null as null | (() => void), oncancel: null as null | (() => void) }; },
     hasAttribute(n: string) { return this.attributes.has(n); },
     getBoundingClientRect: () => ({ left: 0, top: 0, width: 0, height: 0 }),
   };
