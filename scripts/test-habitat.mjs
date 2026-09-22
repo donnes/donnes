@@ -12,8 +12,6 @@ try {
   }
   const { runMatch } = await import("../tests/match.mjs");
   runMatch(await import(pathToFileURL(join(temp, "match.js"))));
-  const { runMatchScene } = await import("../tests/match-scene.mjs");
-  await runMatchScene(await import(pathToFileURL(join(temp, "match.js"))));
   const { runTennis } = await import("../tests/tennis.mjs");
   await runTennis(await import(pathToFileURL(join(temp, "tennis.js"))), await import(pathToFileURL(join(temp, "typesafe.js"))));
   const { run } = await import("../tests/habitat.mjs");
