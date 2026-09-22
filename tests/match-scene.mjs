@@ -18,7 +18,7 @@ export async function runMatchScene(rules) {
   const tasks = [];
   let context;
   context = vm.createContext({
-    ...rules, Math:math, q:element, tasks, btWant:'play', running:true, NOT_FOUND:false,
+    ...rules, Math:math, q:element, clock:{ add:(_n,t)=>tasks.push(t), running:true }, scene:{ court:'play' }, NOT_FOUND:false,
     env:{wind:0.2,windX:0.1}, habitat:{action:'rally',fatigue:0,resting:false},
     clamp:(n,a,b)=>Math.max(a,Math.min(b,n)), rand:(a,b)=>a+(b-a)*random(), ease:n=>n,
     tennisPolicy:{}, chooseShot:()=>['lob','drop','drive'][Math.floor(random()*3)],
@@ -60,7 +60,7 @@ export async function runMatchScene(rules) {
   // Weather interrupts the point without changing points or service order.
   for(let i=0;i<2000&&!context.inspect().pointLive;i++)tasks[0](1/60);
   const before=structuredClone(context.inspect().match);
-  context.btWant='wet'; for(let i=0;i<300;i++)tasks[0](1/60);
+  context.scene.court='wet'; for(let i=0;i<300;i++)tasks[0](1/60);
   assert.deepEqual(context.inspect().match,before); assert.equal(context.inspect().pointLive,false);
   console.log(`Animated match checks passed: ${serves.length} serves, two complete matches, no duplicate points, weather suspension.`);
 }
