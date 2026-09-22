@@ -1812,6 +1812,9 @@ const VB = { viewBox: "0 0 1600 1000", preserveAspectRatio: "xMidYMid slice", fo
   import { SHORE, HORIZON, yAt } from "../../lib/beach/shore";
   import { createScene, type Env, type Sky, type Phase, type SceneState } from "../../lib/beach/scene";
   import { createClock } from "../../lib/beach/clock";
+  import { createGull } from "../../lib/beach/gull";
+  import { createCrab } from "../../lib/beach/crab";
+  import { createBall } from "../../lib/beach/ball";
   import { reportHabitat, recordHabitat, reportMatch } from "../../lib/habitat/display";
   import { createMatch, awardPoint, landingWinner, faultWinner, other, type Player, type PointReason } from "../../lib/habitat/match";
   import { LOCAL_TENNIS, parseTennis, chooseShot } from "../../lib/habitat/tennis";
@@ -2627,8 +2630,6 @@ const VB = { viewBox: "0 0 1600 1000", preserveAspectRatio: "xMidYMid slice", fo
   const habitat = { action: "rally" as Action, remaining: 0, index: 0, context: "sunny" as Context,
     plan: fallback("sunny"), requests: 0, requested: new Set<Context>(), fatigue: 0, resting: false };
   root.dataset.habitatSource = "local";
-  let inviteGull = () => {};
-  let inviteCrab = () => {};
   const habitatContext = (): Context => root.hasAttribute("data-night") ? "night"
     : env.rMid > 0.1 || env.storm > 0.1 || scene.court === "wet" ? "wet" : env.wind > 0.55 ? "windy" : "sunny";
   async function requestHabitat(context: Context) {
@@ -2676,185 +2677,36 @@ const VB = { viewBox: "0 0 1600 1000", preserveAspectRatio: "xMidYMid slice", fo
     habitat.resting = false;
     habitat.remaining = habitat.action === "break" ? 18 : 30;
     if (habitat.action === "break") habitat.fatigue = 0;
-    if (habitat.action === "gull") inviteGull();
-    if (habitat.action === "crab") inviteCrab();
+    if (habitat.action === "gull") gull?.invite();
+    if (habitat.action === "crab") crab?.invite();
     root.dataset.habitat = habitat.action;
     if (scene.court === "play") recordHabitat(habitat.action);
   });
 
   // a gull lands on the sand, hops about, and leaves (dry daylight only)
-  const gull = q(".jb-gull");
+  const gullEl = q(".jb-gull");
+  const gull = gullEl ? createGull(scene, { gull: gullEl }, { life: lifeNow }) : null;
   if (gull) {
-    const g = { mode: "gone" as "gone" | "land" | "stand" | "hop" | "leave", x: 0, y: 0, x0: 0, y0: 0, t: 0, duration: 1.5, dir: 1, hops: 0, wait: 0 };
-    const put = (x: number, y: number) => (gull.style.transform = `translate3d(${x.toFixed(1)}px,${y.toFixed(1)}px,0) scaleX(${g.dir})`);
-    inviteGull = () => {
-      if (g.mode !== "gone" || LITE || lifeNow() < 0.8 || env.wind > 0.7) return;
-      g.dir = Math.random() < 0.5 ? 1 : -1;
-      g.x = fit.left + fit.width * rand(0.3, 0.68);
-      g.y = shoreY(g.x) + rand(96, 130);
-      g.x0 = g.x - g.dir * 260;
-      g.y0 = g.y - 200;
-      g.t = 0;
-      g.duration = 1.5;
-      g.hops = Math.floor(rand(3, 7));
-      g.mode = "land";
-      gull.classList.add("is-out", "is-air");
-    };
-    clock.sometimes(24, 46, () => inviteGull(), 9);
-    clock.add("gull", (dt) => {
-      if (g.mode === "gone") return;
-      g.t += dt;
-      if (g.mode === "land" || g.mode === "leave") {
-        const k = clamp(g.t / g.duration, 0, 1);
-        const u = g.mode === "land" ? 1 - (1 - k) * (1 - k) : 1 - k * k;
-        put(g.x0 + (g.x - g.x0) * u, g.y0 + (g.y - g.y0) * u);
-        if (k >= 1) {
-          if (g.mode === "leave") {
-            g.mode = "gone";
-            gull.classList.remove("is-out", "is-air");
-          } else {
-            g.mode = "stand";
-            g.wait = rand(0.8, 2);
-            gull.classList.remove("is-air");
-          }
-        }
-      } else if (g.mode === "stand") {
-        g.wait -= dt;
-        if (g.wait > 0) return;
-        if (g.hops-- <= 0 || env.rMid > 0.1) {
-          g.mode = "leave";
-          g.t = 0;
-          // Keep the flying sprite visible until it has cleared the viewport.
-          g.x0 = g.dir > 0 ? fit.left + fit.width + 96 : fit.left - 96;
-          g.y0 = g.y - 300;
-          g.duration = clamp(Math.hypot(g.x0 - g.x, g.y0 - g.y) / 280, 1.5, 4.5);
-          gull.classList.add("is-air");
-        } else {
-          if (Math.random() < 0.3) g.dir *= -1;
-          g.mode = "hop";
-          g.t = 0;
-        }
-      } else {
-        const k = clamp(g.t / 0.32, 0, 1);
-        put(g.x + g.dir * 16 * k, g.y - Math.sin(Math.PI * k) * 9);
-        if (k >= 1) {
-          g.x += g.dir * 16;
-          g.mode = "stand";
-          g.wait = rand(0.25, 1.6);
-        }
-      }
-    });
+    clock.sometimes(24, 46, () => gull.invite(), 9);
+    clock.add("gull", (dt) => gull.tick(dt));
   }
 
   // the crab: scuttles sideways along the damp sand, ducks into it when the pointer comes close. It loves rain and the dark.
-  const crab = q(".jb-crab");
-  if (crab) {
-    const c = { x: 0, y: 0, dir: 1, lo: 0, hi: 0, mode: "gone" as "gone" | "walk" | "pause" | "hide", wait: 0, shy: 0, phase: 0, idle: 5 };
-    const place = () => (crab.style.transform = `translate3d(${c.x.toFixed(1)}px,${c.y.toFixed(1)}px,0)`);
-    inviteCrab = () => { if (c.mode === "gone") c.idle = 0; };
-    const bold = () => env.rMid > 0.2 || root.hasAttribute("data-night");
-    clock.add("crab", (dt) => {
-      if (c.mode === "gone") {
-        c.idle -= dt * (bold() ? 4 : 1); // comes out about four times as often in the rain or at night
-        if (c.idle > 0 || LITE || env.storm > 0.5) return;
-        c.idle = rand(20, 42);
-        c.dir = Math.random() < 0.5 ? 1 : -1;
-        c.lo = fit.left - 40;
-        c.hi = fit.left + fit.width * (bold() ? 0.95 : 0.5);
-        c.x = c.dir > 0 ? c.lo : c.hi;
-        c.mode = "walk";
-        c.wait = rand(1.2, 2.6);
-        crab.classList.add("is-out", "is-walking");
-        crab.classList.remove("is-hid");
-        return;
-      }
-      const close = Math.hypot(pointer.x - (fit.ox + c.x * fit.s), pointer.y - (fit.oy + c.y * fit.s)) < 120;
-      if (close && c.mode !== "hide") {
-        c.mode = "hide";
-        crab.classList.add("is-hid");
-        crab.classList.remove("is-walking");
-      }
-      if (c.mode === "hide") {
-        c.shy = close ? 1.6 : c.shy - dt;
-        if (c.shy <= 0) {
-          c.mode = "pause";
-          c.wait = 0.5;
-          crab.classList.remove("is-hid");
-        }
-        return;
-      }
-      c.wait -= dt;
-      if (c.mode === "pause") {
-        if (c.wait <= 0) {
-          c.mode = "walk";
-          c.wait = rand(1, 2.8);
-          crab.classList.add("is-walking");
-        }
-        return;
-      }
-      c.phase += dt * 3;
-      c.x += c.dir * 50 * dt;
-      c.y = shoreY(c.x) + 72 + Math.sin(c.phase) * 7;
-      place();
-      if (c.wait <= 0) {
-        c.mode = "pause";
-        c.wait = rand(0.5, 1.4);
-        crab.classList.remove("is-walking");
-      }
-      if (c.x < c.lo - 10 || c.x > c.hi + 10) {
-        c.mode = "gone";
-        crab.classList.remove("is-out", "is-walking");
-      }
-    });
-  }
+  const crabEl = q(".jb-crab");
+  const crab = crabEl ? createCrab(scene, { crab: crabEl }) : null;
+  if (crab) clock.add("crab", (dt) => crab.tick(dt));
 
   // the beach ball: rolls when poked, drifts when it's windy, blows right off the beach in a storm and rolls home afterwards
-  const ball = q<HTMLButtonElement>(".jb-ball");
-  const ballArt = q(".jb-ball-art");
-  if (ball && ballArt) {
-    const b = { x: 0, v: 0, rot: 0 };
-    const R = 44;
-    ball.addEventListener("click", (e) => {
-      const r = ball.getBoundingClientRect();
-      const fromLeft = e.detail === 0 ? Math.random() < 0.5 : e.clientX < r.left + r.width / 2;
-      const px = Number(ball.style.getPropertyValue("--x")) + b.x;
-      let dir = fromLeft ? 1 : -1;
-      if (px > fit.left + fit.width - 140) dir = -1;
-      if (px < fit.left + 140) dir = 1;
-      if (calm.matches) {
-        b.x += dir * 70;
-        b.rot += dir * 90;
-        ball.style.translate = `${b.x}px 0`;
-        ballArt.style.transform = `rotate(${b.rot}deg)`;
-        return;
-      }
-      b.v = dir * rand(260, 380);
+  const beachBallEl = q<HTMLButtonElement>(".jb-ball");
+  const beachBallArt = q(".jb-ball-art");
+  const beachBall = beachBallEl && beachBallArt ? createBall(scene, { ball: beachBallEl, art: beachBallArt }) : null;
+  if (beachBall && beachBallEl) {
+    beachBallEl.addEventListener("click", (e) => {
+      const r = beachBallEl.getBoundingClientRect();
+      beachBall.poke(e.detail === 0 ? Math.random() < 0.5 : e.clientX < r.left + r.width / 2);
     });
-    clock.add("ball", (dt) => {
-      const away = env.storm > 0.5;
-      const base = Number(ball.style.getPropertyValue("--x"));
-      const lo = fit.left + 60 - base;
-      const hi = fit.left + fit.width - 60 - base;
-      const lost = b.x < lo - 1 || b.x > hi + 1;
-      const gust = away ? Math.sign(env.windX) * 420 : env.wind > 0.5 ? env.windX * (env.wind - 0.45) * 260 : 0;
-      if (!away && lost) b.v += (b.x < lo ? 1 : -1) * 300 * dt; // the storm is over: it comes rolling back
-      if (Math.abs(b.v) < 2 && !gust && !lost) return;
-      b.v += gust * dt;
-      b.v *= Math.pow(0.22, dt);
-      const k = Number(root.style.getPropertyValue("--k")) || 1;
-      let nx = b.x + b.v * dt;
-      if (away) nx = clamp(nx, lo - 320, hi + 320);
-      else if (!lost && (nx < lo || nx > hi)) {
-        nx = clamp(nx, lo, hi);
-        b.v *= -0.45;
-      }
-      b.rot += (((nx - b.x) / (R * k)) * 180) / Math.PI;
-      b.x = nx;
-      ball.style.translate = `${b.x.toFixed(1)}px 0`;
-      ballArt.style.transform = `rotate(${b.rot.toFixed(1)}deg)`;
-    });
+    clock.add("ball", (dt) => beachBall.tick(dt));
   }
-
 
   /* ───────────── beach tennis: one-set Donald vs Wife exhibition, volleys only ───────────── */
   const court = q(".jb-court");
