@@ -44,25 +44,25 @@ const notFound = Astro.props.notFound === true;
   <button id="habitat-close" class="notes-close" type="button" aria-label={pt ? "Fechar caderno" : "Close notebook"}>×</button>
   <p class="notes-kicker">Jurerê · {pt ? "caderno de campo" : "field notes"}</p>
   <h2 id="habitat-title">{pt ? "Uma praia com IA" : "A beach with a mind"}</h2>
-  <p class="notes-intro">{pt ? "A IA sugere o ritmo da praia e as jogadas. O código cuida do movimento, do contato com a bola e das regras." : "AI suggests the beach rhythm and the shots. Code handles movement, ball contact, and the rules."}</p>
+  <p class="notes-intro">{pt ? "A IA dita o ritmo e escolhe as jogadas. O código corre, rebate e marca o placar." : "The AI sets the pace and picks the shots. The code does the running, the hitting, and the scoring."}</p>
   <section class="match-summary" aria-label={pt ? "Placar da partida" : "Match score"}>
     <h3>{pt ? "Donald × Esposa" : "Donald × Wife"}</h3>
     <p id="habitat-match-score">Games 0 × 0 · {pt ? "Pontos" : "Points"} 0 × 0</p>
     <p id="habitat-match-status">{pt ? "Donald saca" : "Donald serves"}</p>
-    <p class="notes-footnote">{pt ? "Exibição 1 contra 1 · um set. 15, 30, 40, game; ponto decisivo no 40–40. Set de 6 games com dois de vantagem; tie-break até 7 no 6–6, também com dois de vantagem. Um saque, sem let. Após o resultado, começa uma revanche." : "1 vs 1 exhibition · one set. 15, 30, 40, game; deciding point at 40–40. Six games with a two-game lead; at 6–6, tie-break to seven with a two-point lead. One serve, no let. A rematch follows the result."}</p>
+    <p class="notes-footnote">{pt ? "Exibição 1 contra 1, só um set. 15, 30, 40, game — e ponto decisivo no 40–40. Seis games, com dois de vantagem; 6–6, tie-break até 7. Um saque, sem let. Acabou, começa a revanche." : "1 vs 1, one set. 15, 30, 40, game — deciding point at 40–40. Six games, two clear to win; 6–6, tie-break to seven. One serve, no let. When it ends, they start again."}</p>
   </section>
   <p id="habitat-latest" class="notes-mode"></p>
   <p id="habitat-mode" class="notes-mode"></p>
   <dl class="notes-tallies">
     <div><dt>{pt ? "tokens dos planos" : "tokens to prepare"}</dt><dd id="habitat-tokens">—</dd></div>
     <div><dt>{pt ? "jogadas nesta visita" : "shots this visit"}</dt><dd id="habitat-shots">0</dd></div>
-    <div><dt>{pt ? "chamadas por jogada" : "calls per shot"}</dt><dd>0</dd></div>
+    <div><dt>{pt ? "chamadas por jogada" : "AI calls per shot"}</dt><dd>0</dd></div>
   </dl>
   <h3>{pt ? "Quem está ajudando" : "Who's helping"}</h3>
   <div id="habitat-providers" class="notes-providers"></div>
-  <p class="notes-footnote">{pt ? "Tokens informados pelos provedores para os planos em uso, reutilizados durante o jogo. Não é o consumo desta visita nem o total do site. Valores ausentes ficam como indisponíveis." : "Provider-reported tokens for the plans in use, reused during play. These are not visit charges or site-wide totals. Missing counts are shown as unavailable."}</p>
+  <p class="notes-footnote">{pt ? "Os provedores contam os tokens dos planos que estão em quadra, reaproveitados enquanto o jogo rola. Não é o custo desta visita, nem o total do site." : "Providers count the tokens for the plans on the court, reused while the game rolls on. Not what this visit cost, or the site's total."}</p>
   <h3>{pt ? "À beira da quadra" : "From the sideline"}</h3>
-  <p class="notes-footnote">{pt ? "Registro das ações executadas, não do raciocínio interno dos modelos." : "A log of actions actually played, not the models' private reasoning."}</p>
+  <p class="notes-footnote">{pt ? "Só o que aconteceu na quadra — nada do que os modelos pensaram." : "Just what happened on the court — none of what the models were thinking."}</p>
   <ol id="habitat-decisions" class="notes-decisions"><li>{pt ? "Esperando a próxima jogada." : "Waiting for the next shot."}</li></ol>
   <p class="notes-footer">{pt ? "Feito de sol, areia e pequenas decisões." : "Made of sunshine, sand, and small decisions."}</p>
 </dialog>

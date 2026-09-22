@@ -25,7 +25,7 @@ function render() {
   const complete = active.length > 0 && active.every(p => p.usage?.input != null && p.usage?.output != null);
   set("habitat-tokens", complete ? num(active.reduce((n, p) => n + p.usage!.input! + p.usage!.output!, 0)) : "—");
   const lite = matchMedia("(prefers-reduced-motion: reduce)").matches;
-  set("habitat-mode", lite ? word("A quiet beach. AI calls are paused in this view.", "Praia tranquila. Chamadas de IA pausadas nesta visualização.") : active.length ? word("AI-guided plans, reused as the beach plays.", "Planos guiados por IA, reutilizados durante o jogo.") : word("Local beach rhythm. No AI plan in use.", "Ritmo local da praia. Nenhum plano de IA em uso."));
+  set("habitat-mode", lite ? word("A quiet beach. The AI stays quiet here.", "Praia tranquila. A IA fica quieta por aqui.") : active.length ? word("The AI calls the shots. The plans stick around for the whole game.", "A IA dita as jogadas. Os planos valem pelo jogo inteiro.") : word("The beach plays by feel. No AI today.", "A praia joga no instinto. Sem IA hoje."));
   const container = document.getElementById("habitat-providers");
   if (container) {
     container.replaceChildren(...providers.map((p, i) => {
@@ -33,12 +33,12 @@ function render() {
       title.textContent = i ? word("Tennis coach · TypeSafe", "Treinador · TypeSafe") : word("Beach director · OpenRouter", "Diretor da praia · OpenRouter");
       row.append(title);
       const u = p.usage;
-      if (!p.source || p.source === "local") row.append(word("Local rules in use", "Regras locais em uso"));
+      if (!p.source || p.source === "local") row.append(word("Playing it by ear", "Jogando no instinto"));
       else {
         row.append(`${u?.model ?? p.source} · `);
-        row.append(u?.input != null && u?.output != null ? `${num(u.input)} ${word("in", "entrada")} / ${num(u.output)} ${word("out", "saída")}` : word("token count unavailable", "contagem de tokens indisponível"));
+        row.append(u?.input != null && u?.output != null ? `${num(u.input)} ${word("in", "entrada")} / ${num(u.output)} ${word("out", "saída")}` : word("no token count", "sem contagem de tokens"));
         if (u?.generatedAt && Number.isFinite(Date.parse(u.generatedAt))) {
-          row.append(document.createElement("br"), `${word("Prepared", "Preparado")} ${new Date(u.generatedAt).toLocaleTimeString(pt() ? "pt-BR" : "en-US", { hour: "2-digit", minute: "2-digit" })} · ${word("reusable plan", "plano reutilizável")}`);
+          row.append(document.createElement("br"), `${word("Called in at", "Chamado às")} ${new Date(u.generatedAt).toLocaleTimeString(pt() ? "pt-BR" : "en-US", { hour: "2-digit", minute: "2-digit" })} · ${word("good for the whole game", "vale pelo jogo inteiro")}`);
         }
       }
       return row;
