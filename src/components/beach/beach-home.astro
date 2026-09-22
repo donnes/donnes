@@ -1809,8 +1809,14 @@ const VB = { viewBox: "0 0 1600 1000", preserveAspectRatio: "xMidYMid slice", fo
 
 <script>
   import { prepareBeachDrawing } from "../../lib/beach-drawing";
-  import { SHORE, HORIZON, yAt } from "../../lib/beach/shore";
-  import { createScene, type Env, type Sky, type Phase, type SceneState } from "../../lib/beach/scene";
+  import { createScene, type Phase } from "../../lib/beach/scene";
+  import { clamp } from "../../lib/beach/math";
+  import { createMeasure } from "../../lib/beach/measure";
+  import { createPalette, BOXES } from "../../lib/beach/palette";
+  import { createWeather, PHASES, SKIES } from "../../lib/beach/weather";
+  import { createChip } from "../../lib/beach/chip";
+  import { createRender } from "../../lib/beach/render";
+  import { createChannels } from "../../lib/beach/channels";
   import { createClock } from "../../lib/beach/clock";
   import { createGull } from "../../lib/beach/gull";
   import { createCrab } from "../../lib/beach/crab";
@@ -1830,7 +1836,6 @@ const VB = { viewBox: "0 0 1600 1000", preserveAspectRatio: "xMidYMid slice", fo
   const T: Words = JSON.parse(document.getElementById("jb-strings")?.textContent || "{}");
   if (params.get("og")) root.setAttribute("data-og", ""); // the Open Graph capture: no preview badge, hint or language switch
   const rand = (a: number, b: number) => a + Math.random() * (b - a);
-  const clamp = (v: number, a: number, b: number) => Math.max(a, Math.min(b, v));
   qa<HTMLAnchorElement>('.jb-notes a[target="_blank"]').forEach((a) => (a.rel = "noopener"));
   const sheetMq = window.matchMedia("(max-width: 819px)");
   const calm = window.matchMedia("(prefers-reduced-motion: reduce)");
@@ -1847,87 +1852,18 @@ const VB = { viewBox: "0 0 1600 1000", preserveAspectRatio: "xMidYMid slice", fo
     root, notFound: NOT_FOUND, random: Math.random,
     caps: { get lite() { return LITE; }, get calm() { return calm.matches; }, get sheet() { return sheetMq.matches; } },
   });
-  const fit = scene.fit;
   const env = scene.env;
-  const lum = scene.lum;
   const pointer = scene.pointer;
-  const shoreY = (x: number) => yAt(SHORE, x);
-  const placed = qa<HTMLButtonElement>(".jb-obj");
-  let measuredWidth = 0, measuredHeight = 0;
-  function measure() {
-    // Match the painting's 100svh canvas, which stays put when mobile browser chrome moves.
-    const viewportWidth = sceneEl?.clientWidth || window.innerWidth;
-    const viewportHeight = sceneEl?.clientHeight || window.innerHeight;
-    if (viewportWidth === measuredWidth && viewportHeight === measuredHeight) return false;
-    measuredWidth = viewportWidth;
-    measuredHeight = viewportHeight;
-    const W = viewportWidth + 48;
-    const H = viewportHeight + 48;
-    fit.s = Math.max(W / 1600, H / 1000);
-    fit.ox = (W - 1600 * fit.s) / 2 - 24;
-    fit.oy = (H - 1000 * fit.s) / 2 - 24;
-    fit.left = -fit.ox / fit.s;
-    fit.width = viewportWidth / fit.s;
-    fit.portrait = fit.width < 1100;
-    const st = root.style;
-    st.setProperty("--fs", fit.s.toFixed(4));
-    st.setProperty("--ox", `${fit.ox.toFixed(1)}px`);
-    st.setProperty("--oy", `${fit.oy.toFixed(1)}px`);
-    st.setProperty("--hz", `${((H - 1000 * fit.s) / 2 + HORIZON * fit.s).toFixed(1)}px`);
-    // a portrait screen only sees the middle of the painting: the things gather there, a little smaller
-    const k = fit.portrait ? clamp(viewportWidth / 780, 0.46, 0.64) : clamp(fit.width / 1500, 0.78, 1);
-    st.setProperty("--k", k.toFixed(3));
-    const bottom = (viewportHeight - fit.oy) / fit.s; // painting-y of the screen's bottom edge
-    for (const el of placed) {
-      const d = el.dataset;
-      const fx = Number(fit.portrait ? d.pfx : d.fx);
-      const x = fit.left + fx * fit.width;
-      const sh = fit.portrait ? d.pshore : d.shore;
-      let y = sh ? shoreY(x) + Number(sh) : Number(d.y);
-      if (fit.portrait && d.prow) {
-        // two rows on the sand: towel + cooler along the bottom, the guarda-sol standing clear above them
-        // Keep the foreground props below a full-width court on portrait screens.
-        const screenY = d.prow === "bottom" ? viewportHeight - 54 : d.prow === "top" ? viewportHeight * 0.56 : viewportHeight - 80;
-        y = (screenY - fit.oy) / fit.s;
-      } else if (fit.portrait && el.classList.contains("jb-o-contact")) y = (viewportHeight * 0.56 - fit.oy) / fit.s;
-      else y = Math.min(y, bottom - 84 / fit.s + (el.classList.contains("jb-ball") ? 30 : 0));
-      el.style.setProperty("--x", x.toFixed(1));
-      el.style.setProperty("--y", y.toFixed(1));
-    }
-    // the beach-tennis court lies further along the sand, parallel to the shore and clear of the biggest wave
-    let cx = Math.min(fit.left + fit.width * 0.76, 1195); // …and of the palm fronds
-    let cy = shoreY(cx) + 68;
-    let ck = 0.8;
-    if (fit.portrait) {
-      // The court gets its own middle row, rather than shrinking into a leftover gap.
-      cx = fit.left + fit.width * 0.44;
-      ck = fit.width * 0.80 / 380;
-      cy = (viewportHeight * 0.725 - fit.oy) / fit.s;
-    }
-    st.setProperty("--bt-x", cx.toFixed(1));
-    st.setProperty("--bt-y", cy.toFixed(1));
-    st.setProperty("--bt-k", ck.toFixed(3));
-    st.setProperty("--hb-x", (fit.portrait ? fit.left + fit.width * 0.84 : cx + 205).toFixed(1));
-    st.setProperty("--hb-y", (fit.portrait ? Math.min(cy - 8, (viewportHeight - 54 - 230 * k * fit.s - 86 - fit.oy) / fit.s) : cy - 8).toFixed(1));
-    st.setProperty("--hb-w", (fit.portrait ? 90 / fit.s : 138).toFixed(1));
-    if (NOT_FOUND) {
-      // "404" sits on the open sand in front of the court: left of centre on a wide screen, a bottom row on a portrait one
-      const nw = fit.portrait ? fit.width * 0.8 : clamp(fit.width * 0.44, 460, 680);
-      st.setProperty("--nf-x", (fit.left + fit.width * (fit.portrait ? 0.5 : 0.4)).toFixed(1));
-      st.setProperty("--nf-y", (fit.portrait ? (viewportHeight * 0.885 - fit.oy) / fit.s : Math.min(820, bottom - nw * 0.2 - 70 / fit.s)).toFixed(1));
-      st.setProperty("--nf-w", nw.toFixed(1));
-    }
-    return true;
-  }
-  measure();
+  const layout = createMeasure(scene, { sceneEl, placed: qa<HTMLButtonElement>(".jb-obj") });
+  layout.measure();
   root.classList.add("jb-ready");
   let resizeRaf = 0;
   window.addEventListener("resize", () => {
     cancelAnimationFrame(resizeRaf);
     resizeRaf = requestAnimationFrame(() => {
-      if (!measure() || !scene.state) return;
+      if (!layout.measure() || !scene.state) return;
       sky.placeLum();
-      render();
+      painter.render();
     });
   });
 
@@ -1958,308 +1894,56 @@ const VB = { viewBox: "0 0 1600 1000", preserveAspectRatio: "xMidYMid slice", fo
   calm.addEventListener("change", syncRunning);
 
   /* ───────────── palette: six gouache boxes keyed along the day, blended in JS (stepped, never per-frame) ───────────── */
-  const BOXES = ["dawn", "morning", "day", "golden", "dusk", "night"] as const;
-  type BoxName = (typeof BOXES)[number] | "aft";
-  type Pal = { c: number[][]; n: number[] };
-  const COLS = ["--sky-0", "--sky-1", "--sky-2", "--sky-3", "--cloud", "--cloud-shade", "--cloud-hi", "--sun", "--halo", "--far-1", "--far-2", "--sea-0", "--sea-1", "--sea-2", "--sea-3", "--sea-4", "--foam", "--glitter", "--veil"];
-  const NUMS = ["--stars", "--lights"];
-  // lite has no veil filter: the veiled layers' own paint is multiplied by the veil instead (same maths as the filter's feBlend)
-  const LAND = ["--hill", "--hill-dk", "--hill-lt", "--sand", "--sand-lt", "--sand-dk", "--wet", "--dune", "--g1", "--g2", "--g3", "--straw", "--p-wall", "--p-roof-a", "--p-roof-b", "--p-speck-dk", "--p-speck-lt", "--p-starfish", "--p-shell", "--p-trunk", "--p-ring", "--p-seed"];
-  const veiledEls = qa<HTMLElement | SVGElement>(".jb-veiled");
-  let landBase: number[][] = [];
-  let landKey = "";
-  function paintLand(veil: number[]) {
-    const key = LITE ? veil.map((v) => Math.round(v)).join() : "";
-    if (key === landKey) return;
-    landKey = key;
-    LAND.forEach((k, i) => {
-      const v = LITE ? rgb(landBase[i].map((c, ch) => (c * veil[ch]) / 255)) : "";
-      for (const el of veiledEls) v ? el.style.setProperty(k, v) : el.style.removeProperty(k);
-    });
-  }
-  const VEILED = ["--v-cream", "--v-white", "--v-coral", "--v-teal", "--v-gold", "--v-green", "--v-navy", "--v-amber", "--v-glass", "--v-cork", "--v-pages", "--v-fold", "--v-pole", "--v-under", "--v-dark", "--v-char", "--v-brown", "--v-shade", "--v-crab", "--v-hill", "--v-hill-dk", "--v-hill-lt", "--v-skin-a", "--v-skin-b", "--v-hair-dark", "--v-hair-light", "--v-hair-highlight", "--v-orange", "--v-port-royale", "--v-pink", "--v-pink-dark", "--v-racket-gray"];
-  const hex = (h: string) => {
-    const v = h.trim().replace("#", "");
-    const n = parseInt(v.length === 3 ? v.replace(/(.)/g, "$1$1") : v, 16);
-    return [(n >> 16) & 255, (n >> 8) & 255, n & 255];
-  };
-  const mix = (a: Pal, b: Pal, t: number): Pal => ({
-    c: a.c.map((ca, i) => ca.map((v, k) => v + (b.c[i][k] - v) * t)),
-    n: a.n.map((v, i) => v + (b.n[i] - v) * t),
+  // Read all six palettes from isolated, empty nodes in one style pass.
+  // Cycling data-tod on <html> used to restyle the entire beach six times at startup.
+  const probes = BOXES.map((t) => {
+    const el = document.createElement("div");
+    el.className = "jb-palette-probe";
+    el.dataset.tod = t;
+    el.style.cssText = "position:absolute;visibility:hidden;contain:strict;width:0;height:0";
+    return el;
   });
-  const PALS = {} as Record<BoxName, Pal>;
-  let veiledBase: number[][] = [];
-  {
-    // Read all six palettes from isolated, empty nodes in one style pass.
-    // Cycling data-tod on <html> used to restyle the entire beach six times at startup.
-    const probes = BOXES.map(t => {
-      const el = document.createElement("div");
-      el.className = "jb-palette-probe";
-      el.dataset.tod = t;
-      el.style.cssText = "position:absolute;visibility:hidden;contain:strict;width:0;height:0";
-      return el;
-    });
-    document.body.append(...probes);
-    for (const [i, t] of BOXES.entries()) {
-      const cs = getComputedStyle(probes[i]);
-      PALS[t] = { c: COLS.map((k) => hex(cs.getPropertyValue(k))), n: NUMS.map((k) => parseFloat(cs.getPropertyValue(k)) || 0) };
-      if (t === "day") {
-        veiledBase = VEILED.map((k) => hex(cs.getPropertyValue(k)));
-        landBase = LAND.map((k) => hex(cs.getPropertyValue(k)));
-      }
-    }
-    PALS.aft = mix(PALS.day, PALS.golden, 0.26);
-    probes.forEach(el => el.remove());
-  }
-  // `cyc` is the continuous time of day: 0 = sunrise, 1 = sunset, 2 = the next sunrise
-  const PAL_KEYS: [number, BoxName][] = [[0, "dawn"], [0.1, "morning"], [0.26, "day"], [0.58, "day"], [0.74, "aft"], [0.89, "golden"], [1, "dusk"], [1.1, "night"], [1.88, "night"], [2, "dawn"]];
-  function palAt(cyc: number): Pal {
-    for (let i = 0; i < PAL_KEYS.length - 1; i++) {
-      const [a, pa] = PAL_KEYS[i];
-      const [b, pb] = PAL_KEYS[i + 1];
-      if (cyc <= b) return pa === pb ? PALS[pa] : mix(PALS[pa], PALS[pb], ease((cyc - a) / (b - a)));
-    }
-    return PALS.dawn;
-  }
-  const rgb = (c: number[]) => `rgb(${c.map((v) => Math.round(clamp(v, 0, 255))).join(" ")})`;
-  const ease = (t: number) => t * t * (3 - 2 * t);
-  const luma = (c: number[]) => (0.2126 * c[0] + 0.7152 * c[1] + 0.0722 * c[2]) / 255;
-  const lastVar: Record<string, string> = {};
-  function setVar(k: string, v: string) {
-    if (lastVar[k] === v) return;
-    lastVar[k] = v;
-    root.style.setProperty(k, v);
-  }
-  const flag = (k: string, on: boolean) => root.toggleAttribute(`data-${k}`, on);
-  const themeMeta = q<HTMLMetaElement>('meta[name="theme-color"]');
+  document.body.append(...probes);
+  const palette = createPalette(scene, { veiledEls: qa<HTMLElement | SVGElement>(".jb-veiled") }, (t) => getComputedStyle(probes[BOXES.indexOf(t)]));
+  probes.forEach((el) => el.remove());
 
-  /* ───────────── SceneState: what the beach is like right now ───────────── */
-  type Live = { at: number; temp: number; feels: number; code: number; cover: number; kmh: number; gust: number; dir: number; precip: number; sunrise: number; sunset: number };
-
-  // per-sky look: every number is a channel the scene eases towards (see applyState)
-  type Look = Omit<Env, "tr" | "tg" | "tb" | "wind" | "windX" | "cyc"> & { tc: number[] };
-  const dry = { rFirst: 0, rFar: 0, rMid: 0, rNear: 0, rSpd: 1, storm: 0, spray: 0, wet: 0 };
-  const SKY: Record<Sky, Look> = {
-    clear: { ...dry, cover: 0.08, deck: 0, fog: 0, desat: 0, tint: 0, dark: 0, tc: [150, 162, 178], sun: 1, glit: 1, shade: 1, birds: 1.3, sea: 1, amp: 1 },
-    partly: { ...dry, cover: 0.5, deck: 0, fog: 0, desat: 0.06, tint: 0.03, dark: 0, tc: [150, 162, 178], sun: 0.96, glit: 0.75, shade: 0.8, birds: 1, sea: 1, amp: 1 },
-    cloudy: { ...dry, cover: 1, deck: 1, fog: 0.12, desat: 0.5, tint: 0.3, dark: 0.05, tc: [158, 170, 184], sun: 0.1, glit: 0, shade: 0.12, birds: 0.4, sea: 0.68, amp: 1.08 },
-    fog: { ...dry, cover: 0.3, deck: 0.45, fog: 1, desat: 0.55, tint: 0.52, dark: 0, tc: [216, 222, 226], sun: 0.3, glit: 0, shade: 0.08, birds: 0.2, sea: 0.62, amp: 0.8 },
-    drizzle: { cover: 0.85, deck: 0.9, fog: 0.3, rFirst: 0.5, rFar: 0.6, rMid: 0.3, rNear: 0, rSpd: 0.6, storm: 0, spray: 0, wet: 0.55, desat: 0.5, tint: 0.34, dark: 0.1, tc: [140, 154, 170], sun: 0.05, glit: 0, shade: 0.08, birds: 0.1, sea: 0.85, amp: 1 },
-    rain: { cover: 1, deck: 1, fog: 0.22, rFirst: 0.6, rFar: 0.65, rMid: 0.75, rNear: 0.45, rSpd: 1, storm: 0, spray: 0.15, wet: 1, desat: 0.55, tint: 0.38, dark: 0.2, tc: [120, 134, 150], sun: 0, glit: 0, shade: 0.05, birds: 0, sea: 1.1, amp: 1.15 },
-    heavy: { cover: 1, deck: 1, fog: 0.4, rFirst: 0.75, rFar: 0.85, rMid: 0.95, rNear: 0.9, rSpd: 1.3, storm: 0, spray: 1, wet: 1, desat: 0.6, tint: 0.42, dark: 0.3, tc: [110, 124, 142], sun: 0, glit: 0, shade: 0.04, birds: 0, sea: 1.3, amp: 1.32 },
-    storm: { cover: 1, deck: 1, fog: 0.3, rFirst: 0.75, rFar: 0.85, rMid: 0.95, rNear: 0.95, rSpd: 1.5, storm: 1, spray: 0.9, wet: 1, desat: 0.62, tint: 0.46, dark: 0.42, tc: [74, 84, 108], sun: 0, glit: 0, shade: 0.03, birds: 0, sea: 1.75, amp: 1.7 },
-  };
-  // per-phase life: how busy the beach is, and where on `cyc` a `?tod=` preview lands
-  const PHASES: Record<Phase, { at: number; life: number; boats: boolean }> = {
-    night: { at: 1.5, life: 0, boats: true }, dawn: { at: 0.06, life: 0.5, boats: true }, morning: { at: 0.19, life: 0.9, boats: true }, midday: { at: 0.5, life: 1, boats: true },
-    afternoon: { at: 0.7, life: 1.5, boats: true }, golden: { at: 0.925, life: 1, boats: true }, dusk: { at: 1.02, life: 0.4, boats: true },
-  };
-  const phaseOf = (c: number): Phase => (c < 0.09 ? "dawn" : c < 0.3 ? "morning" : c < 0.6 ? "midday" : c < 0.8 ? "afternoon" : c < 0.965 ? "golden" : c < 1.1 ? "dusk" : c < 1.93 ? "night" : "dawn");
-  const WX_PRESETS: Record<string, { sky: Sky; kmh: number; gust: number; dir: number; temp: number }> = {
-    clear: { sky: "clear", kmh: 7, gust: 12, dir: 60, temp: 26 }, partly: { sky: "partly", kmh: 12, gust: 20, dir: 80, temp: 24 }, cloudy: { sky: "cloudy", kmh: 10, gust: 16, dir: 120, temp: 20 },
-    fog: { sky: "fog", kmh: 3, gust: 5, dir: 200, temp: 17 }, drizzle: { sky: "drizzle", kmh: 9, gust: 15, dir: 140, temp: 19 }, rain: { sky: "rain", kmh: 16, gust: 28, dir: 140, temp: 19 },
-    heavy: { sky: "heavy", kmh: 24, gust: 40, dir: 150, temp: 18 }, storm: { sky: "storm", kmh: 42, gust: 70, dir: 240, temp: 18 }, wind: { sky: "clear", kmh: 38, gust: 56, dir: 50, temp: 23 },
-  };
-  const codeSky = (code: number, cover: number, precip: number): Sky =>
-    code >= 95 ? "storm" : code === 65 || code === 67 || code === 82 || code === 75 || code === 86 || precip >= 4 ? "heavy" : (code >= 61 && code <= 66) || (code >= 71 && code <= 81) || code === 85 ? "rain" : code >= 51 && code <= 57 ? "drizzle" : code === 45 || code === 48 ? "fog" : code === 3 || cover >= 85 ? "cloudy" : code === 2 || cover >= 35 ? "partly" : "clear";
-  const codeKey = (c: number) =>
-    c === 0 ? "clear" : c === 1 ? "mostlyClear" : c === 2 ? "partly" : c === 3 ? "overcast" : c <= 48 ? "fog" : c <= 57 ? "drizzle" : c === 61 || c === 80 ? "lightRain" : c === 63 || c === 81 ? "rain" : c === 65 || c === 82 ? "heavyRain" : c <= 67 ? "freezingRain" : c <= 77 ? "snow" : c <= 86 ? "snowShowers" : "storm";
-  const codeName = (c: number) => T.code?.[codeKey(c)] ?? "";
-  // the chip's tiny drawn glyph, one per sky (sun/moon swapped by the hour)
-  const G_CLOUD = "<path d='M5.5 15.5h9.5a3.2 3.2 0 0 0 .4-6.4a4.6 4.6 0 0 0-8.8-1.1a3.8 3.8 0 0 0-1.1 7.5Z'/>";
-  const G_SUN = "<circle cx='10' cy='10' r='3.6' class='gf'/><path d='M10 2.2v2.2M10 15.600v2.200M2.200 10h2.200M15.600 10h2.200M4.500 4.500l1.500 1.500M14 14l1.500 1.500M4.500 15.500l1.500-1.500M14 6l1.500-1.500'/>";
-  const G_MOON = "<path class='gf' d='M13.500 2.800a7.400 7.400 0 1 0 3.700 12.400a6.200 6.200 0 0 1-3.700-12.400Z'/>";
-  const glyphFor = (sky: Sky, night: boolean): string =>
-    ({
-      clear: night ? G_MOON : G_SUN,
-      partly: `<g transform='translate(7 -3) scale(.62)'>${night ? G_MOON : G_SUN}</g><g transform='translate(-1 2)'>${G_CLOUD}</g>`,
-      cloudy: `<g transform='translate(0 -1)'>${G_CLOUD}</g>`,
-      fog: "<path d='M3 6.500h14M5 10h12M3 13.500h11M6 17h10'/>",
-      drizzle: `<g transform='translate(0 -4)'>${G_CLOUD}</g><path d='M7 15v1.500M10.500 16v1.500M14 15v1.500'/>`,
-      rain: `<g transform='translate(0 -4)'>${G_CLOUD}</g><path d='M7.500 14l-1.300 4M11 14l-1.300 4M14.500 14l-1.300 4'/>`,
-      heavy: `<g transform='translate(0 -4)'>${G_CLOUD}</g><path d='M6 13.500l-1.600 5M9.300 13.500l-1.600 5M12.600 13.500l-1.600 5M15.900 13.500l-1.600 5'/>`,
-      storm: `<g transform='translate(0 -4)'>${G_CLOUD}</g><path class='gf' d='M11.500 11.500l-4 5h2.600l-1 3.500l4.200-5.200h-2.700Z'/>`,
-    })[sky];
-
-  /* ───────────── the clock: São Paulo time, real sunrise/sunset (astronomical until Open-Meteo answers) ───────────── */
-  const timeEl = document.getElementById("jb-time");
-  const fmt = new Intl.DateTimeFormat("en-GB", { timeZone: "America/Sao_Paulo", hour: "2-digit", minute: "2-digit", hour12: false });
-  const hhmm = (v: string | null): number | null => {
-    const m = /^(\d{1,2}):(\d{2})$/.exec(v || "");
-    return m ? (Number(m[1]) % 24) * 60 + Number(m[2]) : null;
-  };
-  const fakeClock = hhmm(params.get("t"));
-  const clockMin = () => fakeClock ?? hhmm(fmt.format(new Date())) ?? 720;
-  function sunTimes(): [number, number] {
-    const d = new Date();
-    const n = Math.floor((d.getTime() - Date.UTC(d.getUTCFullYear(), 0, 0)) / 864e5);
-    const decl = -23.44 * Math.cos((2 * Math.PI * (n + 10)) / 365) * (Math.PI / 180);
-    const half = (Math.acos(clamp(-Math.tan(-27.44 * (Math.PI / 180)) * Math.tan(decl), -1, 1)) * 720) / Math.PI;
-    return [734 - half, 734 + half]; // solar noon ≈ 12:14 at 48.49°W in UTC−3
-  }
-  function cycAt(min: number, sr: number, ss: number): number {
-    if (min >= sr && min < ss) return (min - sr) / (ss - sr);
-    return 1 + (min >= ss ? min - ss : min + 1440 - ss) / (1440 - (ss - sr));
-  }
-  function moonPath(): string {
-    const forced = Number(params.get("moon")); // ?moon=0…1 previews a phase (0 new · 0.25 first quarter · 0.5 full)
-    const p = params.get("moon") && Number.isFinite(forced) ? clamp(forced, 0, 0.999) : ((((Date.now() / 864e5 - 10962.76) % 29.530588) + 29.530588) % 29.530588) / 29.530588; // since the new moon of 2000-01-06
-    const R = 30;
-    const c = Math.cos(2 * Math.PI * p);
-    const wax = p < 0.5; // southern hemisphere: a waxing moon is lit on its left
-    return `M0 ${-R}A${R} ${R} 0 0 ${wax ? 0 : 1} 0 ${R}A${(Math.abs(c) * R).toFixed(1)} ${R} 0 0 ${c > 0 === wax ? 1 : 0} 0 ${-R}Z`;
-  }
+  /* ───────────── the clock and the weather: São Paulo time, real sunrise/sunset, Open-Meteo every 10 minutes while the tab is visible ───────────── */
+  const weather = createWeather({ words: T, params, storage: (() => { try { return sessionStorage; } catch { return null; } })() });
   // two clean arcs: the limb (always a half circle) and the terminator (a half ellipse that flips side at the quarters)
-  for (const id of ["jb-moon-lit", "jb-moon-clip"]) document.getElementById(id)?.setAttribute("d", moonPath());
-
-  /* ───────────── real weather: Open-Meteo, re-polled every 10 minutes while the tab is visible ───────────── */
-  const WX_URL =
-    "https://api.open-meteo.com/v1/forecast?latitude=-27.44&longitude=-48.49&current=temperature_2m,apparent_temperature,weather_code,cloud_cover,wind_speed_10m,wind_gusts_10m,wind_direction_10m,is_day,precipitation,rain,showers&daily=sunrise,sunset&forecast_days=1&timezone=America%2FSao_Paulo";
-  const WX_KEY = "jb-wx-v2";
-  const POLL_MS = 10 * 60 * 1000;
-  let live: Live | null = null;
-  try {
-    const c = JSON.parse(sessionStorage.getItem(WX_KEY) || "null") as Live | null;
-    if (c && typeof c.code === "number" && Date.now() - c.at < 45 * 60 * 1000) live = c;
-  } catch {
-    /* no cache */
-  }
-  async function poll() {
-    const ctl = new AbortController();
-    const timer = window.setTimeout(() => ctl.abort(), 4000);
-    try {
-      const res = await fetch(WX_URL, { signal: ctl.signal });
-      if (!res.ok) return;
-      const j = await res.json();
-      const cur = j?.current;
-      if (!cur || typeof cur.weather_code !== "number") return;
-      const [sr0, ss0] = sunTimes();
-      live = {
-        at: Date.now(), temp: Number(cur.temperature_2m), feels: Number(cur.apparent_temperature), code: cur.weather_code, cover: Number(cur.cloud_cover) || 0,
-        kmh: Number(cur.wind_speed_10m) || 0, gust: Number(cur.wind_gusts_10m) || Number(cur.wind_speed_10m) || 0, dir: Number(cur.wind_direction_10m) || 0,
-        precip: Math.max(Number(cur.precipitation) || 0, Number(cur.rain) || 0, Number(cur.showers) || 0),
-        sunrise: hhmm(String(j?.daily?.sunrise?.[0] || "").slice(11, 16)) ?? sr0, sunset: hhmm(String(j?.daily?.sunset?.[0] || "").slice(11, 16)) ?? ss0,
-      };
-      try {
-        sessionStorage.setItem(WX_KEY, JSON.stringify(live));
-      } catch {
-        /* private mode */
-      }
-      update();
-    } catch {
-      /* no weather today: the beach keeps the real clock and its last known sky */
-    } finally {
-      window.clearTimeout(timer);
-    }
-  }
-  const stale = () => !live || Date.now() - live.at > POLL_MS - 30000;
-  window.setInterval(() => !document.hidden && stale() && poll(), 60000);
-  document.addEventListener("visibilitychange", () => !document.hidden && stale() && poll());
-
-  /* ───────────── deriving the SceneState (real data, or a labelled preview) ───────────── */
-  const SKIES = Object.keys(SKY) as Sky[];
-  const PHASE_NAMES = Object.keys(PHASES) as Phase[];
-  const over = { wx: params.get("wx") || "", tod: (params.get("tod") === "day" ? "midday" : params.get("tod") || "") as Phase | "", temp: params.get("temp") ? Number(params.get("temp")) : NaN };
-  function readState(): SceneState {
-    const [sr, ss] = live ? [live.sunrise, live.sunset] : sunTimes();
-    const todP = PHASE_NAMES.includes(over.tod as Phase) ? (over.tod as Phase) : null;
-    const cyc = todP ? PHASES[todP].at : cycAt(clockMin(), sr, ss);
-    const pre = WX_PRESETS[over.wx];
-    const w = pre ? { ...pre, cover: SKY[pre.sky].cover * 100, label: (over.wx === "wind" ? T.windy : T.sky?.[pre.sky]) ?? "" } : live ? { sky: codeSky(live.code, live.cover, live.precip), kmh: live.kmh, gust: live.gust, dir: live.dir, temp: live.temp, cover: live.cover, label: codeName(live.code) } : null;
-    const blowsTo = w ? -Math.sin((w.dir * Math.PI) / 180) : -0.7; // wind_direction is where it comes FROM; the beach faces north
-    const sky = w?.sky ?? "clear";
-    return {
-      sky, phase: todP ?? phaseOf(cyc), cyc,
-      cover: w ? (sky === "clear" || sky === "partly" ? clamp(w.cover / 100, 0.04, 0.7) : SKY[sky].cover) : 0.2,
-      wind: w ? clamp((w.kmh * 0.6 + w.gust * 0.4 - 4) / 40, 0, 1) : 0.15,
-      windX: Math.abs(blowsTo) < 0.25 ? (blowsTo < 0 ? -0.25 : 0.25) : blowsTo,
-      kmh: w ? Math.round(w.kmh) : 0, compass: w ? (T.compass?.[Math.round(w.dir / 45) % 8] ?? "") : "", temp: Number.isFinite(over.temp) ? over.temp : w ? w.temp : null, label: w ? w.label : "",
-      preview: [pre ? over.wx : "", todP ?? (fakeClock !== null ? params.get("t") : "")].filter(Boolean).join(" · "),
-    };
-  }
+  for (const id of ["jb-moon-lit", "jb-moon-clip"]) document.getElementById(id)?.setAttribute("d", weather.moon());
+  const refresh = () => weather.poll().then((fresh) => fresh && channels.update());
+  window.setInterval(() => !document.hidden && weather.stale() && refresh(), 60000);
+  document.addEventListener("visibilitychange", () => !document.hidden && weather.stale() && refresh());
+  // the quiet line under the location
+  const byId = (id: string) => document.getElementById(id);
+  const chip = createChip({ phase: byId("jb-phase"), wx: byId("jb-wx"), pre: byId("jb-preview"), glyph: byId("jb-glyph"), wxT: byId("jb-wx-t"), wxW: byId("jb-wx-w"), time: byId("jb-time") }, T);
 
   /* ───────────── channels: every continuous quantity of the scene eases from where it is to where the state wants it ───────────── */
-  const SECS: Record<keyof Env, number> = { cover: 7, deck: 7, fog: 7, rFirst: 1.6, rFar: 4, rMid: 6.5, rNear: 8, rSpd: 5, storm: 5, spray: 7, wet: 20, desat: 6, tint: 6, dark: 6, tr: 6, tg: 6, tb: 6, sun: 5, glit: 4, shade: 4, birds: 1, sea: 5, amp: 5, wind: 4, windX: 4, cyc: 6 };
-  const KEYS = Object.keys(SECS) as (keyof Env)[];
-  const goal = {} as Env;
-  const rate = {} as Env;
-  let moving = false;
-  function goalFor(s: SceneState): Env {
-    const { tc, ...l } = SKY[s.sky];
-    return { ...l, cover: s.cover, tr: tc[0], tg: tc[1], tb: tc[2], wind: s.wind, windX: s.windX, cyc: s.cyc };
-  }
-  /** The one transition function: `prev` is null on first paint (snap), otherwise the scene eases to `next` over a few seconds. */
-  function applyState(prev: SceneState | null, next: SceneState) {
-    scene.state = next;
-    Object.assign(goal, goalFor(next));
-    const snap = !prev || calm.matches || !clock.running || LITE; // lite: each palette step restyles the whole painting, so it changes in one
-    const hurry = prev && prev.temp === null && !prev.preview ? 0.3 : 1; // the first real reading after a clock-only first paint arrives briskly
-    for (const k of KEYS) {
-      if (snap) {
-        env[k] = goal[k];
-        continue;
-      }
-      let d = goal[k] - env[k];
-      if (k === "cyc") {
-        d = ((((d + 0.999) % 2) + 2) % 2) - 0.999; // the short way round the day (forwards when it is a tie)
-        if (Math.abs(d) < 0.004) env.cyc = goal.cyc; // a real minute passing: no animation needed
-      }
-      const secs = k === "wet" && d < 0 ? 75 : SECS[k];
-      rate[k] = Math.abs(d) / (secs * hurry);
-    }
-    moving = !snap;
-    root.dataset.sky = next.sky;
-    root.dataset.phase = next.phase;
-    chip(next);
-    if (snap) {
-      sky.placeLum();
-      render();
-      sky.stillLum();
-      sky.syncClouds(goal, true);
-      rates();
-      btSnap();
-    } else sky.syncClouds(goal, false);
-  }
-  function update() {
-    // Weather that arrives while the paper still covers the beach snaps in unseen (nothing runs yet, so applyState snaps);
-    // only the short fade to colour holds it back, rather than easing a whole new sky in right after the reveal.
-    if (introBlending && scene.state) return;
-    const next = readState();
-    const p = scene.state;
-    if (p && p.sky === next.sky && p.phase === next.phase && Math.abs(p.cyc - next.cyc) < 0.0015 && p.cover === next.cover && p.wind === next.wind && p.windX === next.windX && p.temp === next.temp && p.kmh === next.kmh && p.label === next.label && p.preview === next.preview) return;
-    applyState(p, next);
-  }
-  let stepAcc = 0;
-  let rateAcc = 0;
-  clock.add("channels", (dt) => {
-    if (!moving) return;
-    let busy = false;
-    for (const k of KEYS) {
-      if (env[k] === goal[k]) continue;
-      let d = goal[k] - env[k];
-      if (k === "cyc") d = ((((d + 0.999) % 2) + 2) % 2) - 0.999;
-      const step = (rate[k] || 1) * dt;
-      if (Math.abs(d) <= step) env[k] = goal[k];
-      else {
-        env[k] += Math.sign(d) * step;
-        if (k === "cyc") env.cyc = (env.cyc + 2) % 2;
-        busy = true;
-      }
-    }
-    sky.placeLum();
-    stepAcc += dt;
-    rateAcc += dt;
-    // every palette step re-rasters the filtered layers, so the look is stepped (~8 washes a second)
-    if (stepAcc >= 0.125 || !busy) {
-      stepAcc = 0;
-      render();
-    }
-    if (rateAcc > 1 || !busy) {
-      rateAcc = 0;
-      rates();
-    }
-    moving = busy;
+  const channels = createChannels(scene, {
+    read: weather.readState,
+    snapNow: () => calm.matches || !clock.running || LITE, // lite: each palette step restyles the whole painting, so it changes in one
+    blocked: () => introBlending,
+    hooks: {
+      state(next) {
+        root.dataset.sky = next.sky;
+        root.dataset.phase = next.phase;
+        chip.show(next);
+      },
+      snapped() {
+        sky.placeLum();
+        painter.render();
+        sky.stillLum();
+        sky.syncClouds(channels.goal, true);
+        painter.rates();
+        btSnap();
+      },
+      eased() { sky.syncClouds(channels.goal, false); },
+      frame() { sky.placeLum(); },
+      render() { painter.render(); },
+      rates() { painter.rates(); },
+    },
   });
+  clock.add("channels", (dt) => channels.tick(dt));
 
   /* ───────────── the sky: sun & moon, clouds, deck and shadows, lightning, a shooting star ───────────── */
   const sky = createSky(scene, {
@@ -2269,143 +1953,15 @@ const VB = { viewBox: "0 0 1600 1000", preserveAspectRatio: "xMidYMid slice", fo
   });
 
   /* ───────────── render: env → palette + CSS variables + flags (called in steps, or once when snapping) ───────────── */
-  const winEls = qa(".jb-win").map((el) => ({ el, th: rand(0.12, 0.92) }));
-  function render() {
-    const e = env;
-    const base = palAt(e.cyc);
-    const daylight = clamp(luma(base.c[1]) * 1.5, 0.12, 1);
-    const tintC = [e.tr, e.tg, e.tb].map((v) => v * (0.22 + 0.78 * daylight));
-    const dark = e.dark * (0.5 + 0.5 * daylight); // a night is dark enough already
-    // weather look: pull saturation out, wash towards the sky's grey, darken
-    const look = (c: number[], k = 1) => {
-      const l = luma(c) * 255;
-      return c.map((v, i) => {
-        const d = v + (l - v) * e.desat * k;
-        return (d + (tintC[i] - d) * e.tint * k) * (1 - dark * k);
-      });
-    };
-    const cols = base.c.map((c, i) => look(c, i >= 4 && i <= 6 ? 1.12 : 1));
-    COLS.forEach((k, i) => setVar(k, rgb(cols[i])));
-    const theme = rgb(cols[0]).replace(/ /g, ", "); // the browser chrome continues the top of the sky
-    if (themeMeta && themeMeta.content !== theme) themeMeta.content = theme;
-    const veil = cols[18];
-    setVar("--veil-b", ((0.2126 * veil[0] + 0.7152 * veil[1] + 0.0722 * veil[2]) / 255).toFixed(3));
-    VEILED.forEach((k, i) => setVar(k, rgb(veiledBase[i].map((v, ch) => (v * veil[ch]) / 255))));
-    paintLand(veil);
-    const stars = base.n[0];
-    const lights = clamp(Math.max(base.n[1], e.dark * 1.7 - 0.1), 0, 1);
-    const night = lights > 0.75 && base.n[0] > 0.6;
-    const sunny = e.sun * lum.sunUp;
-    const low = 1 - clamp(lum.elev * 2.2, 0, 1);
-    setVar("--stars", stars.toFixed(2));
-    setVar("--lights", lights.toFixed(2));
-    setVar("--clear", clamp(1 - e.cover * 0.75 - e.deck * 0.6, 0, 1).toFixed(2));
-    setVar("--deck", e.deck.toFixed(3));
-    setVar("--fog", clamp(e.fog + (e.cyc > 1.9 || e.cyc < 0.16 ? 0.4 * (1 - e.deck) * (1 - Math.abs((e.cyc > 1 ? e.cyc - 2 : e.cyc) - 0.03) / 0.13) : 0), 0, 1).toFixed(3));
-    setVar("--mist-c", rgb(cols[3].map((v, i) => v + ((daylight > 0.5 ? 240 : cols[9][i] + 40) - v) * 0.6)));
-    setVar("--r-first", e.rFirst.toFixed(3));
-    setVar("--r-far", e.rFar.toFixed(3));
-    setVar("--r-mid", e.rMid.toFixed(3));
-    setVar("--r-near", e.rNear.toFixed(3));
-    setVar("--rain-a", `${clamp(e.windX * (7 + 24 * e.wind), LITE ? -10 : -90, LITE ? 10 : 90).toFixed(1)}deg`); // lite: the one streak layer is cut close to the screen
-    setVar("--spray", (e.spray * 0.8).toFixed(2));
-    setVar("--wet-a", (clamp(e.wet * 2.6, 0, 1) * (0.26 - 0.14 * e.wet)).toFixed(3));
-    setVar("--wet-b", (clamp((e.wet - 0.15) / 0.85, 0, 1) * (0.52 - 0.22 * e.dark - 0.16 * (1 - daylight))).toFixed(3));
-    setVar("--tint", (e.fog * 0.2 + dark * 0.3).toFixed(3));
-    setVar("--tint-c", rgb(tintC));
-    setVar("--glit", (e.glit * (lum.sunUp ? 1 : 0.7) * clamp(lum.elev * 6, 0, 1)).toFixed(2));
-    setVar("--rays", (sunny * clamp(lum.elev * 3, 0, 1) * (1 - e.cover * 0.5) * 0.9).toFixed(2));
-    setVar("--glow", (low * clamp((lum.sunUp ? 1 : 0) + (e.cyc > 1 && e.cyc < 1.1 ? 1 - (e.cyc - 1) / 0.1 : e.cyc > 1.9 ? (e.cyc - 1.9) / 0.1 : 0), 0, 1) * (0.25 + 0.75 * e.sun) * 0.85).toFixed(2));
-    setVar("--lum-dx", `${(lum.x - 870).toFixed(0)}px`);
-    setVar("--glit-w", (1 + low * 0.9).toFixed(2)); // the light path widens as the sun (or moon) sinks
-    setVar("--cshade", (clamp(1 - Math.abs(e.cover - 0.5) * 2.6, 0, 1) * (1 - e.deck) * sunny * clamp(lum.elev * 3 - 0.4, 0, 1) * 0.9).toFixed(2));
-    // shadows fall away from the sun (or, faintly, the moon): long at the ends of the day, short at noon
-    setVar("--sh-x", (-lum.side * (0.5 + low * 1.3)).toFixed(2));
-    setVar("--sh-l", (1 + low * 0.55).toFixed(2));
-    setVar("--sh-o", ((lum.sunUp ? 0.12 + 0.3 * e.shade : 0.1 + 0.12 * e.shade) * (1 - e.wet * 0.3)).toFixed(2));
-    setVar("--sway", (0.5 + e.wind * 3).toFixed(2));
-    setVar("--lean", `${(Math.sign(e.windX) * e.wind * 2.8).toFixed(2)}deg`);
-    setVar("--wdir", e.windX < 0 ? "-1" : "1");
-    setVar("--umb-lean", `${(Math.sign(e.windX) * (e.wind * 2.2 + e.storm * 3.5)).toFixed(2)}deg`);
-    setVar("--umb-wob", `${(0.15 + e.wind * 1.5).toFixed(2)}deg`);
-    setVar("--amp-k", e.amp.toFixed(2));
-    // the name is set on the sky: pick the ink that reads on what is behind it right now
-    const back = cols[1].map((v, i) => v + (cols[5][i] - v) * e.deck * 0.85);
-    const darkSky = luma(back) < 0.46;
-    setVar("--on-sky", darkSky ? "#fff6e4" : "#1d1a14");
-    setVar("--id-back", darkSky ? "rgb(10 14 40 / 0.42)" : "rgb(255 250 235 / 0.5)");
-    setVar("--id-plate", darkSky ? "rgb(8 12 34 / 0.52)" : "rgb(255 251 240 / 0.64)");
-    // beach tennis: a rally whenever it is dry and light, overcast or foggy included; at night the rackets wait by the net, and rain or a storm leaves the court to the weather
-    scene.court = e.rFirst > 0.04 || e.wet > 0.5 || e.storm > 0.1 ? "wet" : !NOT_FOUND && e.cyc > 0.085 && e.cyc < 0.965 ? "play" : "rest";
-    const shut = e.cyc > 1.035 || e.cyc < 0.085;
-    const hot = (scene.state?.temp ?? 0) >= 28 && !!lum.sunUp && e.rFirst < 0.05 && e.deck < 0.5;
-    const cold = scene.state?.temp != null && scene.state.temp <= 15;
-    root.dataset.umb = shut ? "shut" : "open";
-    flag("night", night);
-    flag("rain", e.rFirst > 0.02);
-    flag("wet", e.wet > 0.004);
-    flag("mist", e.fog > 0.01 || e.cyc > 1.88 || e.cyc < 0.17);
-    flag("deck", e.deck > 0.004);
-    flag("fog", e.fog > 0.6);
-    flag("tuck", e.rMid > 0.18);
-    flag("lid", e.rMid > 0.28);
-    flag("drip", e.rMid > 0.22 && !shut);
-    flag("windy", e.wind > 0.55 && e.wet < 0.25);
-    flag("caps", e.wind > 0.5 || e.storm > 0.4);
-    flag("storm", e.storm > 0.5);
-    flag("kite", e.wind > 0.5 && e.storm < 0.2 && e.rMid < 0.35 && e.fog < 0.5 && !!lum.sunUp && lum.elev > 0.15);
-    flag("noboats", !!scene.state && !PHASES[scene.state.phase].boats);
-    flag("ff", night && e.rFirst < 0.05 && e.wind < 0.6);
-    flag("hot", hot);
-    flag("cold", !!cold);
-    flag("noshades", !!cold || e.rFirst > 0.1 || e.deck > 0.6 || lights > 0.5);
-    for (const w of winEls) w.el.classList.toggle("on", lights > w.th);
-  }
-  // animation speeds follow the wind and the sea state (looked up by keyframe name, never per-frame)
-  const RATE_OF: Record<string, (e: Env) => number> = {
-    "jb-sway": (e) => 0.7 + e.wind * 2, "jb-crown": (e) => 0.7 + e.wind * 2.2, "jb-flap": (e) => 0.4 + e.wind * 3.4, "jb-penn": (e) => 0.5 + e.wind * 2.5, "jb-umb": (e) => 0.8 + e.wind * 2,
-    "jb-shimmer": (e) => e.sea, "jb-swell": (e) => e.sea, "jb-wash": (e) => e.sea, "jb-sheen": (e) => e.sea, "jb-sheen-soft": (e) => e.sea, "jb-ride": (e) => e.sea, "jb-pop": (e) => e.sea,
-    "jb-rain-near": (e) => e.rSpd, "jb-rain-mid": (e) => e.rSpd, "jb-rain-far": (e) => e.rSpd, "jb-splash": (e) => 0.6 + e.rMid, "jb-ripple": (e) => 0.6 + e.rMid * 0.8,
-    "jb-wisp": (e) => 0.6 + e.wind, "jb-mist": (e) => 0.6 + e.wind * 2, "jb-net": (e) => 0.5 + e.wind * 2.2 + e.storm,
-  };
-  function rates() {
-    if (calm.matches || !document.getAnimations) return;
-    for (const a of document.getAnimations()) {
-      const fn = RATE_OF[(a as CSSAnimation).animationName];
-      if (fn) a.playbackRate = fn(env);
-    }
-  }
-  // the quiet line under the location: glyph · local time · phase of the day · temperature, sky and wind
-  function chip(s: SceneState) {
-    const phase = document.getElementById("jb-phase");
-    const wx = document.getElementById("jb-wx");
-    const pre = document.getElementById("jb-preview");
-    const glyph = document.getElementById("jb-glyph");
-    if (!phase || !wx || !pre || !glyph) return;
-    glyph.innerHTML = glyphFor(s.sky, s.cyc > 1.02 && s.cyc < 1.98);
-    phase.textContent = T.phase?.[s.phase] ?? "";
-    phase.hidden = false;
-    const wxT = document.getElementById("jb-wx-t");
-    const wxW = document.getElementById("jb-wx-w");
-    wx.hidden = s.temp === null;
-    if (wxT) wxT.textContent = s.temp === null ? "" : `${Math.round(s.temp)}° ${s.label}`;
-    if (wxW) wxW.textContent = s.temp !== null && s.compass ? `, ${T.wind} ${s.kmh} km/h ${s.compass}` : "";
-    pre.hidden = !s.preview;
-  }
+  const painter = createRender(scene, palette, { themeMeta: q<HTMLMetaElement>('meta[name="theme-color"]'), winEls: qa(".jb-win").map((el) => ({ el, th: rand(0.12, 0.92) })) });
   function tick() {
-    const now = fakeClock !== null ? (params.get("t") || "").padStart(5, "0") : fmt.format(new Date());
-    if (timeEl && timeEl.textContent !== now) {
-      timeEl.textContent = now;
-      timeEl.setAttribute("datetime", now);
-    }
-    update();
+    chip.time(weather.timeText());
+    channels.update();
   }
   window.setInterval(tick, 15000);
 
-  clock.add("clouds", (dt) => sky.tick(dt));
-
   /* ───────────── sky & shore life ───────────── */
-  const lifeNow = () => (scene.state ? PHASES[scene.state.phase].life * env.birds : 0);
+  const lifeNow = () => (scene.state ? PHASES[scene.state.phase].life * scene.env.birds : 0);
   const birds = createBirds(scene, { birds: qa<SVGSVGElement>(".jb-bird") }, { life: lifeNow });
   clock.add("birds", (dt) => birds.tick(dt));
   clock.sometimes(6, 13, () => birds.flock(), 2.6);
@@ -2472,10 +2028,10 @@ const VB = { viewBox: "0 0 1600 1000", preserveAspectRatio: "xMidYMid slice", fo
     let i = 0;
     const DEMO_TODS: Phase[] = ["midday", "afternoon", "golden", "dusk", "night", "dawn", "morning"];
     const next = () => {
-      over.wx = [...SKIES, "wind"][i % 9];
-      over.tod = DEMO_TODS[i % 7];
+      weather.over.wx = [...SKIES, "wind"][i % 9];
+      weather.over.tod = DEMO_TODS[i % 7];
       i++;
-      update();
+      channels.update();
     };
     next();
     window.setInterval(() => !document.hidden && next(), 6500);
@@ -2502,8 +2058,8 @@ const VB = { viewBox: "0 0 1600 1000", preserveAspectRatio: "xMidYMid slice", fo
   }
   syncRunning();
   tick();
-  if (stale()) poll();
-  window.setTimeout(rates, 1800); // once the entrance has handed over to the looping animations
+  if (weather.stale()) void refresh();
+  window.setTimeout(painter.rates, 1800); // once the entrance has handed over to the looping animations
   liteMq.addEventListener("change", () => {
     LITE = liteMq.matches;
     root.classList.toggle("is-lite", LITE);
@@ -2511,7 +2067,7 @@ const VB = { viewBox: "0 0 1600 1000", preserveAspectRatio: "xMidYMid slice", fo
     holdScene(!!openId);
     if (!scene.state) return;
     sky.placeLum();
-    render();
+    painter.render();
     sky.relite();
   });
 
@@ -3008,15 +2564,15 @@ const VB = { viewBox: "0 0 1600 1000", preserveAspectRatio: "xMidYMid slice", fo
       calm.removeEventListener("change", finishIntro);
       document.removeEventListener("visibilitychange", syncReveal);
       syncRunning();
-      update();
-      rates();
+      channels.update();
+      painter.rates();
     };
     const syncReveal = () => {
       drawingLast = 0;
       if (document.hidden) reveal?.pause();
       else reveal?.play();
     };
-    const introWidth = measuredWidth, introHeight = measuredHeight;
+    const introWidth = layout.width, introHeight = layout.height;
     const resizeIntro = () => {
       if (sceneEl?.clientWidth !== introWidth || sceneEl?.clientHeight !== introHeight) finishIntro();
     };
@@ -3034,7 +2590,7 @@ const VB = { viewBox: "0 0 1600 1000", preserveAspectRatio: "xMidYMid slice", fo
       syncReveal();
       void reveal.finished.then(finishIntro, finishIntro);
     };
-    void prepareBeachDrawing(root, contours, measuredWidth, measuredHeight).then(({ canvas, draw }) => {
+    void prepareBeachDrawing(root, contours, layout.width, layout.height).then(({ canvas, draw }) => {
       if (!introPending) return;
       paint.replaceWith(canvas);
       const trace = (now: number) => {
