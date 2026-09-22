@@ -53,7 +53,7 @@ export function createMeasure(scene: Scene, els: MeasureEls, viewport: Viewport 
       el.style.setProperty("--y", y.toFixed(1));
     }
     // the beach-tennis court lies further along the sand, parallel to the shore and clear of the biggest wave
-    let cx = Math.min(fit.left + fit.width * 0.68, 1090); // …and of the palm fronds
+    let cx = Math.min(fit.left + fit.width * 0.7, 1115); // …and of the palm fronds
     let cy = shoreY(cx) + 68;
     let ck = 1.15;
     if (fit.portrait) {
