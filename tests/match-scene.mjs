@@ -19,7 +19,7 @@ export async function runMatchScene(rules) {
   let context;
   context = vm.createContext({
     ...rules, Math:math, q:element, clock:{ add:(_n,t)=>tasks.push(t), running:true }, scene:{ court:'play' }, NOT_FOUND:false,
-    env:{wind:0.2,windX:0.1}, habitat:{action:'rally',fatigue:0,resting:false},
+    env:{wind:0.2,windX:0.1}, habitat:{action:'rally',fatigue:0,resting:false,policy:{},tire(){this.fatigue++},refresh(){this.fatigue=0},rested(){this.resting=true}},
     clamp:(n,a,b)=>Math.max(a,Math.min(b,n)), rand:(a,b)=>a+(b-a)*random(), ease:n=>n,
     tennisPolicy:{}, chooseShot:()=>['lob','drop','drive'][Math.floor(random()*3)],
     reportMatch:(match,announce)=>reports.push({match:structuredClone(match),announce:!!announce}),

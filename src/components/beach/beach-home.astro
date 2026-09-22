@@ -1818,10 +1818,10 @@ const VB = { viewBox: "0 0 1600 1000", preserveAspectRatio: "xMidYMid slice", fo
   import { createBirds } from "../../lib/beach/birds";
   import { createSail } from "../../lib/beach/sail";
   import { createSky } from "../../lib/beach/sky";
+  import { createHabitatPlayer } from "../../lib/beach/habitat-player";
   import { reportHabitat, recordHabitat, reportMatch } from "../../lib/habitat/display";
   import { createMatch, awardPoint, landingWinner, faultWinner, other, type Player, type PointReason } from "../../lib/habitat/match";
-  import { LOCAL_TENNIS, parseTennis, chooseShot } from "../../lib/habitat/tennis";
-  import { fallback, parsePlan, allowed, type Action, type Context } from "../../lib/habitat/plan";
+  import { chooseShot } from "../../lib/habitat/tennis";
   const root = document.documentElement;
   const q = <T extends Element = HTMLElement>(sel: string, p: ParentNode = document) => p.querySelector<T>(sel);
   const qa = <T extends Element = HTMLElement>(sel: string, p: ParentNode = document) => Array.from(p.querySelectorAll<T>(sel));
@@ -2419,62 +2419,12 @@ const VB = { viewBox: "0 0 1600 1000", preserveAspectRatio: "xMidYMid slice", fo
   clock.sometimes(12, 30, () => env.storm > 0.7 && sky.zap(), 5);
   clock.sometimes(14, 32, () => sky.shoot(), 7);
 
-  // The director changes intentions, never positions or the animation clock.
-  let tennisPolicy = LOCAL_TENNIS;
-  const habitat = { action: "rally" as Action, remaining: 0, index: 0, context: "sunny" as Context,
-    plan: fallback("sunny"), requests: 0, requested: new Set<Context>(), fatigue: 0, resting: false };
-  root.dataset.habitatSource = "local";
-  const habitatContext = (): Context => root.hasAttribute("data-night") ? "night"
-    : env.rMid > 0.1 || env.storm > 0.1 || scene.court === "wet" ? "wet" : env.wind > 0.55 ? "windy" : "sunny";
-  async function requestHabitat(context: Context) {
-    if (NOT_FOUND || habitat.requests >= 2 || habitat.requested.has(context)) return;
-    habitat.requested.add(context);
-    habitat.requests++;
-    try {
-      const response = await fetch(`/api/habitat?context=${context}`, { cache: "no-cache", signal: AbortSignal.timeout(14_000) });
-      if (!response.ok) return;
-      const data = await response.json();
-      if (habitat.context === context) {
-        reportHabitat(data);
-        tennisPolicy = parseTennis(data.tennis?.policy) ?? LOCAL_TENNIS;
-        root.dataset.tennisSource = data.tennis?.source === "typesafe" ? "typesafe" : "local";
-      }
-      const plan = parsePlan(data.plan, context);
-      if (plan && habitat.context === context) {
-        habitat.plan = plan;
-        habitat.index = 0;
-        root.dataset.habitatSource = data.source === "openrouter" ? "openrouter" : "local";
-      }
-    } catch { /* The local plan is already playing. No retries or catch-up calls. */ }
-  }
+  // the habitat player changes intentions, never positions or the animation clock
+  const habitat = createHabitatPlayer(scene, { report: reportHabitat, record: recordHabitat });
   clock.add("habitat", (dt) => {
-    // The task loop pauses for intro, hidden tabs, mobile sheets and reduced motion.
-    const context = habitatContext();
-    if (context !== habitat.context) {
-      habitat.context = context;
-      tennisPolicy = LOCAL_TENNIS;
-      reportHabitat({ source: "local", tennis: { source: "local" } });
-      root.dataset.tennisSource = "local";
-      habitat.plan = fallback(context);
-      habitat.index = 0;
-      habitat.remaining = 0;
-      root.dataset.habitatSource = "local";
-    }
-    if (habitat.requests < 2 && !habitat.requested.has(context)) void requestHabitat(context);
-    // A rest lasts its full duration after the players have retrieved the ball.
-    if (habitat.action === "break" && scene.court === "play" && !habitat.resting && habitat.remaining > 0) return;
-    habitat.remaining -= dt;
-    if (habitat.remaining > 0) return;
-    const next = habitat.plan.actions[habitat.index++ % habitat.plan.actions.length];
-    habitat.action = allowed(next, context) ? next : "break";
-    if (habitat.fatigue >= 6 && context !== "wet" && context !== "night") habitat.action = "break";
-    habitat.resting = false;
-    habitat.remaining = habitat.action === "break" ? 18 : 30;
-    if (habitat.action === "break") habitat.fatigue = 0;
-    if (habitat.action === "gull") gull?.invite();
-    if (habitat.action === "crab") crab?.invite();
-    root.dataset.habitat = habitat.action;
-    if (scene.court === "play") recordHabitat(habitat.action);
+    const started = habitat.tick(dt);
+    if (started?.invite === "gull") gull?.invite();
+    if (started?.invite === "crab") crab?.invite();
   });
 
   // a gull lands on the sand, hops about, and leaves (dry daylight only)
@@ -2596,7 +2546,7 @@ const VB = { viewBox: "0 0 1600 1000", preserveAspectRatio: "xMidYMid slice", fo
       rcv = other(by);
       const r = Math.random();
       const situation = Math.abs(me.x - me.home) > 26 ? "stretched" : habitat.fatigue >= 4 || rally >= 6 ? "tired" : "balanced";
-      const shot = serve ? "lob" : chooseShot(tennisPolicy, situation, habitat.action, r);
+      const shot = serve ? "lob" : chooseShot(habitat.policy, situation, habitat.action, r);
       if (court) {
         court.dataset.shot = shot;
         court.dataset.situation = situation;
@@ -2719,7 +2669,7 @@ const VB = { viewBox: "0 0 1600 1000", preserveAspectRatio: "xMidYMid slice", fo
         wait -= dt;
         if (wait <= 0) {
           match = createMatch(other(match.firstServer));
-          habitat.fatigue = 0;
+          habitat.refresh();
           publishMatch();
           mode = "off";
         }
@@ -2767,7 +2717,7 @@ const VB = { viewBox: "0 0 1600 1000", preserveAspectRatio: "xMidYMid slice", fo
           finishPoint(result); // Only the first landing scores; subsequent bounces are dead-ball retrieval.
         }
         else if (sg.then === "rest") {
-          habitat.fatigue++;
+          habitat.tire();
           mode = match.winner !== null ? "matchOver" : "dead";
           wait = match.winner !== null ? 9 : match.lastPoint?.changeEnds ? 1.8 : rand(0.7, 1.3);
           P.forEach((p) => (p.tx = p.home));
@@ -2789,7 +2739,7 @@ const VB = { viewBox: "0 0 1600 1000", preserveAspectRatio: "xMidYMid slice", fo
       } else if (mode === "toServe") {
         // Finish the point and retrieve its ball before resting. Resume from the held serve.
         if (habitat.action === "break") {
-          if (P.every(p => Math.abs(p.tx - p.x) < 3)) habitat.resting = true;
+          if (P.every(p => Math.abs(p.tx - p.x) < 3)) habitat.rested();
           return;
         }
         if (P.some(p => Math.abs(p.tx - p.x) > 3)) return;
