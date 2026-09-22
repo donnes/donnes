@@ -1,6 +1,6 @@
 // Build-time geometry of the Jurerê beach: every path, blob and sprite position the markup paints.
 // Pure functions and seeded randomness, so the same numbers come out on every build.
-import { type Pt, f, rng, smooth, yAt, HORIZON, D, SHORE } from "./shore";
+import { type Pt, f, rng, smooth, yAt, HORIZON, D, SHORE } from "./shore.ts";
 export { HORIZON, SHORE, yAt, f };
 export type { Pt };
 
