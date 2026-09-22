@@ -37,7 +37,7 @@ Astro development serves the same handler through `scripts/habitat-dev.mjs`.
 Use Node 22 for deployment. `astro preview` previews static pages only, so use
 `pnpm dev` when testing the habitat endpoint locally.
 
-Run `pnpm test:habitat` and `pnpm build`. To inspect behavior, open
+Run `pnpm test` and `pnpm build`. To inspect behavior, open
 `http://localhost:4321/?wx=clear&tod=midday` on desktop and watch a few points.
 The document's `data-habitat` and `data-habitat-source` attributes expose the current
 intention and plan source for debugging. A break takes effect after ball retrieval.
@@ -79,7 +79,7 @@ The steady-state capture leaves the page in place; the loading capture reloads i
 ```sh
 node scripts/profile-android.mjs http://localhost:9222 localhost:4323 15000 /tmp/beach-steady.json
 node scripts/profile-loading-android.mjs localhost:4323 /tmp/beach-loading.json
-pnpm test:frames
+pnpm test
 ```
 
 Keep the browser visible throughout each capture. The loading report separates
@@ -123,6 +123,6 @@ point without changing the score. AI still selects shot style from cached polici
 match scoring introduces no model calls. The clickable courtside board shows points,
 games, server, deciding points, tie-breaks, and the final result.
 
-`pnpm test:habitat` includes pure scoring tests and a deterministic replay of two
-complete matches through the actual animation state machine, including service
+`pnpm test` includes pure scoring tests and a deterministic replay of two
+complete matches through the rally actor (`src/lib/beach/rally.ts`), including service
 position, rematches, point deduplication, and weather suspension.

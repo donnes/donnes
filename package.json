@@ -14,8 +14,7 @@
     "format:fix": "biome format --write ./src",
     "check": "biome check ./src",
     "check:fix": "biome check --apply ./src",
-    "test": "node --test --experimental-strip-types tests/*.test.ts && node scripts/test-habitat.mjs",
-    "test:habitat": "node scripts/test-habitat.mjs"
+    "test": "node --test --experimental-strip-types --import ./tests/resolve-ts.mjs tests/*.test.ts"
   },
   "dependencies": {
     "@astrojs/check": "^0.7.0",
