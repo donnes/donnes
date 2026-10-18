@@ -19,7 +19,7 @@ export const translations = {
     "about.summary":
       "I build AI agents that run in production. At Levers (YC S22), I'm building inbound and outbound voice agents for accounts receivable and sales, in English and Arabic. Before AI, I spent 15 years shipping web and mobile across fintech, e-commerce and SaaS.",
     "about.architecture":
-      "I care more about architecture than any one language: distributed systems, real-time pipelines, and scaling agent workloads reliably.",
+      "Focused on system architecture: distributed systems, real-time pipelines, and scaling agent workloads reliably.",
 
     // Colophon
     "colophon.tecnology.title": "Tech Stack",
@@ -47,7 +47,7 @@ export const translations = {
     "about.summary":
       "Construo agentes de IA que rodam em produção. Na Levers (YC S22), estou construindo agentes de voz inbound e outbound para contas a receber e vendas, em inglês e árabe. Antes da IA, passei 15 anos entregando produtos web e mobile em fintech, e-commerce e SaaS.",
     "about.architecture":
-      "Arquitetura me importa mais do que qualquer linguagem específica: sistemas distribuídos, pipelines em tempo real e escalar cargas de trabalho de agentes com confiabilidade.",
+      "Foco em arquitetura de sistemas: sistemas distribuídos, pipelines em tempo real e escalar cargas de trabalho de agentes com confiabilidade.",
 
     // Colophon
     "colophon.tecnology.title": "Tecnologia",

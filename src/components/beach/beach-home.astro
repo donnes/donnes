@@ -753,7 +753,7 @@ const VB = { viewBox: "0 0 1600 1000", preserveAspectRatio: "xMidYMid slice", fo
                 <div class="jb-pg jb-pg-l">
                   <p class="jb-folio"><span class="jb-no">{S.work.folio}</span><span class="jb-numeral">{r.numeral}</span></p>
                   <h3>{r.role}</h3>
-                  <p class="jb-co"><a href={r.link} target="_blank" rel="noopener">{r.company}<i aria-hidden="true"> ↗</i></a></p>
+                  <p class="jb-co"><a href={r.link} target="_blank" rel="noopener">{r.company}</a></p>
                   <p class="jb-period">{r.years}</p>
                   <svg class="jb-ruler" viewBox={`0 0 ${(nowYear - firstYear) * 20 + 20} 44`} aria-hidden="true" focusable="false">
                     <path class="jb-ruler-mark" pathLength="1" d={`M${(r.start - firstYear) * 20 + 10} 17H${(r.end - firstYear) * 20 + 10}`}></path>
@@ -817,7 +817,7 @@ const VB = { viewBox: "0 0 1600 1000", preserveAspectRatio: "xMidYMid slice", fo
             </ul>
             <p class="jb-where">
               <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M12 21s-6.500-6-6.500-11a6.500 6.500 0 0 1 13 0c0 5-6.500 11-6.500 11Z"></path><circle cx="12" cy="10" r="2.400"></circle></svg>
-              <span>{S.about.basedIn} <a href={PROFILE.cityLink} target="_blank" rel="noopener">{shortCity}, {S.about.country}<i aria-hidden="true"> ↗</i></a> · UTC−3</span>
+              <span>{S.about.basedIn} <a href={PROFILE.cityLink} target="_blank" rel="noopener">{shortCity}, {S.about.country}</a> · UTC−3</span>
             </p>
             <p class="jb-colophon"><a href={colophonHref}>{S.about.colophon}</a></p>
           </section>
@@ -851,7 +851,7 @@ const VB = { viewBox: "0 0 1600 1000", preserveAspectRatio: "xMidYMid slice", fo
                 <a href={`mailto:${PROFILE.email}`}>{PROFILE.email}</a>
                 <button type="button" class="jb-copy" data-copy={PROFILE.email} aria-label={S.contact.copyAria}><span class="jb-copy-t" aria-live="polite">{S.client.copy}</span></button>
               </li>
-              {PROFILE.socials.map((s) => <li><span>{s.label}</span><a href={s.href} target="_blank" rel="noopener">{s.handle}<i aria-hidden="true"> ↗</i></a></li>)}
+              {PROFILE.socials.map((s) => <li><span>{s.label}</span><a href={s.href} target="_blank" rel="noopener">{s.handle}</a></li>)}
             </ul>
             <p class="jb-sign" aria-hidden="true">{S.contact.sign}</p>
           </section>
@@ -1358,7 +1358,7 @@ const VB = { viewBox: "0 0 1600 1000", preserveAspectRatio: "xMidYMid slice", fo
   .jb-where svg { width: 16px; height: 16px; flex: none; margin-top: 1px; fill: none; stroke: #c4391f; stroke-width: 1.8; stroke-linejoin: round; }
   .jb-where a, .jb-co a, .jb-notes a { text-decoration: underline; text-decoration-color: var(--green); text-underline-offset: 3px; text-decoration-thickness: 1.5px; }
   .jb-where a:hover, .jb-co a:hover, .jb-address a:hover { color: var(--green); }
-  .jb-where i, .jb-co i, .jb-address i { font-style: normal; color: var(--green); }
+  .jb-where a::after, .jb-co a::after, .jb-address a::after { color: var(--green); }
   .jb-facts { list-style: none; display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px; margin: 20px 0 0; padding: 0; }
   .jb-facts li { padding: 10px 12px 11px; border: 1.5px solid var(--ink); border-radius: 12px; background: #fff; }
   .jb-facts li:nth-child(1) { background: #ffe9a8; transform: rotate(-1.2deg); } .jb-facts li:nth-child(2) { background: #c9f1e6; transform: rotate(0.8deg); } .jb-facts li:nth-child(3) { background: #ffd3c6; transform: rotate(-0.5deg); } .jb-facts li:nth-child(4) { background: #d8e4fb; transform: rotate(0.9deg); }
