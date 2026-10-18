@@ -1,0 +1,31 @@
+# donnes.dev crawl rules (RFC 9309), with Content Signals (https://contentsignals.org).
+# The beach is open to read, cite and quote, but not to train models on.
+# /api/ is the beach's own AI endpoint: it has a small daily call budget and nothing to index.
+
+User-agent: *
+Content-Signal: search=yes, ai-input=yes, ai-train=no
+Allow: /
+Disallow: /api/
+
+# AI search and answer crawlers, and fetchers acting for a user: welcome
+User-agent: OAI-SearchBot
+User-agent: ChatGPT-User
+User-agent: Claude-SearchBot
+User-agent: Claude-User
+User-agent: PerplexityBot
+User-agent: Perplexity-User
+Content-Signal: search=yes, ai-input=yes, ai-train=no
+Allow: /
+Disallow: /api/
+
+# AI training crawlers: no
+User-agent: GPTBot
+User-agent: ClaudeBot
+User-agent: Google-Extended
+User-agent: Applebot-Extended
+User-agent: CCBot
+User-agent: Bytespider
+User-agent: Amazonbot
+Disallow: /
+
+Sitemap: https://donnes.dev/sitemap-index.xml

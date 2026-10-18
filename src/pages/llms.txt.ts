@@ -1,5 +1,6 @@
 // /llms.txt — the beach as plain Markdown for language models (https://llmstxt.org).
 // Built from the same profile, stack and roles the homepage renders, so it never drifts.
+// vercel.json also serves it for `/` when a request sends Accept: text/markdown.
 import type { APIRoute } from "astro";
 
 import { getExperiences, getProfile, getStack } from "../lib/beach/data";
