@@ -43,7 +43,7 @@ const roles = experiences.map((e, i) => {
     company: d.company,
     short: d.company.replace(/\(.*?\)/g, "").trim(),
     link: d.link,
-    years: `${d.startYear}–${present ? S.now : d.endYear}`,
+    years: `${d.startMonth ? `${d.startMonth} ` : ""}${d.startYear}–${present ? S.now : d.endYear}`,
     note: S.years(span),
     description: d.description as string[],
   };
@@ -808,6 +808,7 @@ const VB = { viewBox: "0 0 1600 1000", preserveAspectRatio: "xMidYMid slice", fo
             <h2 id="jb-h-about">{S.about.label}</h2>
             <blockquote class="jb-quote">“{PROFILE.tagline}”</blockquote>
             <p class="jb-body">{PROFILE.summary}</p>
+            <p class="jb-body">{PROFILE.architecture}</p>
             <ul class="jb-facts">
               <li><b>{firstYear}</b><span>{S.about.since}</span></li>
               <li><b>{roles.length}</b><span>{S.about.roles}</span></li>
