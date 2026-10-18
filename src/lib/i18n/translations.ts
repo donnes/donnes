@@ -16,8 +16,10 @@ export const translations = {
     "home.hero.description.2":
       "What satisfies me most is building amazing products that make people and businesses prosper.",
     "home.experience.title": "Work Experience",
-    "cv.summary":
-      "Product Engineer with 10+ years shipping production systems across Fintech, E-commerce, and SaaS. Currently building AI voice agents and call intelligence at Levers (YC S22) that automate B2B collections at scale. Led platform modernizations, rebuilt legacy systems, and shipped mobile applications from scratch. Specialized in Full-Stack and Mobile development, delivering high-impact solutions from concept to deployment.",
+    "about.summary":
+      "I build AI agents that run in production. At Levers (YC S22), I'm building inbound and outbound voice agents for accounts receivable and sales, in English and Arabic. Before AI, I spent 15 years shipping web and mobile across fintech, e-commerce and SaaS.",
+    "about.architecture":
+      "I care more about architecture than any one language: distributed systems, real-time pipelines, and scaling agent workloads reliably.",
 
     // Colophon
     "colophon.tecnology.title": "Tech Stack",
@@ -42,8 +44,10 @@ export const translations = {
     "home.hero.description.2":
       "O que mais me satisfaz é construir produtos incríveis que fazem pessoas e negócios prosperarem.",
     "home.experience.title": "Experiência",
-    "cv.summary":
-      "Product Engineer com mais de 10 anos construindo sistemas de produção em Fintech, E-commerce e SaaS. Atualmente, construo agentes de voz com IA e inteligência de chamadas na Levers (YC S22), automatizando cobranças B2B em escala. Liderei modernizações de plataformas, reconstruí sistemas legados e lancei aplicativos móveis do zero. Especializado em desenvolvimento Full-Stack e Mobile, entregando soluções de alto impacto do conceito à implantação.",
+    "about.summary":
+      "Construo agentes de IA que rodam em produção. Na Levers (YC S22), estou construindo agentes de voz inbound e outbound para contas a receber e vendas, em inglês e árabe. Antes da IA, passei 15 anos entregando produtos web e mobile em fintech, e-commerce e SaaS.",
+    "about.architecture":
+      "Arquitetura me importa mais do que qualquer linguagem específica: sistemas distribuídos, pipelines em tempo real e escalar cargas de trabalho de agentes com confiabilidade.",
 
     // Colophon
     "colophon.tecnology.title": "Tecnologia",

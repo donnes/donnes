@@ -4,13 +4,6 @@ import { CITY, SITE } from "../../constants";
 import { useTranslations } from "../i18n";
 import type { Language } from "../i18n/translations";
 
-// "cv.summary" is the long CV paragraph; the homepage uses its first two sentences.
-const firstSentences = (text: string, n: number) =>
-  text
-    .split(/(?<=\.)\s+/)
-    .slice(0, n)
-    .join(" ");
-
 export function getProfile(lang: Language) {
   const t = useTranslations(lang);
   return {
@@ -23,7 +16,8 @@ export function getProfile(lang: Language) {
     cvLink: SITE.CV_LINK,
     photo: "/me.jpg",
     tagline: t("home.hero.description.2"),
-    summary: firstSentences(t("cv.summary"), 2),
+    summary: t("about.summary"),
+    architecture: t("about.architecture"),
     socials: [
       { label: "GitHub", handle: "donnes", href: "https://github.com/donnes" },
       {
@@ -140,7 +134,14 @@ const STACK: {
   },
   {
     group: l("Backend", "Backend"),
-    items: ["Node.js", "Bun", "Python", "Go", "PostgreSQL", "Redis"],
+    items: ["Node.js", "Bun", "Python", "Go", "Rust", "PostgreSQL", "Redis"],
+  },
+  {
+    group: l("Systems", "Sistemas"),
+    items: [
+      l("Distributed systems", "Sistemas distribuídos"),
+      l("Real-time pipelines", "Pipelines em tempo real"),
+    ],
   },
   {
     group: l("UI systems", "Sistemas de UI"),

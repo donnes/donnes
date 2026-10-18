@@ -21,7 +21,8 @@ export const GET: APIRoute = async ({ site }) => {
   const experiences = await getExperiences(lang);
 
   const roles = experiences.map(({ data }) => {
-    const years = `${data.startYear}–${data.endYear ?? "Present"}`;
+    const start = data.startMonth ? `${data.startMonth} ${data.startYear}` : data.startYear;
+    const years = `${start}–${data.endYear ?? "Present"}`;
     const bullets = data.description.map((d) => `- ${plain(d)}`).join("\n");
     return `### ${data.role} at ${data.company} (${years})\n\n${data.link}\n\n${bullets}`;
   });
@@ -35,6 +36,8 @@ export const GET: APIRoute = async ({ site }) => {
   const body = `# ${profile.name}
 
 > ${profile.role} based in ${profile.city}. ${profile.summary}
+
+${profile.architecture}
 
 ${profile.tagline} The site at ${origin} is a single illustrated, interactive beach scene: work, about, stack and contact are objects left on the sand. This file is the same content as plain text.
 
