@@ -5,7 +5,6 @@ export const SITE = {
   ROLE: "AI Product Engineer",
   DESCRIPTION: `I'm an AI Product Engineer based in ${CITY}.`,
   EMAIL: "donaldsilveira@gmail.com",
-  CV_LINK: "https://go.donnes.dev/cv",
   CITY_LINK:
     "https://www.google.com/maps/search/?api=1&query=Jurer%C3%AA+Internacional%2C+Florian%C3%B3polis+-+SC",
   OPEN_GRAPH: {

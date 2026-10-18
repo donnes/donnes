@@ -44,7 +44,6 @@ ${profile.tagline} The site at ${origin} is a single illustrated, interactive be
 ## Contact
 
 - Email: ${profile.email}
-- CV: ${profile.cvLink}
 ${profile.socials.map((s) => `- ${s.label}: ${s.href}`).join("\n")}
 
 ## Work

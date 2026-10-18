@@ -851,7 +851,6 @@ const VB = { viewBox: "0 0 1600 1000", preserveAspectRatio: "xMidYMid slice", fo
                 <a href={`mailto:${PROFILE.email}`}>{PROFILE.email}</a>
                 <button type="button" class="jb-copy" data-copy={PROFILE.email} aria-label={S.contact.copyAria}><span class="jb-copy-t" aria-live="polite">{S.client.copy}</span></button>
               </li>
-              <li><span>{S.contact.cv}</span><a href={PROFILE.cvLink} target="_blank" rel="noopener">{PROFILE.cvLink.replace("https://", "")}<i aria-hidden="true"> ↗</i></a></li>
               {PROFILE.socials.map((s) => <li><span>{s.label}</span><a href={s.href} target="_blank" rel="noopener">{s.handle}<i aria-hidden="true"> ↗</i></a></li>)}
             </ul>
             <p class="jb-sign" aria-hidden="true">{S.contact.sign}</p>
