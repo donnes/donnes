@@ -3,5 +3,25 @@
     "api/habitat.ts": {
       "maxDuration": 15
     }
-  }
+  },
+  "routes": [
+    {
+      "src": "/",
+      "has": [{ "type": "header", "key": "accept", "value": "(.*)text/markdown(.*)" }],
+      "dest": "/llms.txt",
+      "headers": {
+        "Content-Type": "text/markdown; charset=utf-8",
+        "Link": "</llms.txt>; rel=\"describedby\"; type=\"text/plain\"",
+        "Vary": "Accept"
+      }
+    },
+    {
+      "src": "/",
+      "headers": {
+        "Link": "</llms.txt>; rel=\"describedby\"; type=\"text/plain\"",
+        "Vary": "Accept"
+      },
+      "continue": true
+    }
+  ]
 }
