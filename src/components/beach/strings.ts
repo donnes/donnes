@@ -36,7 +36,7 @@ export type BeachStrings = {
   work: { label: string; sub: string; aria: string; hint: string; roles: string; folio: string; builtAt: (company: string) => string; pageAria: (company: string) => string; prev: string; next: string; close: string };
   about: { label: string; aria: string; since: string; roles: string; tools: string; currently: string; basedIn: string; country: string; colophon: string };
   stack: { label: string; aria: string; eyebrow: string; lede: string };
-  contact: { label: string; aria: string; eyebrow: string; heading: string; hello: string; letter: string; email: string; cv: string; copyAria: string; stamp: string; postmark: (role: string, year: number) => string; sign: string };
+  contact: { label: string; aria: string; eyebrow: string; heading: string; hello: string; letter: string; email: string; copyAria: string; stamp: string; postmark: (role: string, year: number) => string; sign: string };
   ball: string;
   closePanel: string;
   client: ClientStrings;
@@ -93,7 +93,6 @@ export const STRINGS: Record<BeachLang, BeachStrings> = {
       hello: "Say hello",
       letter: "Have a product to build, or a role that fits? Email is the fastest way to reach me.",
       email: "Email",
-      cv: "CV",
       copyAria: "Copy email address",
       stamp: "HELLO",
       postmark: (role, year) => `${role} · shipping since ${year} ·`,
@@ -163,7 +162,6 @@ export const STRINGS: Record<BeachLang, BeachStrings> = {
       hello: "Diga olá",
       letter: "Tem um produto para construir ou uma vaga que combina comigo? E-mail é o jeito mais rápido de falar comigo.",
       email: "E-mail",
-      cv: "CV",
       copyAria: "Copiar endereço de e-mail",
       stamp: "OLÁ",
       postmark: (role, year) => `${role} · criando desde ${year} ·`,

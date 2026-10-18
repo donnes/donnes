@@ -44,4 +44,12 @@ const { lang, title, description } = Astro.props;
   body {
     margin: 0;
   }
+  /* Marks text-only links that open a new tab; links wrapping images or markup are left alone */
+  a[target="_blank"]:not(:empty):not(:has(*))::after {
+    content: "↗";
+    /* empty alt text keeps screen readers from announcing the arrow */
+    content: "↗" / "";
+    display: inline-block;
+    margin-inline-start: 0.125rem;
+  }
 </style>

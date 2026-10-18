@@ -13,7 +13,6 @@ export function getProfile(lang: Language) {
     city: CITY,
     cityLink: SITE.CITY_LINK,
     email: SITE.EMAIL,
-    cvLink: SITE.CV_LINK,
     photo: "/me.jpg",
     tagline: t("home.hero.description.2"),
     summary: t("about.summary"),
