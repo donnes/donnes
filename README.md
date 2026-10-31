@@ -6,4 +6,7 @@ I build products that help people and businesses prosper.
 
 Visit [donnes.dev](https://donnes.dev/) to explore the beach and see my work.
 
-I'm building [Syncode](https://github.com/donnes/syncode), an agent and machine configuration manager.
+## Current projects
+
+- [Monodrive](https://github.com/donnes/monodrive): a Rust + GPUI file manager for you and your agents
+- [Syncode](https://github.com/donnes/syncode): an agent and machine configuration manager
