@@ -45,7 +45,6 @@ try {
     const realFetch = window.fetch;
     window.fetch = (input, init) => String(input).includes('open-meteo') ? new Promise(resolve => setTimeout(() => resolve(new Response(JSON.stringify({
       current: { temperature_2m: 19, apparent_temperature: 18, weather_code: ${Number(process.env.WX_CODE)}, cloud_cover: 100, wind_speed_10m: 16, wind_gusts_10m: 28, wind_direction_10m: 140, is_day: 1, precipitation: 2, rain: 2, showers: 0 },
-      daily: { sunrise: ['2026-01-01T06:00'], sunset: ['2026-01-01T18:30'] },
     }), { headers: { 'content-type': 'application/json' } })), ${Number(process.env.WX_DELAY || 600)})) : realFetch(input, init);
   ` });
   await send('Page.addScriptToEvaluateOnNewDocument', { source: `
