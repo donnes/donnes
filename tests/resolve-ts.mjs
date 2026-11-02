@@ -1,4 +1,4 @@
-// The habitat lib imports its siblings as "./x.js" (the shape Vercel bundles); under node --experimental-strip-types
+// The habitat lib imports its siblings as "./x.js" (the shape the Worker bundles); under node --experimental-strip-types
 // there is no .js on disk, so map a missing ./x.js to ./x.ts. Test-only; production bundlers resolve these themselves.
 import { register } from "node:module";
 register("data:text/javascript," + encodeURIComponent(`

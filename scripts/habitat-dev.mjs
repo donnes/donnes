@@ -1,4 +1,4 @@
-// Serve the same Vercel endpoint during `astro dev`, without turning the static site into SSR.
+// Serve the same habitat endpoint as src/worker.ts during `astro dev`, without turning the static site into SSR.
 export default function habitatDev() {
   return {
     name: "habitat-dev",
