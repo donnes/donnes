@@ -1,7 +1,8 @@
 import { createTennisCoach } from "./typesafe.js";
 import { createDirector } from "./director.js";
 import { CONTEXTS, type Context } from "./plan.js";
-export function createEndpoint(env: Record<string, string | undefined>) {
+export type HabitatEnv = { OPENROUTER_API_KEY?: string; OPENROUTER_MODEL?: string; HABITAT_MAX_CALLS_PER_DAY?: string; TYPESAFE_API_KEY?: string; TYPESAFE_MAX_CALLS_PER_DAY?: string };
+export function createEndpoint(env: HabitatEnv) {
   const configuredLimit = Number(env.HABITAT_MAX_CALLS_PER_DAY ?? 8);
   const direct = createDirector({
     key: env.OPENROUTER_API_KEY,

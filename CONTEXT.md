@@ -5,7 +5,7 @@ The site is one screen: the Jurerê beach. These are the names the code uses for
 ## The beach
 
 - **Scene** — the painted beach as it is right now: the fitted painting, the eased weather channels, the pointer, the court state and the device capabilities. One object, created once by the page, handed to every actor.
-- **SceneState** — what the beach is like at this moment: sky, phase of day, cloud cover, wind, temperature. Derived from the clock and Open-Meteo, or from a `?wx=` / `?tod=` preview.
+- **SceneState** — what the beach is like at this moment: sky, phase of day, cloud cover, wind, temperature. Derived from the clock and the live weather (Google via `/api/weather`, Open-Meteo as the fallback), or from a `?wx=` / `?tod=` preview.
 - **Channels** (`env`) — every continuous quantity the Scene eases towards its SceneState goal: cover, fog, rain, wet, wind, time of day. Only the channels task writes them.
 - **Fit** — the painting-to-screen projection: scale, offsets, the visible left edge and width, and whether the screen is portrait.
 - **Caps** — what this device may do: `lite` (phones, tablets, narrow windows), `calm` (reduced motion), `sheet` (phone-width panels), `portrait`.

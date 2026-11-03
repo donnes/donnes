@@ -14,7 +14,7 @@ Hidden tabs pause the habitat clock.
 The model picks action names only; the scene owns every movement and ball contact.
 
 A visit requests at most two plans, with no automatic retries. Each successful plan
-is cached for an hour by the warm server and Vercel's CDN. Requests share an in-flight
+is cached for an hour by the warm server and the Worker's edge cache. Requests share an in-flight
 call, use a 60-second cooldown, and have a 1,024-token output limit including reasoning.
 Failed calls use local behavior and a five-minute cache. No photos, visitor identifiers,
 conversation history, or page contents are sent to OpenRouter.
@@ -24,10 +24,10 @@ paid calls. This limit applies per warm server process and resets on cold starts
 it is **not a global spending cap**. Set a credit limit on the OpenRouter key to
 bound total spend across deployments and instances.
 
-Production uses the native Vercel function in `api/habitat.ts`; the portfolio pages
-remain static. Configure the same env variables in Vercel before deploying. Local
+Production uses the Cloudflare Worker in `src/worker.ts`; the portfolio pages
+remain static. Set the keys with `wrangler secret put`; the limits are `vars` in `wrangler.jsonc`. Local
 Astro development serves the same handler through `scripts/habitat-dev.mjs`.
-Use Node 22 for deployment. `astro preview` previews static pages only, so use
+Use Node 22 for builds. `astro preview` previews static pages only, so use
 `pnpm dev` when testing the habitat endpoint locally.
 
 Run `pnpm test` and `pnpm build`. To inspect behavior, open

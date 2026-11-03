@@ -10,7 +10,7 @@ type ClientStrings = {
   phase: Record<"night" | "dawn" | "morning" | "midday" | "afternoon" | "golden" | "dusk", string>;
   /** sky names for preview presets, keyed by the scene's internal sky id */
   sky: Record<"clear" | "partly" | "cloudy" | "fog" | "drizzle" | "rain" | "heavy" | "storm", string>;
-  /** names for live Open-Meteo weather codes */
+  /** names for live WMO weather codes (Open-Meteo's, and Google's conditions mapped onto them) */
   code: Record<"clear" | "mostlyClear" | "partly" | "overcast" | "fog" | "drizzle" | "lightRain" | "rain" | "heavyRain" | "freezingRain" | "snow" | "snowShowers" | "storm", string>;
   windy: string;
   wind: string;

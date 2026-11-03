@@ -1,7 +1,8 @@
-// What the beach is like right now: the São Paulo clock with real sunrise and sunset (astronomical until Open-Meteo
-// answers), the live weather re-polled every ten minutes while the tab is visible, and the SceneState derived from
-// them, or from a labelled `?wx=` / `?tod=` / `?t=` preview.
+// What the beach is like right now: the São Paulo clock with the day's sunrise and sunset, the live weather (Google via
+// /api/weather, Open-Meteo when that fails) re-polled every ten minutes while the tab is visible, and the SceneState
+// derived from them, or from a labelled `?wx=` / `?tod=` / `?t=` preview.
 import type { Sky, Phase, SceneState, Env } from "./scene.ts";
+import type { Reading } from "./google-weather.ts";
 import { clamp } from "./math.ts";
 
 // per-sky look: every number is a channel the scene eases towards (see the channels)
@@ -41,12 +42,17 @@ export const hhmm = (v: string | null): number | null => {
   const m = /^(\d{1,2}):(\d{2})$/.exec(v || "");
   return m ? (Number(m[1]) % 24) * 60 + Number(m[2]) : null;
 };
-/** [sunrise, sunset] in minutes for Jurerê today, from the sun's declination */
+/** [sunrise, sunset] in minutes for Jurerê today, from the sun's declination and the equation of time (within a few minutes) */
 export function sunTimes(date = new Date()): [number, number] {
   const n = Math.floor((date.getTime() - Date.UTC(date.getUTCFullYear(), 0, 0)) / 864e5);
-  const decl = -23.44 * Math.cos((2 * Math.PI * (n + 10)) / 365) * (Math.PI / 180);
-  const half = (Math.acos(clamp(-Math.tan(-27.44 * (Math.PI / 180)) * Math.tan(decl), -1, 1)) * 720) / Math.PI;
-  return [734 - half, 734 + half]; // solar noon ≈ 12:14 at 48.49°W in UTC−3
+  const rad = Math.PI / 180;
+  const decl = -23.44 * Math.cos((2 * Math.PI * (n + 10)) / 365) * rad;
+  const lat = -27.44 * rad;
+  // the sun's centre 0.833° below the horizon: refraction plus its radius
+  const half = (Math.acos(clamp((Math.sin(-0.833 * rad) - Math.sin(lat) * Math.sin(decl)) / (Math.cos(lat) * Math.cos(decl)), -1, 1)) * 720) / Math.PI;
+  const b = (2 * Math.PI * (n - 81)) / 364;
+  const noon = 734 - (9.87 * Math.sin(2 * b) - 7.53 * Math.cos(b) - 1.5 * Math.sin(b)); // mean solar noon ≈ 12:14 at 48.49°W in UTC−3
+  return [noon - half, noon + half];
 }
 /** minutes of the day → `cyc`: 0 at sunrise, 1 at sunset, 2 at the next sunrise */
 export function cycAt(min: number, sr: number, ss: number): number {
@@ -64,10 +70,11 @@ export function moonPath(phase: number): string {
 export const moonPhaseNow = (nowMs: number) => ((((nowMs / 864e5 - 10962.76) % 29.530588) + 29.530588) % 29.530588) / 29.530588; // since the new moon of 2000-01-06
 
 /* ── live weather ── */
-export type Live = { at: number; temp: number; feels: number; code: number; cover: number; kmh: number; gust: number; dir: number; precip: number; sunrise: number; sunset: number };
+export type Live = Reading & { at: number };
+export const LIVE_URL = "/api/weather";
 export const WX_URL =
-  "https://api.open-meteo.com/v1/forecast?latitude=-27.44&longitude=-48.49&current=temperature_2m,apparent_temperature,weather_code,cloud_cover,wind_speed_10m,wind_gusts_10m,wind_direction_10m,is_day,precipitation,rain,showers&daily=sunrise,sunset&forecast_days=1&timezone=America%2FSao_Paulo";
-export const WX_KEY = "jb-wx-v2";
+  "https://api.open-meteo.com/v1/forecast?latitude=-27.44&longitude=-48.49&current=temperature_2m,apparent_temperature,weather_code,cloud_cover,wind_speed_10m,wind_gusts_10m,wind_direction_10m,is_day,precipitation,rain,showers&forecast_days=1&timezone=America%2FSao_Paulo";
+export const WX_KEY = "jb-wx-v3";
 export const POLL_MS = 10 * 60 * 1000;
 
 export type WeatherWords = { windy?: string; sky?: Record<string, string>; code?: Record<string, string>; compass?: string[] };
@@ -96,41 +103,47 @@ export function createWeather(deps: WeatherDeps) {
   } catch {
     /* no cache */
   }
-  /** asks Open-Meteo; resolves true when a fresh reading arrived */
-  async function poll(): Promise<boolean> {
-    const ctl = new AbortController();
-    const timer = setTimeout(() => ctl.abort(), 4000);
+  const getJson = async (url: string) => {
     try {
-      const res = await doFetch(WX_URL, { signal: ctl.signal });
-      if (!res.ok) return false;
-      const j = await res.json();
-      const cur = j?.current;
-      if (!cur || typeof cur.weather_code !== "number") return false;
-      const [sr0, ss0] = sunTimes(new Date(now()));
-      live = {
-        at: now(), temp: Number(cur.temperature_2m), feels: Number(cur.apparent_temperature), code: cur.weather_code, cover: Number(cur.cloud_cover) || 0,
-        kmh: Number(cur.wind_speed_10m) || 0, gust: Number(cur.wind_gusts_10m) || Number(cur.wind_speed_10m) || 0, dir: Number(cur.wind_direction_10m) || 0,
-        precip: Math.max(Number(cur.precipitation) || 0, Number(cur.rain) || 0, Number(cur.showers) || 0),
-        sunrise: hhmm(String(j?.daily?.sunrise?.[0] || "").slice(11, 16)) ?? sr0, sunset: hhmm(String(j?.daily?.sunset?.[0] || "").slice(11, 16)) ?? ss0,
-      };
-      try {
-        deps.storage?.setItem(WX_KEY, JSON.stringify(live));
-      } catch {
-        /* private mode */
-      }
-      return true;
+      const res = await doFetch(url, { signal: AbortSignal.timeout(4000) });
+      return res.ok ? await res.json() : null;
     } catch {
-      /* no weather today: the beach keeps the real clock and its last known sky */
-      return false;
-    } finally {
-      clearTimeout(timer);
+      return null;
     }
+  };
+  /** Google's current conditions, through our own endpoint (it holds the key) */
+  async function fromGoogle(): Promise<Reading | null> {
+    const r = await getJson(LIVE_URL);
+    return typeof r?.temp === "number" && typeof r.code === "number" ? r : null;
+  }
+  /** Open-Meteo's model, the fallback */
+  async function fromOpenMeteo(): Promise<Reading | null> {
+    const j = await getJson(WX_URL);
+    const cur = j?.current;
+    if (!cur || typeof cur.weather_code !== "number") return null;
+    return {
+      temp: Number(cur.temperature_2m), feels: Number(cur.apparent_temperature), code: cur.weather_code, cover: Number(cur.cloud_cover) || 0,
+      kmh: Number(cur.wind_speed_10m) || 0, gust: Number(cur.wind_gusts_10m) || Number(cur.wind_speed_10m) || 0, dir: Number(cur.wind_direction_10m) || 0,
+      precip: Math.max(Number(cur.precipitation) || 0, Number(cur.rain) || 0, Number(cur.showers) || 0),
+    };
+  }
+  /** asks Google, then Open-Meteo; resolves true when a fresh reading arrived (on none, the beach keeps the real clock and its last known sky) */
+  async function poll(): Promise<boolean> {
+    const reading = (await fromGoogle()) ?? (await fromOpenMeteo());
+    if (!reading) return false;
+    live = { ...reading, at: now() };
+    try {
+      deps.storage?.setItem(WX_KEY, JSON.stringify(live));
+    } catch {
+      /* private mode */
+    }
+    return true;
   }
   const stale = () => !live || now() - live.at > POLL_MS - 30000;
   /** the URL previews: `?wx=`, `?tod=`, `?temp=` (the demo walks these) */
   const over: Overrides = { wx: params.get("wx") || "", tod: (params.get("tod") === "day" ? "midday" : params.get("tod") || "") as Phase | "", temp: params.get("temp") ? Number(params.get("temp")) : NaN };
   function readState(): SceneState {
-    const [sr, ss] = live ? [live.sunrise, live.sunset] : sunTimes(new Date(now()));
+    const [sr, ss] = sunTimes(new Date(now()));
     const todP = PHASE_NAMES.includes(over.tod as Phase) ? (over.tod as Phase) : null;
     const cyc = todP ? PHASES[todP].at : cycAt(clockMin(), sr, ss);
     const pre = WX_PRESETS[over.wx];

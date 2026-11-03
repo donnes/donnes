@@ -16,9 +16,11 @@ test("Open-Meteo codes map to the eight skies we paint", () => {
   assert.equal(codeSky(95, 0, 0), "storm");
 });
 
-test("the day's cycle: 0 at sunrise, 1 at sunset, 2 at the next sunrise; sunrise and sunset from the sun's declination", () => {
+test("the day's cycle: 0 at sunrise, 1 at sunset, 2 at the next sunrise; sunrise and sunset from the sun's declination and the equation of time", () => {
   const [sr, ss] = sunTimes(new Date(noon));
   assert.ok(sr > 5 * 60 && sr < 7 * 60 && ss > 17 * 60 && ss < 19 * 60, "a September day in Florianópolis");
+  const [oct18rise, oct18set] = sunTimes(new Date(Date.UTC(2026, 9, 18, 15)));
+  assert.ok(Math.abs(oct18rise - (5 * 60 + 34)) < 4 && Math.abs(oct18set - (18 * 60 + 23)) < 4, "within minutes of the published 05:34 and 18:23");
   assert.equal(cycAt(sr, sr, ss), 0);
   assert.ok(Math.abs(cycAt((sr + ss) / 2, sr, ss) - 0.5) < 1e-9);
   assert.equal(cycAt(ss, sr, ss), 1);
@@ -37,15 +39,26 @@ test("previews win over live data; the chip labels come from the words", () => {
   assert.equal(wind.sky, "clear"); assert.equal(wind.label, "Windy"); assert.ok(wind.wind > 0.7);
 });
 
-test("a live reading is polled once, cached in storage, and read back while fresh", async () => {
+const openMeteo = { current: { temperature_2m: 18, apparent_temperature: 17, weather_code: 51, cloud_cover: 60, wind_speed_10m: 10, wind_gusts_10m: 20, wind_direction_10m: 180, precipitation: 0.1 } };
+/** a fetch that answers /api/weather with `google` (a 503 when null) and anything else with Open-Meteo, counting the calls */
+function fakeFetch(google: object | null) {
+  const calls: string[] = [];
+  const fetch: typeof globalThis.fetch = async (input) => {
+    const url = String(input);
+    calls.push(url.startsWith("/api/") ? "google" : "open-meteo");
+    return url.startsWith("/api/") ? (google ? Response.json(google) : new Response("No live weather", { status: 503 })) : Response.json(openMeteo);
+  };
+  return { fetch, calls };
+}
+
+test("a live reading comes from Google first, is cached in storage, and read back while fresh", async () => {
   const store = new Map<string, string>();
   const storage = { getItem: (k: string) => store.get(k) ?? null, setItem: (k: string, v: string) => void store.set(k, v) };
-  let calls = 0;
-  const fetch = async () => { calls++; return { ok: true, json: async () => ({ current: { temperature_2m: 21, apparent_temperature: 22, weather_code: 63, cloud_cover: 90, wind_speed_10m: 20, wind_gusts_10m: 30, wind_direction_10m: 90, precipitation: 1 }, daily: { sunrise: ["2026-09-22T06:10"], sunset: ["2026-09-22T18:20"] } }) } as Response; };
-  const w = createWeather({ words, params: new URLSearchParams(""), storage, fetch: fetch as any, now: () => noon });
+  const { fetch, calls } = fakeFetch({ temp: 21, feels: 22, code: 63, cover: 90, kmh: 20, gust: 30, dir: 90, precip: 1 });
+  const w = createWeather({ words, params: new URLSearchParams(""), storage, fetch, now: () => noon });
   assert.equal(w.stale(), true);
   assert.equal(await w.poll(), true);
-  assert.equal(calls, 1);
+  assert.deepEqual(calls, ["google"]);
   assert.equal(w.stale(), false);
   const s = w.readState();
   assert.equal(s.sky, "rain"); assert.equal(s.temp, 21); assert.equal(s.kmh, 20); assert.equal(s.compass, "E"); assert.equal(s.label, "Rain");
@@ -53,4 +66,13 @@ test("a live reading is polled once, cached in storage, and read back while fres
   const again = createWeather({ words, params: new URLSearchParams(""), storage, now: () => noon + 60_000 });
   assert.equal(again.live?.code, 63, "the cached reading is still good");
   assert.equal(w.timeText(), "12:00");
+});
+
+test("without Google the beach falls back to Open-Meteo", async () => {
+  const { fetch, calls } = fakeFetch(null);
+  const w = createWeather({ words, params: new URLSearchParams(""), storage: null, fetch, now: () => noon });
+  assert.equal(await w.poll(), true);
+  assert.deepEqual(calls, ["google", "open-meteo"]);
+  assert.equal(w.readState().sky, "drizzle");
+  assert.equal(w.readState().temp, 18);
 });

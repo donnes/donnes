@@ -1,7 +1,6 @@
 ---
 // <head> for the beach homepage. Same meta as components/head.astro, but WITHOUT global.css:
 // its Tailwind-era `body`, `main` and `a` rules would wreck the scene.
-import SpeedInsights from "@vercel/speed-insights/astro";
 
 interface Props {
   title: string;
@@ -98,4 +97,3 @@ const alternates = [
 </script>
 
 <!-- Speed Insights -->
-<SpeedInsights />

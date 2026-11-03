@@ -1914,7 +1914,7 @@ const VB = { viewBox: "0 0 1600 1000", preserveAspectRatio: "xMidYMid slice", fo
   const palette = createPalette(scene, { veiledEls: qa<HTMLElement | SVGElement>(".jb-veiled") }, (t) => getComputedStyle(probes[BOXES.indexOf(t)]));
   probes.forEach((el) => el.remove());
 
-  /* ───────────── the clock and the weather: São Paulo time, real sunrise/sunset, Open-Meteo every 10 minutes while the tab is visible ───────────── */
+  /* ───────────── the clock and the weather: São Paulo time, the day's sunrise/sunset, live weather every 10 minutes while the tab is visible ───────────── */
   const weather = createWeather({ words: T, params, storage: (() => { try { return sessionStorage; } catch { return null; } })() });
   // two clean arcs: the limb (always a half circle) and the terminator (a half ellipse that flips side at the quarters)
   for (const id of ["jb-moon-lit", "jb-moon-clip"]) document.getElementById(id)?.setAttribute("d", weather.moon());
